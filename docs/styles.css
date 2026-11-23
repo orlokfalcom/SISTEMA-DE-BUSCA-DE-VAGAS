@@ -1435,3 +1435,83 @@ body {
     text-align: center;
   }
 }
+
+/* Feed Automático de Vagas Recentes & Barra de Auto-Atualização */
+.live-feed-card {
+  margin-top: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.live-feed-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.live-feed-header h3 {
+  font-size: 1rem;
+  color: #f8fafc;
+}
+
+.live-feed-controls,
+.live-sync-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-sync-group {
+  margin-right: auto;
+}
+
+.live-status-pill {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.live-feed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+
+.mini-job-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color 0.18s, transform 0.14s;
+}
+
+.mini-job-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.mini-job-card strong {
+  font-size: 0.84rem;
+  color: #f8fafc;
+  line-height: 1.3;
+}
+
+.mini-job-meta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
