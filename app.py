@@ -338,5 +338,5 @@ if __name__ == "__main__":
     else:
         from waitress import serve
 
-        print(f"VagaMatch PDF rodando em produção em http://{host}:{port}")
+        print(f"VagaPulse AI rodando em produção em http://{host}:{port}")
         serve(app, host=host, port=port, threads=8)

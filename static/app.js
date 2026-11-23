@@ -644,7 +644,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "vagamatch_vagas.csv";
+    a.download = "vagapulse_ai_vagas.csv";
     a.click();
     URL.revokeObjectURL(url);
   }

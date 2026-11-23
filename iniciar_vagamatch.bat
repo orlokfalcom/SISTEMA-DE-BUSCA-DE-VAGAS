@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title VagaMatch PDF - Servidor Local
+title VagaPulse AI - Servidor Local
 cd /d "%~dp0"
 
 if not exist ".venv\Scripts\python.exe" (
@@ -11,7 +11,7 @@ if not exist ".venv\Scripts\python.exe" (
 
 echo.
 echo ============================================================
-echo   VagaMatch PDF iniciando em http://127.0.0.1:5000
+echo   VagaPulse AI iniciando em http://127.0.0.1:5000
 echo   Feche esta janela para encerrar o servidor.
 echo ============================================================
 echo.

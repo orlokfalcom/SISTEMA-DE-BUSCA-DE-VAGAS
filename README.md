@@ -1,4 +1,4 @@
-# VagaMatch PDF — Busca Profunda de Vagas & Editor de Currículo ATS
+# VagaPulse AI — Busca Profunda de Vagas & Editor de Currículo ATS
 
 Plataforma web responsiva de análise de currículos em **PDF** com **Busca Profunda em Sites de Empresas e Portais da Internet**, **Editor de Currículo ATS em Tempo Real**, **Diagnóstico ATS (0–100)**, **Análise de Skill Gap**, **Matching Semântico TF-IDF com Prioridade Geográfica**, **Comparador de Vaga Colada** e **Rastreador de Candidaturas**.
 
