@@ -21,8 +21,9 @@ _CACHE: dict[str, tuple[float, list[dict]]] = {}
 CACHE_TTL_SECONDS = 300  # 5 minutos
 REQUEST_HEADERS = {"User-Agent": "VagaMatchPDF/2.0 (Job Search Aggregator)"}
 
-# Páginas de carreiras oficiais de empresas (Greenhouse Boards API pública)
+# Páginas de carreiras oficiais de empresas (Greenhouse, Ashby e SmartRecruiters)
 COMPANY_CAREER_BOARDS_BR: list[tuple[str, str]] = [
+    ("stone", "Stone"),
     ("vtex", "VTEX"),
     ("quintoandar", "QuintoAndar"),
     ("ebanx", "EBANX"),
@@ -37,6 +38,24 @@ COMPANY_CAREER_BOARDS_GLOBAL: list[tuple[str, str]] = [
     ("datadog", "Datadog"),
     ("mongodb", "MongoDB"),
     ("canonical", "Canonical"),
+    ("okta", "Okta"),
+    ("zscaler", "Zscaler"),
+    ("databricks", "Databricks"),
+]
+
+ASHBY_CAREER_BOARDS_BR: list[tuple[str, str]] = [
+    ("nubank", "Nubank"),
+]
+
+ASHBY_CAREER_BOARDS_GLOBAL: list[tuple[str, str]] = [
+    ("openai", "OpenAI"),
+    ("notion", "Notion"),
+    ("supabase", "Supabase"),
+    ("vanta", "Vanta"),
+]
+
+SMARTRECRUITERS_BOARDS: list[tuple[str, str]] = [
+    ("BoschGroup", "Bosch"),
 ]
 
 
@@ -591,6 +610,228 @@ def fetch_greenhouse_company_jobs(
     return jobs
 
 
+def fetch_workingnomads_jobs(limit: int = 30) -> list[dict]:
+    """Busca vagas remotas reais na API pública da Working Nomads."""
+    cache_key = f"workingnomads:{limit}"
+    now = time.time()
+    if cache_key in _CACHE and (now - _CACHE[cache_key][0]) < CACHE_TTL_SECONDS:
+        return _CACHE[cache_key][1]
+    try:
+        resp = requests.get("https://www.workingnomads.com/api/exposed_jobs/", headers=REQUEST_HEADERS, timeout=6)
+        resp.raise_for_status()
+        raw_items = resp.json()[:limit]
+    except Exception:
+        return []
+
+    jobs: list[dict] = []
+    for idx, item in enumerate(raw_items):
+        title = str(item.get("title") or "Remote Job").strip()
+        desc = _strip_html(str(item.get("description") or ""))
+        tags = str(item.get("tags") or "")
+        cat = str(item.get("category_name") or "")
+        combined = f"{title} {cat} {tags} {desc}"
+        jobs.append(
+            {
+                "id": f"wn-{idx}-{abs(hash(item.get('url') or title)) % 1000000}",
+                "title": title,
+                "company": str(item.get("company_name") or "Empresa Internacional"),
+                "location": str(item.get("location") or "Remoto Global"),
+                "modality": "Remoto",
+                "seniority": _infer_job_seniority(title),
+                "salary": "A combinar",
+                "skills": extract_skills(combined),
+                "description": desc[:950] + ("..." if len(desc) > 950 else ""),
+                "url": item.get("url") or "https://www.workingnomads.com",
+                "source": "Working Nomads (Ao Vivo)",
+                "posted_at": str(item.get("pub_date") or "")[:10],
+            }
+        )
+    _CACHE[cache_key] = (now, jobs)
+    return jobs
+
+
+def fetch_landingjobs_jobs(limit: int = 25) -> list[dict]:
+    """Busca vagas tech reais na API pública da Landing.jobs."""
+    cache_key = f"landingjobs:{limit}"
+    now = time.time()
+    if cache_key in _CACHE and (now - _CACHE[cache_key][0]) < CACHE_TTL_SECONDS:
+        return _CACHE[cache_key][1]
+    try:
+        resp = requests.get("https://landing.jobs/api/v1/jobs", headers=REQUEST_HEADERS, timeout=6)
+        resp.raise_for_status()
+        raw_items = resp.json()
+        if not isinstance(raw_items, list):
+            return []
+        raw_items = raw_items[:limit]
+    except Exception:
+        return []
+
+    jobs: list[dict] = []
+    for item in raw_items:
+        title = str(item.get("title") or "Tech Job").strip()
+        desc = _strip_html(f"{item.get('role_description') or ''} {item.get('main_requirements') or ''}")
+        tags = item.get("tags") or []
+        locs = item.get("locations") or []
+        loc_str = ", ".join(str(l.get("city") or l.get("country_code") or "") for l in locs if isinstance(l, dict)) or "Europa / Remoto"
+        is_remote = bool(item.get("remote"))
+        s_low = item.get("gross_salary_low")
+        s_high = item.get("gross_salary_high")
+        curr = item.get("currency_code") or "EUR"
+        if s_low and s_high:
+            salary = f"{curr} {int(s_low):,} - {int(s_high):,}"
+        elif s_high:
+            salary = f"{curr} {int(s_high):,}"
+        else:
+            salary = "A combinar"
+        jobs.append(
+            {
+                "id": f"landingjobs-{item.get('id')}",
+                "title": title,
+                "company": "Empresa via Landing.jobs",
+                "location": loc_str,
+                "modality": "Remoto" if is_remote else "Híbrido",
+                "seniority": _infer_job_seniority(title),
+                "salary": salary,
+                "skills": extract_skills(f"{title} {' '.join(str(t) for t in tags)} {desc}"),
+                "description": desc[:950] + ("..." if len(desc) > 950 else ""),
+                "url": item.get("url") or "https://landing.jobs",
+                "source": "Landing.jobs (Ao Vivo)",
+                "posted_at": str(item.get("published_at") or "")[:10],
+            }
+        )
+    _CACHE[cache_key] = (now, jobs)
+    return jobs
+
+
+def fetch_ashby_company_jobs(
+    slug: str,
+    company_name: str,
+    is_br_company: bool = False,
+    user_country: str = "Brasil",
+    search_terms: list[str] | None = None,
+    limit: int = 12,
+) -> list[dict]:
+    """Busca vagas diretamente na página de carreiras oficial (Ashby) da empresa."""
+    cache_key = f"ashby:{slug}"
+    now = time.time()
+    if cache_key in _CACHE and (now - _CACHE[cache_key][0]) < CACHE_TTL_SECONDS:
+        raw_items = _CACHE[cache_key][1]
+    else:
+        try:
+            resp = requests.get(f"https://api.ashbyhq.com/posting-api/job-board/{slug}", headers=REQUEST_HEADERS, timeout=6)
+            resp.raise_for_status()
+            raw_items = resp.json().get("jobs", [])
+            _CACHE[cache_key] = (now, raw_items)
+        except Exception:
+            return []
+
+    norm_terms = [normalize_text(t) for t in (search_terms or []) if t and len(t) >= 2]
+    country_norm = normalize_text(user_country)
+    br_hints = ("brazil", "brasil", "sao paulo", "belo horizonte", "rio de janeiro", "latam", "americas")
+
+    scored: list[tuple[int, dict]] = []
+    for item in raw_items:
+        title = str(item.get("title") or "").strip()
+        location = str(item.get("location") or ("Brasil" if is_br_company else "Global")).strip()
+        t_norm = normalize_text(title)
+        l_norm = normalize_text(location)
+        prio = 0
+        if is_br_company or (country_norm == "brasil" and any(h in l_norm for h in br_hints)):
+            prio += 4
+        elif country_norm and country_norm in l_norm:
+            prio += 4
+        elif item.get("isRemote") or "remote" in l_norm:
+            prio += 2
+        prio += sum(1 for t in norm_terms if t in t_norm) * 5
+        scored.append((prio, item))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    jobs: list[dict] = []
+    for _, item in scored[:limit]:
+        title = str(item.get("title") or "Vaga").strip()
+        location = str(item.get("location") or ("Brasil" if is_br_company else "Global")).strip()
+        is_remote = bool(item.get("isRemote")) or "remote" in normalize_text(location)
+        wtype = normalize_text(str(item.get("workplaceType") or ""))
+        modality = "Remoto" if (is_remote or "remote" in wtype) else ("Híbrido" if "hybrid" in wtype else "Presencial")
+        desc = _strip_html(str(item.get("descriptionPlain") or item.get("descriptionHtml") or ""))
+        dept = str(item.get("department") or "")
+        jobs.append(
+            {
+                "id": f"ashby-{slug}-{item.get('id')}",
+                "title": title,
+                "company": company_name,
+                "location": location,
+                "modality": modality,
+                "seniority": _infer_job_seniority(title),
+                "salary": "A combinar",
+                "skills": extract_skills(f"{title} {dept} {desc[:1200]}"),
+                "description": (desc[:950] + ("..." if len(desc) > 950 else "")) or f"Vaga oficial publicada na página de carreiras da {company_name}.",
+                "url": item.get("jobUrl") or item.get("applyUrl") or f"https://jobs.ashbyhq.com/{slug}",
+                "source": f"Carreira Direta ({company_name})",
+                "company_origin": "Brasil" if is_br_company else "Global",
+                "posted_at": str(item.get("publishedAt") or "")[:10],
+            }
+        )
+    return jobs
+
+
+def fetch_smartrecruiters_company_jobs(
+    slug: str,
+    company_name: str,
+    user_country: str = "Brasil",
+    limit: int = 15,
+) -> list[dict]:
+    """Busca vagas oficiais da empresa via API pública SmartRecruiters (priorizando o país do usuário)."""
+    country_code = "br" if normalize_text(user_country) == "brasil" else ""
+    cache_key = f"sr:{slug}:{country_code}:{limit}"
+    now = time.time()
+    if cache_key in _CACHE and (now - _CACHE[cache_key][0]) < CACHE_TTL_SECONDS:
+        return _CACHE[cache_key][1]
+    try:
+        params: dict[str, str | int] = {"limit": limit}
+        if country_code:
+            params["country"] = country_code
+        resp = requests.get(
+            f"https://api.smartrecruiters.com/v1/companies/{slug}/postings",
+            params=params,
+            headers=REQUEST_HEADERS,
+            timeout=6,
+        )
+        resp.raise_for_status()
+        items = resp.json().get("content", [])[:limit]
+    except Exception:
+        return []
+
+    jobs: list[dict] = []
+    for item in items:
+        title = str(item.get("name") or "Vaga").strip()
+        loc = item.get("location") or {}
+        location = str(loc.get("fullLocation") or loc.get("city") or user_country).strip()
+        modality = "Remoto" if loc.get("remote") else ("Híbrido" if loc.get("hybrid") else "Presencial")
+        dept = str((item.get("department") or {}).get("label") or "")
+        func = str((item.get("function") or {}).get("label") or "")
+        desc = f"Vaga oficial publicada diretamente na página de carreiras da {company_name}. Departamento: {dept or func or 'Geral'}. Local: {location}."
+        jobs.append(
+            {
+                "id": f"sr-{slug}-{item.get('id')}",
+                "title": title,
+                "company": company_name,
+                "location": location,
+                "modality": modality,
+                "seniority": _infer_job_seniority(title),
+                "salary": "A combinar",
+                "skills": extract_skills(f"{title} {dept} {func}"),
+                "description": desc,
+                "url": f"https://jobs.smartrecruiters.com/{slug}/{item.get('id')}",
+                "source": f"Carreira Direta ({company_name})",
+                "company_origin": "Brasil" if country_code == "br" else "Global",
+                "posted_at": str(item.get("releasedDate") or "")[:10],
+            }
+        )
+    _CACHE[cache_key] = (now, jobs)
+    return jobs
+
+
 def _deduplicate_jobs(jobs: list[dict]) -> list[dict]:
     """Remove vagas duplicadas comparando título e empresa normalizados."""
     seen: set[tuple[str, str]] = set()
@@ -625,6 +866,8 @@ def collect_jobs(
         "remoteok": 0,
         "himalayas": 0,
         "weworkremotely": 0,
+        "workingnomads": 0,
+        "landingjobs": 0,
         "github_br": 0,
         "deep_search": deep_search,
     }
@@ -638,10 +881,10 @@ def collect_jobs(
     if should_fetch_live:
         search_terms = _build_deep_search_terms(skills, suggested_roles, primary_skill) if deep_search else [primary_skill]
 
-        with ThreadPoolExecutor(max_workers=14) as executor:
+        with ThreadPoolExecutor(max_workers=18) as executor:
             futures: list[tuple[str, object]] = []
 
-            # Sites oficiais de empresas no Brasil (prioridade)
+            # Sites oficiais de empresas no Brasil (Greenhouse + Ashby + SmartRecruiters)
             br_boards = COMPANY_CAREER_BOARDS_BR if deep_search else COMPANY_CAREER_BOARDS_BR[:3]
             for slug, cname in br_boards:
                 futures.append(
@@ -650,8 +893,22 @@ def collect_jobs(
                         executor.submit(fetch_greenhouse_company_jobs, slug, cname, True, user_country, search_terms, 12),
                     )
                 )
+            for slug, cname in ASHBY_CAREER_BOARDS_BR:
+                futures.append(
+                    (
+                        "company_sites_br",
+                        executor.submit(fetch_ashby_company_jobs, slug, cname, True, user_country, search_terms, 12),
+                    )
+                )
+            for slug, cname in SMARTRECRUITERS_BOARDS:
+                futures.append(
+                    (
+                        "company_sites_br",
+                        executor.submit(fetch_smartrecruiters_company_jobs, slug, cname, user_country, 15),
+                    )
+                )
 
-            # Sites oficiais de empresas globais
+            # Sites oficiais de empresas globais (Greenhouse + Ashby)
             global_boards = COMPANY_CAREER_BOARDS_GLOBAL if deep_search else COMPANY_CAREER_BOARDS_GLOBAL[:2]
             for slug, cname in global_boards:
                 futures.append(
@@ -660,6 +917,14 @@ def collect_jobs(
                         executor.submit(fetch_greenhouse_company_jobs, slug, cname, False, user_country, search_terms, 10),
                     )
                 )
+            if deep_search:
+                for slug, cname in ASHBY_CAREER_BOARDS_GLOBAL:
+                    futures.append(
+                        (
+                            "company_sites_global",
+                            executor.submit(fetch_ashby_company_jobs, slug, cname, False, user_country, search_terms, 8),
+                        )
+                    )
 
             if source_filter != "companies":
                 # Remotive (multi-query na busca profunda)
@@ -680,6 +945,8 @@ def collect_jobs(
                     futures.append(("remoteok", executor.submit(fetch_remoteok_jobs, 35)))
                     futures.append(("himalayas", executor.submit(fetch_himalayas_jobs, 30)))
                     futures.append(("weworkremotely", executor.submit(fetch_weworkremotely_jobs, 30)))
+                    futures.append(("workingnomads", executor.submit(fetch_workingnomads_jobs, 30)))
+                    futures.append(("landingjobs", executor.submit(fetch_landingjobs_jobs, 25)))
 
             for source_key, fut in futures:
                 try:
@@ -758,8 +1025,28 @@ def build_external_search_links(skills: list[str], suggested_roles: list[str], u
             "url": f"https://programathor.com.br/jobs?search={encoded}",
         },
         {
+            "portal": "Catho",
+            "query": role_query,
+            "url": f"https://www.catho.com.br/vagas/{quote_plus(role_query.lower().replace(' ', '-'))}/",
+        },
+        {
+            "portal": "Vagas.com.br",
+            "query": role_query,
+            "url": f"https://www.vagas.com.br/vagas-de-{quote_plus(role_query.lower().replace(' ', '-'))}",
+        },
+        {
+            "portal": "GeekHunter",
+            "query": query,
+            "url": f"https://www.geekhunter.com.br/vagas?q={encoded}",
+        },
+        {
             "portal": "InfoJobs",
             "query": role_query,
             "url": f"https://www.infojobs.com.br/empregos.aspx?palabra={encoded_role}",
+        },
+        {
+            "portal": "Wellfound (Global)",
+            "query": query,
+            "url": f"https://wellfound.com/jobs?q={encoded}",
         },
     ]

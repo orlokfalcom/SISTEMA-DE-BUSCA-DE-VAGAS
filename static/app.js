@@ -359,6 +359,8 @@
       (state.sources.remoteok || 0) +
       (state.sources.himalayas || 0) +
       (state.sources.weworkremotely || 0) +
+      (state.sources.workingnomads || 0) +
+      (state.sources.landingjobs || 0) +
       (state.sources.github_br || 0);
     const trackedCount = Object.keys(state.tracker).length;
     const modeLabel = state.sources.deep_search ? "Busca Profunda" : "APIs Ao Vivo";
@@ -378,6 +380,8 @@
         ["Jobicy", state.sources.jobicy],
         ["Arbeitnow", state.sources.arbeitnow],
         ["RemoteOK", state.sources.remoteok],
+        ["Working Nomads", state.sources.workingnomads],
+        ["Landing.jobs", state.sources.landingjobs],
         ["Himalayas", state.sources.himalayas],
         ["We Work Remotely", state.sources.weworkremotely],
       ].filter(([, count]) => Number(count || 0) > 0);

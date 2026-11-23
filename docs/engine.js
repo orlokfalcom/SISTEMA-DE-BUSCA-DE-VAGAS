@@ -1021,7 +1021,11 @@ window.VagaMatchEngine = (() => {
       { portal: "Indeed Brasil", url: `https://br.indeed.com/jobs?q=${enc}&l=${encCountry}` },
       { portal: "Glassdoor Brasil", url: `https://www.glassdoor.com.br/Vaga/brasil-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}-vagas-SRCH_IL.0,6_IN36.htm` },
       { portal: "Programathor", url: `https://programathor.com.br/jobs?search=${enc}` },
+      { portal: "Catho", url: `https://www.catho.com.br/vagas/${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}/` },
+      { portal: "Vagas.com.br", url: `https://www.vagas.com.br/vagas-de-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}` },
+      { portal: "GeekHunter", url: `https://www.geekhunter.com.br/vagas?q=${enc}` },
       { portal: "InfoJobs", url: `https://www.infojobs.com.br/empregos.aspx?palabra=${encRole}` },
+      { portal: "Wellfound (Global)", url: `https://wellfound.com/jobs?q=${enc}` },
     ];
   }
 
