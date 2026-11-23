@@ -542,8 +542,10 @@
           <span class="meta-label">Skills Faltantes</span>
           <div class="pill-list">
             ${(c.missing_skills || []).length
-              ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
-              : `<span class="pill matched">Nenhuma lacuna detectada!</span>`}
+          ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
+          : `<span class="pill matched">Nenhuma lacuna detectada!</span>`}
+          ? c.missing_skills.map((s) => `< span class="pill missing" > ${ escapeHtml(s) }</span > `).join("")
+          : `< span class="pill matched" > Nenhuma lacuna detectada!</span > `}
           </div>
         </div>
         <div>
@@ -752,10 +754,9 @@
             <span class="prio-badge ${prioClass(m.priority)}">Prioridade ${escapeHtml(m.priority)} · +${m.impact_points} pts</span>
           </div>
           <p class="mod-issue">${escapeHtml(m.issue)}</p>
-          ${
-            (m.found_items || []).length
-              ? `<div class="pill-list" style="margin:6px 0;">${m.found_items.map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`).join("")}</div>`
-              : ""
+          ${(m.found_items || []).length
+            ? `<div class="pill-list" style="margin:6px 0;">${m.found_items.map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`).join("")}</div>`
+            : ""
           }
           <p class="mod-action"><strong>O que fazer:</strong> ${escapeHtml(m.action)}</p>
           <div class="before-after-grid">
