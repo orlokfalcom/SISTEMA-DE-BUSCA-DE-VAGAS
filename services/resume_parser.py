@@ -481,6 +481,253 @@ def evaluate_ats_readiness(
     }
 
 
+def build_ats_improvement_plan(
+    raw_text: str,
+    pages: int,
+    word_count: int,
+    skills: list[str],
+    suggested_roles: list[str],
+    seniority: str,
+    email: str | None,
+    phone: str | None,
+    linkedin: str | None,
+    github: str | None,
+    skill_gaps: list[dict] | None = None,
+) -> dict:
+    """Gera um plano completo de modificações necessárias para o currículo atingir 100% ATS."""
+    audit = evaluate_ats_readiness(
+        raw_text=raw_text,
+        pages=pages,
+        word_count=word_count,
+        skills=skills,
+        email=email,
+        phone=phone,
+        linkedin=linkedin,
+        github=github,
+    )
+    norm = normalize_text(raw_text)
+    modifications: list[dict] = []
+
+    # 1. Placeholders / campos de modelo não preenchidos (incluindo colchete aberto no telefone)
+    bracket_placeholders = re.findall(
+        r"\[(?:inserir|confirmar|ajustar|informar|digite|seu\s+|preencher)[^\]]*\]",
+        raw_text,
+        flags=re.IGNORECASE,
+    )
+    broken_brackets = re.findall(r"\[\d{8,13}(?!\])", raw_text)
+    all_placeholders = bracket_placeholders + broken_brackets
+    if all_placeholders:
+        modifications.append(
+            {
+                "priority": "Alta",
+                "category": "Campos de Modelo / Placeholders",
+                "issue": f"Foram encontrados {len(all_placeholders)} trecho(s) inacabado(s) ou com colchetes no PDF.",
+                "found_items": all_placeholders[:8],
+                "action": "Substitua cada instrução entre colchetes por dados reais e remova colchetes soltos (ex.: '[31984359511' -> '(31) 98435-9511').",
+                "before_example": all_placeholders[0],
+                "after_example": "(31) 98435-9511 | Fev/2021 – Atual | Remoto ou Híbrido",
+                "impact_points": 10,
+            }
+        )
+
+    # 2. Formatação e ruídos de leitura ATS (bullets duplicados, símbolos)
+    has_dup_bullets = bool(re.search(r"(?:[•\*\-]\s*){2,}", raw_text))
+    if has_dup_bullets:
+        modifications.append(
+            {
+                "priority": "Média",
+                "category": "Formatação & Limpeza ATS",
+                "issue": "Foram detectados marcadores (bullets) duplicados (ex.: '• •'), que podem quebrar o parser de alguns sistemas ATS.",
+                "found_items": ["Marcador duplicado ('• •' ou '- -')"],
+                "action": "Padronize todos os tópicos com um único marcador simples ('• ' ou '- ') e evite tabelas, colunas duplas ou ícones gráficos.",
+                "before_example": "• • Análise, levantamento e modelagem de requisitos e sistemas.",
+                "after_example": "• Análise, levantamento e modelagem de requisitos e sistemas.",
+                "impact_points": 4,
+            }
+        )
+
+    # 3. Dados de contato e links profissionais
+    missing_contacts = []
+    if not email:
+        missing_contacts.append("E-mail profissional")
+    if not phone:
+        missing_contacts.append("Telefone com DDD no formato (XX) 9XXXX-XXXX")
+    if not linkedin:
+        missing_contacts.append("URL do LinkedIn (linkedin.com/in/seu-perfil)")
+    if missing_contacts:
+        modifications.append(
+            {
+                "priority": "Alta",
+                "category": "Cabeçalho & Contatos",
+                "issue": f"Faltam informações importantes de contato: {', '.join(missing_contacts)}.",
+                "found_items": missing_contacts,
+                "action": "Coloque nome completo, cidade/estado, telefone com DDD, e-mail e LinkedIn em texto selecionável no topo da página 1.",
+                "before_example": "Cabeçalho incompleto",
+                "after_example": "Belo Horizonte - MG | (31) 98435-9511 | email@dominio.com | linkedin.com/in/seuperfil",
+                "impact_points": 10,
+            }
+        )
+    elif phone and re.fullmatch(r"\d{10,11}", phone):
+        formatted_phone = f"({phone[:2]}) {phone[2:7]}-{phone[7:]}" if len(phone) == 11 else f"({phone[:2]}) {phone[2:6]}-{phone[6:]}"
+        modifications.append(
+            {
+                "priority": "Recomendada",
+                "category": "Padronização de Telefone",
+                "issue": f"O telefone '{phone}' está sem formatação padrão (DDD e hífen).",
+                "found_items": [phone],
+                "action": f"Formate o número como '{formatted_phone}' para facilitar leitura humana e de parsers ATS.",
+                "before_example": phone,
+                "after_example": formatted_phone,
+                "impact_points": 2,
+            }
+        )
+
+    # 4. Seções obrigatórias ATS
+    has_exp = any(k in norm for k in ["experiencia", "experience", "historico profissional"])
+    has_edu = any(k in norm for k in ["formacao", "educacao", "education", "academica"])
+    has_summary = any(k in norm for k in ["resumo", "objetivo", "sobre", "summary", "profile"])
+    missing_sec = [name for ok, name in [(has_summary, "RESUMO PROFISSIONAL"), (has_exp, "EXPERIÊNCIA PROFISSIONAL"), (has_edu, "FORMAÇÃO ACADÊMICA")] if not ok]
+    if missing_sec:
+        modifications.append(
+            {
+                "priority": "Alta",
+                "category": "Estrutura de Seções ATS",
+                "issue": f"Seções padrão ausentes ou com títulos não reconhecidos: {', '.join(missing_sec)}.",
+                "found_items": missing_sec,
+                "action": "Use títulos padronizados em caixa alta (RESUMO PROFISSIONAL, EXPERIÊNCIA PROFISSIONAL, CONHECIMENTOS TÉCNICOS, FORMAÇÃO ACADÊMICA).",
+                "before_example": "Títulos criativos ou ausentes",
+                "after_example": " · ".join(missing_sec),
+                "impact_points": 12,
+            }
+        )
+
+    # 5. Resultados mensuráveis & verbos de ação (substantivos passivos -> verbos + métricas)
+    has_metrics = bool(re.search(r"(\d+\s*%|r\$\s*\d|\$\s*\d|\b\d+x\b|\b\d{2,}\s*(?:usuarios|clientes|projetos|mil|k|alunos|estudantes)\b)", norm))
+    passive_phrases = re.findall(
+        r"(?:atua[cç][aã]o\s+em|apoio\s+[aà]|planejamento\s+e\s+desenvolvimento|condu[cç][aã]o\s+de|cria[cç][aã]o\s+de)[^.\n]{0,70}",
+        raw_text,
+        flags=re.IGNORECASE,
+    )
+    if not has_metrics:
+        before_ex = passive_phrases[0].strip() if passive_phrases else "Atuação em projetos de tecnologia e análise de dados."
+        modifications.append(
+            {
+                "priority": "Alta",
+                "category": "Resultados Mensuráveis & Verbos de Ação",
+                "issue": "O currículo não possui métricas quantificadas (%, volume de usuários/alunos, redução de tempo/riscos).",
+                "found_items": [p.strip() for p in passive_phrases[:3]] if passive_phrases else ["Nenhuma métrica numérica detectada"],
+                "action": "Reescreva os tópicos de experiência no formato 'Verbo de Ação + Tecnologia/Método + Impacto Numérico'.",
+                "before_example": before_ex,
+                "after_example": "Desenvolveu e conduziu 12+ projetos práticos em Python e SQL para mais de 150 estudantes, elevando o aproveitamento técnico em 30%.",
+                "impact_points": 8,
+            }
+        )
+
+    # 6. Extensão ideal
+    if not (1 <= pages <= 2 and 120 <= word_count <= 1400):
+        modifications.append(
+            {
+                "priority": "Média",
+                "category": "Extensão do Documento",
+                "issue": f"Currículo com {pages} página(s) e {word_count} palavras (ideal: 1–2 páginas e 150–1200 palavras).",
+                "found_items": [f"{pages} página(s)", f"{word_count} palavras"],
+                "action": "Mantenha o currículo objetivo em 1 a 2 páginas, priorizando os últimos 10 anos e resultados mais relevantes ao cargo-alvo.",
+                "before_example": f"{pages} página(s) / {word_count} palavras",
+                "after_example": "1 a 2 páginas / 350 a 900 palavras",
+                "impact_points": 10,
+            }
+        )
+
+    # 7. Palavras-chave e Skill Gaps do mercado
+    top_gaps = [g["skill"] for g in (skill_gaps or [])[:5] if g.get("skill")]
+    if len(skills) < 6 or top_gaps:
+        gap_txt = ", ".join(top_gaps) if top_gaps else "Docker, AWS, Linux, REST API"
+        modifications.append(
+            {
+                "priority": "Média" if len(skills) >= 6 else "Alta",
+                "category": "Palavras-Chave & Aderência às Vagas",
+                "issue": (
+                    f"As top vagas compatíveis com seu perfil pedem frequentemente: {gap_txt}."
+                    if top_gaps
+                    else f"Apenas {len(skills)} habilidade(s) técnica(s) detectada(s)."
+                ),
+                "found_items": top_gaps or [f"{len(skills)} skill(s) detectada(s)"],
+                "action": "Adicione uma seção explícita de HABILIDADES TÉCNICAS usando exatamente os termos padrão do mercado que você realmente domina.",
+                "before_example": "Tecnologias citadas apenas de forma genérica no texto corrido",
+                "after_example": f"Habilidades Técnicas: {', '.join((skills[:6] + top_gaps[:3])[:9])}",
+                "impact_points": 8 if len(skills) < 6 else 4,
+            }
+        )
+
+    # 8. Alinhamento do título/objetivo com o cargo-alvo
+    target_role = suggested_roles[0] if suggested_roles else "Especialista em Tecnologia"
+    modifications.append(
+        {
+            "priority": "Recomendada",
+            "category": "Título Alinhado ao Cargo-Alvo",
+            "issue": "Sistemas ATS dão peso maior quando o título logo abaixo do seu nome coincide com o nome da vaga.",
+            "found_items": suggested_roles[:3],
+            "action": f"Adapte a linha de título no topo do currículo para refletir a vaga desejada (ex.: '{target_role} | {seniority}').",
+            "before_example": "Título genérico com muitas áreas amplas",
+            "after_example": f"{target_role} ({seniority}) | {' · '.join(skills[:4])}",
+            "impact_points": 3,
+        }
+    )
+
+    projected_score = min(100, audit["score"] + sum(m["impact_points"] for m in modifications))
+
+    # Gera um modelo ATS pronto e limpo para o usuário copiar
+    fmt_phone = (
+        f"({phone[:2]}) {phone[2:7]}-{phone[7:]}"
+        if phone and re.fullmatch(r"\d{11}", phone)
+        else (phone or "(XX) 9XXXX-XXXX")
+    )
+    contact_line = " | ".join(
+        part
+        for part in [
+            fmt_phone,
+            email or "seu.email@dominio.com",
+            linkedin or "linkedin.com/in/seu-perfil",
+            github,
+        ]
+        if part
+    )
+    template_text = "\n".join(
+        [
+            f"[SEU NOME COMPLETO]",
+            f"{target_role} ({seniority}) | {' · '.join(skills[:4]) if skills else 'Sua Área Principal'}",
+            f"Cidade - UF | {contact_line}",
+            "",
+            "RESUMO PROFISSIONAL",
+            f"Profissional nível {seniority} com foco em {target_role}, atuando com {', '.join(skills[:6]) if skills else 'tecnologias da área'}. "
+            "Orientado(a) a resultados mensuráveis, qualidade de entrega e resolução de problemas complexos.",
+            "",
+            "HABILIDADES TÉCNICAS",
+            ", ".join(skills) if skills else "Liste aqui suas principais ferramentas, linguagens e metodologias.",
+            "",
+            "EXPERIÊNCIA PROFISSIONAL",
+            "Cargo | Nome da Empresa | Mês/Ano – Atual",
+            "• [Verbo de ação] + [o que construiu/implementou com suas skills] + [resultado numérico: %, tempo reduzido ou volume atendido].",
+            "• [Verbo de ação] + [projeto ou processo liderado] + [impacto mensurável].",
+            "",
+            "FORMAÇÃO ACADÊMICA",
+            "Nome do Curso – Instituição | Ano de conclusão (ou previsão)",
+            "",
+            "IDIOMAS",
+            "Português (Nativo) | Inglês (Informe o nível real: Básico / Intermediário / Avançado)",
+        ]
+    )
+
+    return {
+        "current_score": audit["score"],
+        "current_level": audit["level"],
+        "projected_score": projected_score,
+        "total_modifications": len(modifications),
+        "modifications": modifications,
+        "ats_template": template_text,
+    }
+
+
 def parse_resume_pdf(file_stream: BinaryIO, filename: str = "curriculo.pdf") -> ResumeProfile:
     """Pipeline completo de leitura, extração e auditoria ATS do currículo em PDF."""
     raw_text, pages = extract_text_from_pdf(file_stream)

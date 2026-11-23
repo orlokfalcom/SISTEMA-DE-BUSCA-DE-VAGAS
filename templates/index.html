@@ -71,6 +71,9 @@
             <div class="ats-bar-fill" id="atsBarFill" style="width: 0%"></div>
           </div>
           <ul class="ats-checks" id="atsChecks"></ul>
+          <button type="button" class="btn btn-primary btn-small" id="openImproveBtn" style="width:100%;margin-top:10px;">
+            ✨ Aprimorar Currículo (ATS)
+          </button>
         </div>
 
         <div class="meta-grid">
@@ -140,6 +143,9 @@
         <div class="toolbar-top">
           <button type="button" class="btn btn-primary btn-small" id="deepSearchBtn">
             🌐 Executar Busca Profunda na Internet
+          </button>
+          <button type="button" class="btn btn-primary btn-small" id="openImproveTopBtn">
+            ✨ Aprimorar Currículo (ATS)
           </button>
           <button type="button" class="btn btn-secondary btn-small" id="openCompareBtn">
             ⚡ Comparar com Vaga Colada (ATS)
@@ -265,6 +271,22 @@
         <textarea id="compareDescInput" class="textarea-input" rows="6" placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
         <button type="button" class="btn btn-primary" id="runCompareBtn">Calcular Compatibilidade ATS</button>
         <div id="compareResult" class="compare-result hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Aprimorador de Currículo ATS -->
+  <div class="modal-overlay hidden" id="improveModal" role="dialog" aria-modal="true">
+    <div class="modal-card modal-wide">
+      <div class="modal-header">
+        <div>
+          <span class="source-tag">Consultor Automático ATS</span>
+          <h3>Aprimorar Currículo — Modificações Necessárias para ATS</h3>
+        </div>
+        <button type="button" class="modal-close" id="closeImproveBtn" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body" id="improveBody">
+        <span>Carregando diagnóstico detalhado...</span>
       </div>
     </div>
   </div>

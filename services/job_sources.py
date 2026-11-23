@@ -562,7 +562,9 @@ def build_external_search_links(skills: list[str], suggested_roles: list[str]) -
     secondary_role = suggested_roles[1] if len(suggested_roles) > 1 else ""
     top_skills = " ".join(skills[:3])
     query = (top_skills or top_role or "tecnologia").strip()
-    role_query = (secondary_role or top_role or query).split("/")[0].strip()
+    raw_role = (secondary_role or top_role or query)
+    role_parts = [p.strip() for p in raw_role.split("/") if p.strip()]
+    role_query = max(role_parts, key=len) if role_parts else query
     deep_dork = f'("{role_query}" OR "{top_skills}") ("vaga" OR "remote" OR "remoto") Brasil'
 
     encoded = quote_plus(query)

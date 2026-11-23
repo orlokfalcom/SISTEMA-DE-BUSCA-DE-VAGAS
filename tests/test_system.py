@@ -227,6 +227,41 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         self.assertIn("Google Jobs (Busca Profunda)", portals)
         self.assertGreaterEqual(len(links), 8)
 
+    def test_improve_resume_endpoint_returns_ats_modifications_and_template(self):
+        resp = self.client.post(
+            "/api/improve-resume",
+            json={
+                "resume_text": (
+                    "RONALDO COUTINHO\n"
+                    "Belo Horizonte - MG | [31984359511 | ronaldolcoutinho75@gmail.com\n"
+                    "RESUMO PROFISSIONAL\n"
+                    "Profissional de TI com trajetória superior a 20 anos.\n"
+                    "EXPERIÊNCIA PROFISSIONAL\n"
+                    "Professor | [Inserir mês/ano de início] – Atual\n"
+                    "Atuação em projetos de tecnologia e dados.\n"
+                    "FORMAÇÃO ACADÊMICA\n"
+                    "• • Análise, levantamento e modelagem de requisitos.\n"
+                ),
+                "pages": 2,
+                "word_count": 640,
+                "skills": ["Python", "SQL", "Rust", "Segurança da Informação", "Threat Hunting / YARA", "Pandas"],
+                "seniority": "Sênior",
+                "email": "ronaldolcoutinho75@gmail.com",
+                "phone": "31984359511",
+                "linkedin": "linkedin.com/in/ronaldocoutinhosa",
+                "github": "github.com/orlokfalcom",
+                "skill_gaps": [{"skill": "AWS", "demand_count": 5, "demand_pct": 42}],
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        plan = resp.get_json()["improvement_plan"]
+        categories = [m["category"] for m in plan["modifications"]]
+        self.assertIn("Campos de Modelo / Placeholders", categories)
+        self.assertIn("Formatação & Limpeza ATS", categories)
+        self.assertIn("Resultados Mensuráveis & Verbos de Ação", categories)
+        self.assertGreater(plan["projected_score"], plan["current_score"])
+        self.assertIn("RESUMO PROFISSIONAL", plan["ats_template"])
+
 
 if __name__ == "__main__":
     unittest.main()

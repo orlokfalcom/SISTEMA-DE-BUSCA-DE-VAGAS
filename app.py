@@ -14,6 +14,7 @@ from services.job_matcher import (
 from services.job_sources import build_external_search_links, collect_jobs
 from services.resume_parser import (
     SKILL_CATALOG,
+    build_ats_improvement_plan,
     generate_sample_resume_pdf,
     parse_resume_pdf,
     suggest_roles,
@@ -219,6 +220,40 @@ def compare_custom_job():
         suggested_roles=roles,
     )
     return jsonify({"comparison": comparison})
+
+
+@app.post("/api/improve-resume")
+def improve_resume():
+    """Gera o plano detalhado de modificações ATS para aprimorar o currículo atual."""
+    payload = request.get_json(silent=True) or {}
+    resume_text = str(payload.get("resume_text") or "").strip()
+    if not resume_text:
+        return jsonify({"error": "Analise um currículo em PDF antes de gerar o plano de aprimoramento ATS."}), 400
+
+    raw_skills = payload.get("skills", [])
+    if not isinstance(raw_skills, list):
+        return jsonify({"error": "O campo 'skills' deve ser uma lista de habilidades."}), 400
+    skills = [str(s).strip() for s in raw_skills if str(s).strip()]
+    seniority = str(payload.get("seniority") or "Pleno").strip()
+    pages = int(payload.get("pages") or 1)
+    word_count = int(payload.get("word_count") or len(resume_text.split()))
+    suggested_roles = payload.get("suggested_roles") or suggest_roles(skills, resume_text)
+    skill_gaps = payload.get("skill_gaps") if isinstance(payload.get("skill_gaps"), list) else []
+
+    plan = build_ats_improvement_plan(
+        raw_text=resume_text,
+        pages=pages,
+        word_count=word_count,
+        skills=skills,
+        suggested_roles=suggested_roles,
+        seniority=seniority,
+        email=payload.get("email"),
+        phone=payload.get("phone"),
+        linkedin=payload.get("linkedin"),
+        github=payload.get("github"),
+        skill_gaps=skill_gaps,
+    )
+    return jsonify({"improvement_plan": plan})
 
 
 if __name__ == "__main__":

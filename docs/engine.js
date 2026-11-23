@@ -960,7 +960,9 @@ window.VagaMatchEngine = (() => {
 
   function buildExternalLinks(skills, roles) {
     const query = (skills.slice(0, 3).join(" ") || roles[0] || "tecnologia").trim();
-    const roleQuery = (roles[1] || roles[0] || query).split("/")[0].trim();
+    const rawRole = roles[1] || roles[0] || query;
+    const roleParts = rawRole.split("/").map((p) => p.trim()).filter(Boolean);
+    const roleQuery = roleParts.sort((a, b) => b.length - a.length)[0] || query;
     const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto") Brasil`;
     const enc = encodeURIComponent(query);
     const encRole = encodeURIComponent(roleQuery);
@@ -1056,6 +1058,194 @@ window.VagaMatchEngine = (() => {
     return new Blob([pdf], { type: "application/pdf" });
   }
 
+  function buildAtsImprovementPlan({
+    rawText,
+    pages = 1,
+    wordCount = 0,
+    skills = [],
+    suggestedRoles = [],
+    seniority = "Pleno",
+    email = null,
+    phone = null,
+    linkedin = null,
+    github = null,
+    skillGaps = [],
+  }) {
+    const wc = wordCount || String(rawText || "").split(/\s+/).filter(Boolean).length;
+    const audit = evaluateAtsReadiness({ rawText, pages, wordCount: wc, skills, email, phone, linkedin, github });
+    const norm = normalizeText(rawText);
+    const modifications = [];
+
+    const bracketPh = rawText.match(/\[(?:inserir|confirmar|ajustar|informar|digite|seu\s+|preencher)[^\]]*\]/gi) || [];
+    const brokenPh = rawText.match(/\[\d{8,13}(?!\])/g) || [];
+    const allPh = [...bracketPh, ...brokenPh];
+    if (allPh.length) {
+      modifications.push({
+        priority: "Alta",
+        category: "Campos de Modelo / Placeholders",
+        issue: `Foram encontrados ${allPh.length} trecho(s) inacabado(s) ou com colchetes no PDF.`,
+        found_items: allPh.slice(0, 8),
+        action: "Substitua cada instrução entre colchetes por dados reais e remova colchetes soltos (ex.: '[31984359511' -> '(31) 98435-9511').",
+        before_example: allPh[0],
+        after_example: "(31) 98435-9511 | Fev/2021 – Atual | Remoto ou Híbrido",
+        impact_points: 10,
+      });
+    }
+
+    if (/(?:[•\*\-]\s*){2,}/.test(rawText)) {
+      modifications.push({
+        priority: "Média",
+        category: "Formatação & Limpeza ATS",
+        issue: "Foram detectados marcadores (bullets) duplicados (ex.: '• •'), que podem quebrar o parser de alguns sistemas ATS.",
+        found_items: ["Marcador duplicado ('• •' ou '- -')"],
+        action: "Padronize todos os tópicos com um único marcador simples ('• ' ou '- ') e evite tabelas ou colunas duplas.",
+        before_example: "• • Análise, levantamento e modelagem de requisitos e sistemas.",
+        after_example: "• Análise, levantamento e modelagem de requisitos e sistemas.",
+        impact_points: 4,
+      });
+    }
+
+    const missingContacts = [];
+    if (!email) missingContacts.push("E-mail profissional");
+    if (!phone) missingContacts.push("Telefone com DDD no formato (XX) 9XXXX-XXXX");
+    if (!linkedin) missingContacts.push("URL do LinkedIn (linkedin.com/in/seu-perfil)");
+    if (missingContacts.length) {
+      modifications.push({
+        priority: "Alta",
+        category: "Cabeçalho & Contatos",
+        issue: `Faltam informações importantes de contato: ${missingContacts.join(", ")}.`,
+        found_items: missingContacts,
+        action: "Coloque nome completo, cidade/estado, telefone com DDD, e-mail e LinkedIn em texto selecionável no topo da página 1.",
+        before_example: "Cabeçalho incompleto",
+        after_example: "Belo Horizonte - MG | (31) 98435-9511 | email@dominio.com | linkedin.com/in/seuperfil",
+        impact_points: 10,
+      });
+    } else if (phone && /^\d{10,11}$/.test(phone)) {
+      const fmt = phone.length === 11 ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : `(${phone.slice(0, 2)}) ${phone.slice(2, 6)}-${phone.slice(6)}`;
+      modifications.push({
+        priority: "Recomendada",
+        category: "Padronização de Telefone",
+        issue: `O telefone '${phone}' está sem formatação padrão (DDD e hífen).`,
+        found_items: [phone],
+        action: `Formate o número como '${fmt}' para facilitar leitura humana e de parsers ATS.`,
+        before_example: phone,
+        after_example: fmt,
+        impact_points: 2,
+      });
+    }
+
+    const hasExp = ["experiencia", "experience", "historico profissional"].some((k) => norm.includes(k));
+    const hasEdu = ["formacao", "educacao", "education", "academica"].some((k) => norm.includes(k));
+    const hasSum = ["resumo", "objetivo", "sobre", "summary", "profile"].some((k) => norm.includes(k));
+    const missingSec = [
+      !hasSum ? "RESUMO PROFISSIONAL" : null,
+      !hasExp ? "EXPERIÊNCIA PROFISSIONAL" : null,
+      !hasEdu ? "FORMAÇÃO ACADÊMICA" : null,
+    ].filter(Boolean);
+    if (missingSec.length) {
+      modifications.push({
+        priority: "Alta",
+        category: "Estrutura de Seções ATS",
+        issue: `Seções padrão ausentes ou com títulos não reconhecidos: ${missingSec.join(", ")}.`,
+        found_items: missingSec,
+        action: "Use títulos padronizados em caixa alta (RESUMO PROFISSIONAL, EXPERIÊNCIA PROFISSIONAL, CONHECIMENTOS TÉCNICOS, FORMAÇÃO ACADÊMICA).",
+        before_example: "Títulos criativos ou ausentes",
+        after_example: missingSec.join(" · "),
+        impact_points: 12,
+      });
+    }
+
+    const hasMetrics = /(\d+\s*%|r\$\s*\d|\$\s*\d|\b\d+x\b|\b\d{2,}\s*(?:usuarios|clientes|projetos|mil|k|alunos|estudantes)\b)/.test(norm);
+    const passivePhrases = rawText.match(/(?:atua[cç][aã]o\s+em|apoio\s+[aà]|planejamento\s+e\s+desenvolvimento|condu[cç][aã]o\s+de|cria[cç][aã]o\s+de)[^.\n]{0,70}/gi) || [];
+    if (!hasMetrics) {
+      modifications.push({
+        priority: "Alta",
+        category: "Resultados Mensuráveis & Verbos de Ação",
+        issue: "O currículo não possui métricas quantificadas (%, volume de usuários/alunos, redução de tempo/riscos).",
+        found_items: passivePhrases.length ? passivePhrases.slice(0, 3).map((s) => s.trim()) : ["Nenhuma métrica numérica detectada"],
+        action: "Reescreva os tópicos de experiência no formato 'Verbo de Ação + Tecnologia/Método + Impacto Numérico'.",
+        before_example: passivePhrases[0] ? passivePhrases[0].trim() : "Atuação em projetos de tecnologia e análise de dados.",
+        after_example: "Desenvolveu e conduziu 12+ projetos práticos em Python e SQL para mais de 150 estudantes, elevando o aproveitamento técnico em 30%.",
+        impact_points: 8,
+      });
+    }
+
+    if (!(pages >= 1 && pages <= 2 && wc >= 120 && wc <= 1400)) {
+      modifications.push({
+        priority: "Média",
+        category: "Extensão do Documento",
+        issue: `Currículo com ${pages} página(s) e ${wc} palavras (ideal: 1–2 páginas e 150–1200 palavras).`,
+        found_items: [`${pages} página(s)`, `${wc} palavras`],
+        action: "Mantenha o currículo objetivo em 1 a 2 páginas, priorizando os resultados mais relevantes ao cargo-alvo.",
+        before_example: `${pages} página(s) / ${wc} palavras`,
+        after_example: "1 a 2 páginas / 350 a 900 palavras",
+        impact_points: 10,
+      });
+    }
+
+    const topGaps = (skillGaps || []).slice(0, 5).map((g) => g.skill).filter(Boolean);
+    if (skills.length < 6 || topGaps.length) {
+      const gapTxt = topGaps.length ? topGaps.join(", ") : "Docker, AWS, Linux, REST API";
+      modifications.push({
+        priority: skills.length < 6 ? "Alta" : "Média",
+        category: "Palavras-Chave & Aderência às Vagas",
+        issue: topGaps.length ? `As top vagas compatíveis com seu perfil pedem frequentemente: ${gapTxt}.` : `Apenas ${skills.length} habilidade(s) técnica(s) detectada(s).`,
+        found_items: topGaps.length ? topGaps : [`${skills.length} skill(s) detectada(s)`],
+        action: "Adicione uma seção explícita de HABILIDADES TÉCNICAS usando exatamente os termos padrão do mercado que você realmente domina.",
+        before_example: "Tecnologias citadas apenas de forma genérica no texto corrido",
+        after_example: `Habilidades Técnicas: ${[...skills.slice(0, 6), ...topGaps.slice(0, 3)].slice(0, 9).join(", ")}`,
+        impact_points: skills.length < 6 ? 8 : 4,
+      });
+    }
+
+    const targetRole = suggestedRoles[0] || "Especialista em Tecnologia";
+    modifications.push({
+      priority: "Recomendada",
+      category: "Título Alinhado ao Cargo-Alvo",
+      issue: "Sistemas ATS dão peso maior quando o título logo abaixo do seu nome coincide com o nome da vaga.",
+      found_items: suggestedRoles.slice(0, 3),
+      action: `Adapte a linha de título no topo do currículo para refletir a vaga desejada (ex.: '${targetRole} | ${seniority}').`,
+      before_example: "Título genérico com muitas áreas amplas",
+      after_example: `${targetRole} (${seniority}) | ${skills.slice(0, 4).join(" · ")}`,
+      impact_points: 3,
+    });
+
+    const projectedScore = Math.min(100, audit.score + modifications.reduce((acc, m) => acc + m.impact_points, 0));
+    const fmtPhone = phone && /^\d{11}$/.test(phone) ? `(${phone.slice(0, 2)}) ${phone.slice(2, 7)}-${phone.slice(7)}` : (phone || "(XX) 9XXXX-XXXX");
+    const contactLine = [fmtPhone, email || "seu.email@dominio.com", linkedin || "linkedin.com/in/seu-perfil", github].filter(Boolean).join(" | ");
+    const atsTemplate = [
+      "[SEU NOME COMPLETO]",
+      `${targetRole} (${seniority}) | ${skills.length ? skills.slice(0, 4).join(" · ") : "Sua Área Principal"}`,
+      `Cidade - UF | ${contactLine}`,
+      "",
+      "RESUMO PROFISSIONAL",
+      `Profissional nível ${seniority} com foco em ${targetRole}, atuando com ${skills.length ? skills.slice(0, 6).join(", ") : "tecnologias da área"}. Orientado(a) a resultados mensuráveis, qualidade de entrega e resolução de problemas complexos.`,
+      "",
+      "HABILIDADES TÉCNICAS",
+      skills.length ? skills.join(", ") : "Liste aqui suas principais ferramentas, linguagens e metodologias.",
+      "",
+      "EXPERIÊNCIA PROFISSIONAL",
+      "Cargo | Nome da Empresa | Mês/Ano – Atual",
+      "• [Verbo de ação] + [o que construiu/implementou com suas skills] + [resultado numérico: %, tempo reduzido ou volume atendido].",
+      "• [Verbo de ação] + [projeto ou processo liderado] + [impacto mensurável].",
+      "",
+      "FORMAÇÃO ACADÊMICA",
+      "Nome do Curso – Instituição | Ano de conclusão (ou previsão)",
+      "",
+      "IDIOMAS",
+      "Português (Nativo) | Inglês (Informe o nível real: Básico / Intermediário / Avançado)",
+    ].join("\n");
+
+    return {
+      current_score: audit.score,
+      current_level: audit.level,
+      projected_score: projectedScore,
+      total_modifications: modifications.length,
+      modifications,
+      ats_template: atsTemplate,
+    };
+  }
+
   return {
     availableSkills: Object.keys(SKILL_CATALOG).sort(),
     sampleResumeText: SAMPLE_RESUME_LINES.join("\n"),
@@ -1067,6 +1257,7 @@ window.VagaMatchEngine = (() => {
     computeSkillGaps,
     buildExternalLinks,
     compareCustomJob,
+    buildAtsImprovementPlan,
     buildSamplePdfBlob,
   };
 })();

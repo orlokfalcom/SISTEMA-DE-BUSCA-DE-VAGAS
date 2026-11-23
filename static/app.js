@@ -79,6 +79,13 @@
   const runCompareBtn = document.getElementById("runCompareBtn");
   const compareResult = document.getElementById("compareResult");
 
+  // Improve ATS Modal
+  const openImproveBtn = document.getElementById("openImproveBtn");
+  const openImproveTopBtn = document.getElementById("openImproveTopBtn");
+  const improveModal = document.getElementById("improveModal");
+  const closeImproveBtn = document.getElementById("closeImproveBtn");
+  const improveBody = document.getElementById("improveBody");
+
   function showError(msg) {
     statusBanner.textContent = msg;
     statusBanner.className = "status-banner error";
@@ -704,6 +711,101 @@
     }
   });
 
+  async function openImproveModal() {
+    if (!state.profile || !state.resumeTextSnippet) return;
+    improveModal.classList.remove("hidden");
+    improveBody.innerHTML = `<span>Gerando plano detalhado de modificações ATS...</span>`;
+    try {
+      const resp = await fetch("/api/improve-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume_text: state.resumeTextSnippet,
+          pages: state.profile.pages,
+          word_count: state.profile.word_count,
+          skills: state.skills,
+          suggested_roles: state.profile.suggested_roles || [],
+          seniority: state.seniority,
+          email: state.profile.email,
+          phone: state.profile.phone,
+          linkedin: state.profile.linkedin,
+          github: state.profile.github,
+          skill_gaps: state.skillGaps || [],
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Erro ao gerar plano ATS.");
+      renderImprovementPlan(data.improvement_plan);
+    } catch (err) {
+      improveBody.innerHTML = `<span style="color:#fca5a5;">${escapeHtml(err.message)}</span>`;
+    }
+  }
+
+  function renderImprovementPlan(plan) {
+    const prioClass = (p) => (p === "Alta" ? "prio-high" : p === "Média" ? "prio-mid" : "prio-low");
+    const modsHtml = (plan.modifications || [])
+      .map(
+        (m, idx) => `
+        <div class="mod-card">
+          <div class="mod-card-header">
+            <strong>${idx + 1}. ${escapeHtml(m.category)}</strong>
+            <span class="prio-badge ${prioClass(m.priority)}">Prioridade ${escapeHtml(m.priority)} · +${m.impact_points} pts</span>
+          </div>
+          <p class="mod-issue">${escapeHtml(m.issue)}</p>
+          ${
+            (m.found_items || []).length
+              ? `<div class="pill-list" style="margin:6px 0;">${m.found_items.map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`).join("")}</div>`
+              : ""
+          }
+          <p class="mod-action"><strong>O que fazer:</strong> ${escapeHtml(m.action)}</p>
+          <div class="before-after-grid">
+            <div class="ba-box ba-before"><span class="meta-label">❌ Antes</span><p>${escapeHtml(m.before_example)}</p></div>
+            <div class="ba-box ba-after"><span class="meta-label">✅ Depois (ATS)</span><p>${escapeHtml(m.after_example)}</p></div>
+          </div>
+        </div>`
+      )
+      .join("");
+
+    improveBody.innerHTML = `
+      <div class="improve-summary">
+        <div>
+          <span class="meta-label">Score ATS Atual</span>
+          <div class="improve-score-val">${plan.current_score}/100 <small>(${escapeHtml(plan.current_level)})</small></div>
+        </div>
+        <div class="improve-arrow">➜</div>
+        <div>
+          <span class="meta-label">Score Projetado após Ajustes</span>
+          <div class="improve-score-val projected">${plan.projected_score}/100 <small>(Excelente)</small></div>
+        </div>
+        <div>
+          <span class="meta-label">Modificações</span>
+          <div class="improve-score-val">${plan.total_modifications}</div>
+        </div>
+      </div>
+
+      <h4>Modificações Necessárias no Seu Currículo</h4>
+      <div class="mod-list">${modsHtml}</div>
+
+      <h4>Modelo Estruturado ATS Pronto para Copiar</h4>
+      <div class="pitch-box">
+        <pre class="ats-template-pre" id="atsTemplateText">${escapeHtml(plan.ats_template || "")}</pre>
+        <button type="button" class="btn btn-primary btn-small" id="copyAtsTemplateBtn">📋 Copiar Modelo Otimizado ATS</button>
+      </div>
+    `;
+
+    const copyBtn = document.getElementById("copyAtsTemplateBtn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(plan.ats_template || "");
+          copyBtn.textContent = "✓ Modelo Copiado!";
+        } catch {
+          copyBtn.textContent = "Selecione e copie o texto acima";
+        }
+      });
+    }
+  }
+
   // Compare modal events
   openCompareBtn.addEventListener("click", () => {
     compareModal.classList.remove("hidden");
@@ -716,10 +818,21 @@
   });
   runCompareBtn.addEventListener("click", runCustomComparison);
 
+  // Improve ATS modal events
+  if (openImproveBtn) openImproveBtn.addEventListener("click", openImproveModal);
+  if (openImproveTopBtn) openImproveTopBtn.addEventListener("click", openImproveModal);
+  if (closeImproveBtn) closeImproveBtn.addEventListener("click", () => improveModal.classList.add("hidden"));
+  if (improveModal) {
+    improveModal.addEventListener("click", (e) => {
+      if (e.target === improveModal) improveModal.classList.add("hidden");
+    });
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (!jobModal.classList.contains("hidden")) closeModal();
       if (!compareModal.classList.contains("hidden")) compareModal.classList.add("hidden");
+      if (improveModal && !improveModal.classList.contains("hidden")) improveModal.classList.add("hidden");
     }
   });
 })();
