@@ -442,13 +442,22 @@ def match_jobs(
         role_score = 1.0 if (role_tokens & title_tokens) else 0.35
 
         # Score final ponderado (0 a 100) + prioridade geográfica para empresas do país do usuário
+        # Quando a vaga não lista skills técnicas do catálogo (ex: outras áreas ou descrição curta),
+        # redistribui o peso para a comparação semântica TF-IDF entre currículo e vaga.
         geo_scope, geo_label, geo_bonus = _classify_geo_priority(job, user_country=user_country)
-        weighted = (
-            0.55 * skill_score
-            + 0.22 * text_sim
-            + 0.13 * sen_score
-            + 0.10 * role_score
-        )
+        if job_skills:
+            weighted = (
+                0.55 * skill_score
+                + 0.22 * text_sim
+                + 0.13 * sen_score
+                + 0.10 * role_score
+            )
+        else:
+            weighted = (
+                0.58 * text_sim
+                + 0.22 * sen_score
+                + 0.20 * role_score
+            )
         score_pct = int(round(min(max(weighted * 100 + geo_bonus, 5), 99)))
 
         if score_pct < min_score:

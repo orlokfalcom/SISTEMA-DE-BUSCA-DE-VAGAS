@@ -533,8 +533,9 @@ def fetch_greenhouse_company_jobs(
         try:
             resp = requests.get(
                 f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+                params={"content": "true"},
                 headers=REQUEST_HEADERS,
-                timeout=6,
+                timeout=8,
             )
             resp.raise_for_status()
             raw_items = resp.json().get("jobs", [])
@@ -584,11 +585,15 @@ def fetch_greenhouse_company_jobs(
 
         depts = [str(d.get("name", "")) for d in (item.get("departments") or []) if isinstance(d, dict)]
         dept_txt = ", ".join(d for d in depts if d)
-        combined = f"{title} {dept_txt} {location}"
-        desc = f"Vaga oficial publicada diretamente na página de carreiras da {company_name}."
-        if dept_txt:
-            desc += f" Área/Departamento: {dept_txt}."
-        desc += f" Localização: {location}."
+        raw_content = _strip_html(str(item.get("content") or ""))
+        combined = f"{title} {dept_txt} {location} {raw_content[:2000]}"
+        if raw_content:
+            desc = raw_content[:950] + ("..." if len(raw_content) > 950 else "")
+        else:
+            desc = f"Vaga oficial publicada diretamente na página de carreiras da {company_name}."
+            if dept_txt:
+                desc += f" Área/Departamento: {dept_txt}."
+            desc += f" Localização: {location}."
 
         jobs.append(
             {

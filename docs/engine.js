@@ -634,7 +634,9 @@ window.VagaMatchEngine = (() => {
       const roleScore = titleTokens.some((t) => roleTokens.has(t)) ? 1.0 : 0.35;
 
       const geo = classifyGeoPriority(job, userCountry);
-      const weighted = 0.55 * skillScore + 0.22 * textSim + 0.13 * senScore + 0.10 * roleScore;
+      const weighted = jobSkills.length
+        ? 0.55 * skillScore + 0.22 * textSim + 0.13 * senScore + 0.10 * roleScore
+        : 0.58 * textSim + 0.22 * senScore + 0.20 * roleScore;
       const matchScore = Math.round(Math.min(Math.max(weighted * 100 + geo.bonus, 5), 99));
       if (matchScore < minScore) return;
 
