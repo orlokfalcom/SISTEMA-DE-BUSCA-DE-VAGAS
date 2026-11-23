@@ -73,6 +73,7 @@ def analyze_resume():
     source_filter = request.form.get("source", "all").strip().lower()
     modality_filter = request.form.get("modality", "").strip()
     include_live = request.form.get("include_live", "true").lower() != "false"
+    deep_search = request.form.get("deep_search", "true").lower() != "false"
 
     if use_sample:
         pdf_stream = io.BytesIO(generate_sample_resume_pdf())
@@ -100,6 +101,9 @@ def analyze_resume():
         source_filter=source_filter,
         primary_skill=primary_skill,
         include_live=include_live,
+        deep_search=deep_search,
+        skills=profile.skills,
+        suggested_roles=profile.suggested_roles,
     )
 
     ranked_jobs = match_jobs(
@@ -143,6 +147,7 @@ def search_jobs_by_profile():
     search_query = str(payload.get("query") or "").strip()
     sort_by = str(payload.get("sort_by") or "match").strip().lower()
     include_live = bool(payload.get("include_live", True))
+    deep_search = bool(payload.get("deep_search", True))
     try:
         min_score = max(0, min(100, int(payload.get("min_score") or 0)))
     except (ValueError, TypeError):
@@ -155,6 +160,9 @@ def search_jobs_by_profile():
         source_filter=source_filter,
         primary_skill=primary_skill,
         include_live=include_live,
+        deep_search=deep_search,
+        skills=skills,
+        suggested_roles=roles,
     )
 
     ranked_jobs = match_jobs(

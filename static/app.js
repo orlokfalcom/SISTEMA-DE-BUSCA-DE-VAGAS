@@ -18,6 +18,8 @@
   const chooseFileBtn = document.getElementById("chooseFileBtn");
   const sampleBtn = document.getElementById("sampleBtn");
   const includeLiveCheck = document.getElementById("includeLiveCheck");
+  const deepSearchCheck = document.getElementById("deepSearchCheck");
+  const deepSearchBtn = document.getElementById("deepSearchBtn");
   const statusBanner = document.getElementById("statusBanner");
   const loader = document.getElementById("loader");
   const uploadSection = document.getElementById("uploadSection");
@@ -125,6 +127,7 @@
       formData.append("file", file);
     }
     formData.append("include_live", includeLiveCheck.checked ? "true" : "false");
+    formData.append("deep_search", deepSearchCheck && deepSearchCheck.checked ? "true" : "false");
 
     try {
       const resp = await fetch("/api/analyze", {
@@ -180,6 +183,7 @@
             min_score: Number(minScoreFilter.value || 0),
             sort_by: sortFilter.value,
             include_live: forceLive,
+            deep_search: Boolean(deepSearchCheck && deepSearchCheck.checked),
           }),
         });
         const data = await resp.json();
@@ -312,12 +316,20 @@
 
   function renderJobs() {
     const visibleJobs = getFilteredJobs();
-    const liveTotal = (state.sources.remotive || 0) + (state.sources.arbeitnow || 0);
+    const liveTotal =
+      (state.sources.remotive || 0) +
+      (state.sources.arbeitnow || 0) +
+      (state.sources.jobicy || 0) +
+      (state.sources.remoteok || 0) +
+      (state.sources.himalayas || 0) +
+      (state.sources.weworkremotely || 0) +
+      (state.sources.github_br || 0);
     const trackedCount = Object.keys(state.tracker).length;
+    const modeLabel = state.sources.deep_search ? "Busca Profunda" : "APIs Ao Vivo";
 
     resultsSummary.innerHTML = `
       <span>Exibindo <strong>${visibleJobs.length}</strong> vaga(s) · Rastreadas: <strong>${trackedCount}</strong></span>
-      <span>Base Brasil: ${state.sources.local_br || 0} · APIs Ao Vivo: ${liveTotal}</span>
+      <span>Base Brasil: ${state.sources.local_br || 0} · ${modeLabel}: ${liveTotal}</span>
     `;
 
     if (!visibleJobs.length) {
@@ -648,6 +660,14 @@
   sortFilter.addEventListener("change", () => triggerResearch(true));
   trackerFilter.addEventListener("change", renderJobs);
   exportCsvBtn.addEventListener("click", exportJobsCsv);
+  if (deepSearchBtn) {
+    deepSearchBtn.addEventListener("click", () => {
+      if (includeLiveCheck) includeLiveCheck.checked = true;
+      if (deepSearchCheck) deepSearchCheck.checked = true;
+      if (sourceFilter.value === "local") sourceFilter.value = "all";
+      triggerResearch(true);
+    });
+  }
 
   // Job card actions
   jobsGrid.addEventListener("click", (e) => {

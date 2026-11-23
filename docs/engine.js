@@ -763,9 +763,163 @@ window.VagaMatchEngine = (() => {
     }
   }
 
-  async function collectJobs({ sourceFilter = "all", primarySkill = "", includeLive = true }) {
+  function buildDeepSearchTerms(skills, roles, primarySkill) {
+    const skillMap = {
+      "Segurança da Informação": "security",
+      "Threat Hunting / YARA": "cybersecurity",
+      "LLM / IA Generativa": "ai",
+      "Machine Learning": "machine learning",
+      "QA / Testes": "qa",
+      "Scrum / Ágil": "agile",
+    };
+    const terms = [];
+    for (const s of skills || []) {
+      const mapped = String(skillMap[s] || s).replace(/[^a-zA-Z0-9\s.+]/g, "").trim();
+      if (mapped && !terms.some((t) => t.toLowerCase() === mapped.toLowerCase())) terms.push(mapped);
+      if (terms.length >= 4) break;
+    }
+    const roleKeywords = [
+      ["ciberseguranca", "cybersecurity"],
+      ["cientista de dados", "data science"],
+      ["engenheiro de dados", "data engineer"],
+      ["devops", "devops"],
+      ["full stack", "full stack"],
+      ["backend", "backend"],
+      ["frontend", "frontend"],
+    ];
+    for (const r of roles || []) {
+      const nr = normalizeText(r);
+      for (const [k, term] of roleKeywords) {
+        if (nr.includes(k) && !terms.some((t) => t.toLowerCase() === term)) {
+          terms.push(term);
+          break;
+        }
+      }
+    }
+    if (!terms.length && primarySkill) {
+      const safe = String(primarySkill).replace(/[^a-zA-Z0-9\s.+]/g, "").trim();
+      if (safe) terms.push(safe);
+    }
+    return terms.length ? terms.slice(0, 4) : [""];
+  }
+
+  async function fetchJobicy(tag = "") {
+    const safe = String(tag || "").replace(/[^a-zA-Z0-9\s-]/g, "").trim().toLowerCase();
+    const key = `jobicy:${safe}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL_MS) return hit.data;
+    try {
+      const q = safe ? `&tag=${encodeURIComponent(safe)}` : "";
+      let payload = await fetchWithTimeout(`https://jobicy.com/api/v2/remote-jobs?count=20${q}`, 6000);
+      if (!(payload.jobs || []).length && safe) {
+        payload = await fetchWithTimeout("https://jobicy.com/api/v2/remote-jobs?count=20", 6000);
+      }
+      const jobs = (payload.jobs || []).slice(0, 20).map((item) => {
+        const title = stripHtml(item.jobTitle || "Vaga Remota");
+        const desc = stripHtml(item.jobDescription || item.jobExcerpt || "");
+        const skills = extractSkills(`${title} ${(item.jobIndustry || []).join(" ")} ${desc}`);
+        return {
+          id: `jobicy-${item.id}`,
+          title,
+          company: stripHtml(item.companyName || "Empresa"),
+          location: stripHtml(item.jobGeo || "Remoto Global"),
+          modality: "Remoto",
+          seniority: inferJobSeniority(`${title} ${item.jobLevel || ""}`),
+          salary: "A combinar",
+          skills,
+          description: desc.slice(0, 950) + (desc.length > 950 ? "..." : ""),
+          url: item.url || "https://jobicy.com",
+          source: "Jobicy (Ao Vivo)",
+          posted_at: String(item.pubDate || "").slice(0, 10),
+        };
+      });
+      cache.set(key, { ts: Date.now(), data: jobs });
+      return jobs;
+    } catch {
+      return [];
+    }
+  }
+
+  async function fetchRemoteOk() {
+    const key = "remoteok";
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL_MS) return hit.data;
+    try {
+      const payload = await fetchWithTimeout("https://remoteok.com/api", 6000);
+      const items = (Array.isArray(payload) ? payload : []).filter((x) => x && x.position).slice(0, 35);
+      const jobs = items.map((item) => {
+        const title = String(item.position || "Remote Tech Job").trim();
+        const desc = stripHtml(item.description || "");
+        const skills = extractSkills(`${title} ${(item.tags || []).join(" ")} ${desc}`);
+        const sMin = Number(item.salary_min || 0);
+        const sMax = Number(item.salary_max || 0);
+        const salary = sMin && sMax ? `USD ${sMin.toLocaleString("en-US")} - ${sMax.toLocaleString("en-US")}` : sMax ? `USD ${sMax.toLocaleString("en-US")}` : "A combinar";
+        return {
+          id: `remoteok-${item.id}`,
+          title,
+          company: String(item.company || "Empresa Internacional"),
+          location: String(item.location || "Remoto Global"),
+          modality: "Remoto",
+          seniority: inferJobSeniority(title),
+          salary,
+          skills,
+          description: desc.slice(0, 950) + (desc.length > 950 ? "..." : ""),
+          url: item.apply_url || item.url || "https://remoteok.com",
+          source: "RemoteOK (Ao Vivo)",
+          posted_at: String(item.date || "").slice(0, 10),
+        };
+      });
+      cache.set(key, { ts: Date.now(), data: jobs });
+      return jobs;
+    } catch {
+      return [];
+    }
+  }
+
+  async function fetchGitHubBr(repo = "backend-br/vagas") {
+    const key = `gh:${repo}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.ts < CACHE_TTL_MS) return hit.data;
+    try {
+      const issues = await fetchWithTimeout(`https://api.github.com/repos/${repo}/issues?state=open&per_page=20`, 6000);
+      if (!Array.isArray(issues)) return [];
+      const jobs = issues
+        .filter((it) => !it.pull_request)
+        .map((item) => {
+          const title = String(item.title || "").trim();
+          const body = stripHtml(item.body || "");
+          const labels = (item.labels || []).map((l) => l.name || "");
+          const norm = normalizeText(`${labels.join(" ")} ${title}`);
+          const compM = title.match(/(?:\bna\b|\bno\b|@)\s+([^|\-\[\]]{2,45})$/i);
+          const company = compM ? compM[1].trim() : `Comunidade ${repo.split("/")[0]}`;
+          const modality = norm.includes("remoto") || norm.includes("remote") ? "Remoto" : norm.includes("hibrido") ? "Híbrido" : "Presencial";
+          const locM = title.match(/\[([^\]]{2,35})\]/);
+          const location = locM ? locM[1].trim() : modality === "Remoto" ? "Remoto (Brasil)" : "Brasil";
+          return {
+            id: `gh-${repo.replace("/", "-")}-${item.id}`,
+            title,
+            company,
+            location,
+            modality,
+            seniority: inferJobSeniority(`${title} ${labels.join(" ")}`),
+            salary: "A combinar",
+            skills: extractSkills(`${title} ${labels.join(" ")} ${body}`),
+            description: body.slice(0, 950) + (body.length > 950 ? "..." : ""),
+            url: item.html_url || `https://github.com/${repo}/issues`,
+            source: `GitHub BR (${repo.split("/")[0]})`,
+            posted_at: String(item.created_at || "").slice(0, 10),
+          };
+        });
+      cache.set(key, { ts: Date.now(), data: jobs });
+      return jobs;
+    } catch {
+      return [];
+    }
+  }
+
+  async function collectJobs({ sourceFilter = "all", primarySkill = "", includeLive = true, deepSearch = true, skills = [], suggestedRoles = [] }) {
     let jobs = [];
-    const sources = { local_br: 0, remotive: 0, arbeitnow: 0 };
+    const sources = { local_br: 0, remotive: 0, arbeitnow: 0, jobicy: 0, remoteok: 0, github_br: 0, deep_search: deepSearch };
 
     if (sourceFilter === "all" || sourceFilter === "local") {
       const local = await loadLocalJobs();
@@ -775,10 +929,22 @@ window.VagaMatchEngine = (() => {
 
     const shouldLive = sourceFilter === "live" || (includeLive && sourceFilter === "all");
     if (shouldLive) {
-      const [remotive, arbeitnow] = await Promise.all([fetchRemotive(primarySkill), fetchArbeitnow()]);
-      jobs.push(...remotive, ...arbeitnow);
-      sources.remotive = remotive.length;
-      sources.arbeitnow = arbeitnow.length;
+      const terms = deepSearch ? buildDeepSearchTerms(skills, suggestedRoles, primarySkill) : [primarySkill];
+      const tasks = [
+        ...terms.slice(0, deepSearch ? 3 : 1).map((t) => fetchRemotive(t).then((d) => ["remotive", d])),
+        ...terms.slice(0, deepSearch ? 2 : 1).map((t) => fetchJobicy(t).then((d) => ["jobicy", d])),
+        fetchArbeitnow().then((d) => ["arbeitnow", d]),
+        fetchGitHubBr("backend-br/vagas").then((d) => ["github_br", d]),
+      ];
+      if (deepSearch) {
+        tasks.push(fetchGitHubBr("qa-brasil/vagas").then((d) => ["github_br", d]));
+        tasks.push(fetchRemoteOk().then((d) => ["remoteok", d]));
+      }
+      const batches = await Promise.all(tasks);
+      for (const [key, data] of batches) {
+        jobs.push(...data);
+        sources[key] = (sources[key] || 0) + data.length;
+      }
     }
 
     const seen = new Set();
@@ -794,12 +960,20 @@ window.VagaMatchEngine = (() => {
 
   function buildExternalLinks(skills, roles) {
     const query = (skills.slice(0, 3).join(" ") || roles[0] || "tecnologia").trim();
+    const roleQuery = (roles[1] || roles[0] || query).split("/")[0].trim();
+    const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto") Brasil`;
     const enc = encodeURIComponent(query);
+    const encRole = encodeURIComponent(roleQuery);
+    const encDork = encodeURIComponent(deepDork);
     return [
-      { portal: "LinkedIn", url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=Brasil` },
-      { portal: "Gupy", url: `https://portal.gupy.io/job-search/term=${enc}` },
+      { portal: "Google Jobs (Busca Profunda)", url: `https://www.google.com/search?q=${encDork}&ibp=htl;jobs` },
+      { portal: "LinkedIn (Skills)", url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=Brasil` },
+      { portal: "LinkedIn (Cargo)", url: `https://www.linkedin.com/jobs/search/?keywords=${encRole}&location=Brasil` },
+      { portal: "Gupy", url: `https://portal.gupy.io/job-search/term=${encRole}` },
       { portal: "Indeed Brasil", url: `https://br.indeed.com/jobs?q=${enc}&l=Brasil` },
-      { portal: "InfoJobs", url: `https://www.infojobs.com.br/empregos.aspx?palabra=${enc}` },
+      { portal: "Glassdoor Brasil", url: `https://www.glassdoor.com.br/Vaga/brasil-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}-vagas-SRCH_IL.0,6_IN36.htm` },
+      { portal: "Programathor", url: `https://programathor.com.br/jobs?search=${enc}` },
+      { portal: "InfoJobs", url: `https://www.infojobs.com.br/empregos.aspx?palabra=${encRole}` },
     ];
   }
 

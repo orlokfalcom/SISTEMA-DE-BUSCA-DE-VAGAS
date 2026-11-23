@@ -26,6 +26,8 @@
   const sampleBtn = document.getElementById("sampleBtn");
   const downloadSampleBtn = document.getElementById("downloadSampleBtn");
   const includeLiveCheck = document.getElementById("includeLiveCheck");
+  const deepSearchCheck = document.getElementById("deepSearchCheck");
+  const deepSearchBtn = document.getElementById("deepSearchBtn");
   const statusBanner = document.getElementById("statusBanner");
   const loader = document.getElementById("loader");
   const uploadSection = document.getElementById("uploadSection");
@@ -168,6 +170,9 @@
       sourceFilter: sourceFilter.value,
       primarySkill: state.skills[0] || "",
       includeLive: forceLive,
+      deepSearch: Boolean(deepSearchCheck && deepSearchCheck.checked),
+      skills: state.skills,
+      suggestedRoles: roles,
     });
 
     const ranked = Engine.matchJobs({
@@ -303,12 +308,18 @@
 
   function renderJobs() {
     const visibleJobs = getFilteredJobs();
-    const liveTotal = (state.sources.remotive || 0) + (state.sources.arbeitnow || 0);
+    const liveTotal =
+      (state.sources.remotive || 0) +
+      (state.sources.arbeitnow || 0) +
+      (state.sources.jobicy || 0) +
+      (state.sources.remoteok || 0) +
+      (state.sources.github_br || 0);
     const trackedCount = Object.keys(state.tracker).length;
+    const modeLabel = state.sources.deep_search ? "Busca Profunda" : "APIs Ao Vivo";
 
     resultsSummary.innerHTML = `
       <span>Exibindo <strong>${visibleJobs.length}</strong> vaga(s) · Rastreadas: <strong>${trackedCount}</strong></span>
-      <span>Base Brasil: ${state.sources.local_br || 0} · APIs Ao Vivo: ${liveTotal}</span>
+      <span>Base Brasil: ${state.sources.local_br || 0} · ${modeLabel}: ${liveTotal}</span>
     `;
 
     if (!visibleJobs.length) {
@@ -608,6 +619,14 @@
   sortFilter.addEventListener("change", () => triggerResearch(true));
   trackerFilter.addEventListener("change", renderJobs);
   exportCsvBtn.addEventListener("click", exportJobsCsv);
+  if (deepSearchBtn) {
+    deepSearchBtn.addEventListener("click", () => {
+      if (includeLiveCheck) includeLiveCheck.checked = true;
+      if (deepSearchCheck) deepSearchCheck.checked = true;
+      if (sourceFilter.value === "local") sourceFilter.value = "all";
+      triggerResearch(true);
+    });
+  }
 
   jobsGrid.addEventListener("click", (e) => {
     const detailBtn = e.target.closest("[data-detail-id]");

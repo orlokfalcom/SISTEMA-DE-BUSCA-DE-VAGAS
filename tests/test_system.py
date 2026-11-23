@@ -210,6 +210,23 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         for expected in ("Segurança da Informação", "Threat Hunting / YARA", "Rust", "Python", "SQLite", "Streamlit", "DevOps"):
             self.assertIn(expected, skills)
 
+    def test_deep_search_terms_and_external_links(self):
+        from services.job_sources import _build_deep_search_terms, build_external_search_links
+
+        terms = _build_deep_search_terms(
+            skills=["Python", "Segurança da Informação", "Threat Hunting / YARA", "Rust"],
+            suggested_roles=["Engenheiro / Analista de Cibersegurança"],
+            primary_skill="Python",
+        )
+        self.assertIn("Python", terms)
+        self.assertIn("security", terms)
+        self.assertIn("cybersecurity", terms)
+
+        links = build_external_search_links(["Python", "Rust", "SQL"], ["Cientista de Dados / IA", "Engenheiro / Analista de Cibersegurança"])
+        portals = [l["portal"] for l in links]
+        self.assertIn("Google Jobs (Busca Profunda)", portals)
+        self.assertGreaterEqual(len(links), 8)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,7 +31,11 @@
         <div class="upload-options">
           <label class="checkbox-label">
             <input type="checkbox" id="includeLiveCheck" checked />
-            <span>Incluir vagas ao vivo de APIs externas (Remotive e Arbeitnow) além da Base Brasil</span>
+            <span>Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
+          </label>
+          <label class="checkbox-label" style="margin-top:6px;">
+            <input type="checkbox" id="deepSearchCheck" checked />
+            <span>🌐 Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
           </label>
         </div>
       </div>
@@ -129,7 +133,10 @@
       <!-- Coluna Principal -->
       <section class="jobs-column">
         <div class="toolbar-top">
-          <button type="button" class="btn btn-primary btn-small" id="openCompareBtn">
+          <button type="button" class="btn btn-primary btn-small" id="deepSearchBtn">
+            🌐 Executar Busca Profunda na Internet
+          </button>
+          <button type="button" class="btn btn-secondary btn-small" id="openCompareBtn">
             ⚡ Comparar com Vaga Colada (ATS)
           </button>
           <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn">
