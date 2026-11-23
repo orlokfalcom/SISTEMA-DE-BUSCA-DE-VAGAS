@@ -432,6 +432,41 @@ window.VagaMatchEngine = (() => {
     return { rawText, pages: pdf.numPages };
   }
 
+  function detectCountry(text) {
+    const lower = normalizeText(text);
+    const brSignals = [
+      /\bbrasil\b/, /\bbrazil\b/, /\+55\b/,
+      /\b(belo\s+horizonte|sao\s+paulo|rio\s+de\s+janeiro|curitiba|porto\s+alegre|campinas|florianopolis|recife|salvador|brasilia|fortaleza|goiania|minas\s+gerais)\b/,
+      /[-–—]\s*(sp|rj|mg|rs|pr|sc|ba|pe|ce|df|go|es|pa|am)\b/,
+    ];
+    if (brSignals.some((re) => re.test(lower))) return "Brasil";
+    if (/\b(portugal|lisboa|porto|\+351)\b/.test(lower)) return "Portugal";
+    if (/\b(united\s+states|estados\s+unidos|new\s+york|san\s+francisco|california)\b/.test(lower)) return "Estados Unidos";
+    if (/\b(united\s+kingdom|london|reino\s+unido)\b/.test(lower)) return "Reino Unido";
+    if (/\b(germany|deutschland|berlin|munich|alemanha)\b/.test(lower)) return "Alemanha";
+    if (/\b(canada|toronto|vancouver|montreal)\b/.test(lower)) return "Canadá";
+    return "Brasil";
+  }
+
+  function classifyGeoPriority(job, userCountry = "Brasil") {
+    const countryNorm = normalizeText(userCountry || "Brasil");
+    const hay = normalizeText(`${job.location || ""} ${job.source || ""} ${job.company_origin || ""}`);
+    const brSignals = [
+      "brasil", "brazil", "sao paulo", "belo horizonte", "rio de janeiro",
+      "curitiba", "porto alegre", "campinas", "florianopolis", "recife",
+      "goiania", "base brasil", "github br", ", sp", ", rj", ", mg", ", rs", ", pr",
+    ];
+    const isUserCountry = countryNorm === "brasil" ? brSignals.some((s) => hay.includes(s)) : (countryNorm && hay.includes(countryNorm));
+    if (isUserCountry) {
+      return { scope: "local_country", label: `${countryNorm === "brasil" ? "🇧🇷" : "📍"} ${userCountry}`, bonus: 7 };
+    }
+    const globalSignals = ["anywhere", "worldwide", "remoto global", "latam", "south america", "americas", "global"];
+    if (globalSignals.some((s) => hay.includes(s))) {
+      return { scope: "global_remote", label: "🌎 Global / LATAM", bonus: 2 };
+    }
+    return { scope: "international", label: "🌐 Internacional", bonus: 0 };
+  }
+
   function parseResumeText(rawText, filename, pages = 1) {
     const skills = extractSkills(rawText);
     const years = estimateExperienceYears(rawText);
@@ -439,6 +474,7 @@ window.VagaMatchEngine = (() => {
     const suggestedRoles = suggestRoles(skills, rawText);
     const languages = detectLanguages(rawText);
     const education = detectEducation(rawText);
+    const country = detectCountry(rawText);
 
     const email = (rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) || [])[0] || null;
     const phone = (rawText.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}/) || [])[0] || null;
@@ -462,6 +498,7 @@ window.VagaMatchEngine = (() => {
       phone: phone ? phone.trim() : null,
       linkedin,
       github,
+      country,
       ats_audit: atsAudit,
       raw_text: rawText,
     };
@@ -545,6 +582,7 @@ window.VagaMatchEngine = (() => {
     searchQuery = "",
     minScore = 0,
     sortBy = "match",
+    userCountry = "Brasil",
   }) {
     const cSkillMap = new Map(candidateSkills.map((s) => [s.toLowerCase(), s]));
     const relatedPool = new Set();
@@ -595,8 +633,9 @@ window.VagaMatchEngine = (() => {
       const titleTokens = tokenize(job.title || "");
       const roleScore = titleTokens.some((t) => roleTokens.has(t)) ? 1.0 : 0.35;
 
+      const geo = classifyGeoPriority(job, userCountry);
       const weighted = 0.55 * skillScore + 0.22 * textSim + 0.13 * senScore + 0.10 * roleScore;
-      const matchScore = Math.round(Math.min(Math.max(weighted * 100, 5), 99));
+      const matchScore = Math.round(Math.min(Math.max(weighted * 100 + geo.bonus, 5), 99));
       if (matchScore < minScore) return;
 
       let reason = "Compatibilidade baseada no contexto geral do currículo e área de atuação";
@@ -624,6 +663,8 @@ window.VagaMatchEngine = (() => {
         related_skills: related.slice(0, 4),
         missing_skills: missing.slice(0, 6),
         match_reason: reason,
+        geo_scope: geo.scope,
+        geo_label: geo.label,
         salary_numeric: parseSalaryValue(job.salary || ""),
         pitch_suggestion: pitch,
       });
@@ -958,21 +999,26 @@ window.VagaMatchEngine = (() => {
     return { jobs, sources };
   }
 
-  function buildExternalLinks(skills, roles) {
+  function buildExternalLinks(skills, roles, userCountry = "Brasil") {
     const query = (skills.slice(0, 3).join(" ") || roles[0] || "tecnologia").trim();
     const rawRole = roles[1] || roles[0] || query;
     const roleParts = rawRole.split("/").map((p) => p.trim()).filter(Boolean);
     const roleQuery = roleParts.sort((a, b) => b.length - a.length)[0] || query;
-    const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto") Brasil`;
+    const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto") ${userCountry}`;
+    const compBrDork = `(site:gupy.io OR site:boards.greenhouse.io OR site:jobs.lever.co) ("${roleQuery}" OR "${query}") (${userCountry} OR "Remoto")`;
+    const compGlobalDork = `(site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com) ("${roleQuery}" OR "${query}") ("Remote" OR "LATAM" OR "Brazil")`;
     const enc = encodeURIComponent(query);
     const encRole = encodeURIComponent(roleQuery);
     const encDork = encodeURIComponent(deepDork);
+    const encCountry = encodeURIComponent(userCountry);
     return [
+      { portal: `Sites de Empresas (${userCountry})`, url: `https://www.google.com/search?q=${encodeURIComponent(compBrDork)}` },
+      { portal: "Carreiras Diretas (Global)", url: `https://www.google.com/search?q=${encodeURIComponent(compGlobalDork)}` },
       { portal: "Google Jobs (Busca Profunda)", url: `https://www.google.com/search?q=${encDork}&ibp=htl;jobs` },
-      { portal: "LinkedIn (Skills)", url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=Brasil` },
-      { portal: "LinkedIn (Cargo)", url: `https://www.linkedin.com/jobs/search/?keywords=${encRole}&location=Brasil` },
+      { portal: "LinkedIn (Skills)", url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=${encCountry}` },
+      { portal: "LinkedIn (Cargo)", url: `https://www.linkedin.com/jobs/search/?keywords=${encRole}&location=${encCountry}` },
       { portal: "Gupy", url: `https://portal.gupy.io/job-search/term=${encRole}` },
-      { portal: "Indeed Brasil", url: `https://br.indeed.com/jobs?q=${enc}&l=Brasil` },
+      { portal: "Indeed Brasil", url: `https://br.indeed.com/jobs?q=${enc}&l=${encCountry}` },
       { portal: "Glassdoor Brasil", url: `https://www.glassdoor.com.br/Vaga/brasil-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}-vagas-SRCH_IL.0,6_IN36.htm` },
       { portal: "Programathor", url: `https://programathor.com.br/jobs?search=${enc}` },
       { portal: "InfoJobs", url: `https://www.infojobs.com.br/empregos.aspx?palabra=${encRole}` },

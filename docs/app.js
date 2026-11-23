@@ -219,12 +219,13 @@
       searchQuery: queryInput.value.trim(),
       minScore: Number(minScoreFilter.value || 0),
       sortBy: sortFilter.value,
+      userCountry: (state.profile && state.profile.country) || "Brasil",
     });
 
     state.jobs = ranked;
     state.sources = sources;
     state.skillGaps = Engine.computeSkillGaps(ranked);
-    state.externalLinks = Engine.buildExternalLinks(state.skills, roles);
+    state.externalLinks = Engine.buildExternalLinks(state.skills, roles, (state.profile && state.profile.country) || "Brasil");
 
     renderSkillGaps();
     renderExternalLinks();
@@ -399,6 +400,7 @@
               </div>
             </div>
             <div class="job-meta-tags">
+              ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
               <span>📍 ${escapeHtml(job.location)}</span>
               <span>💼 ${escapeHtml(job.modality)}</span>
               <span>🎯 ${escapeHtml(job.seniority)}</span>

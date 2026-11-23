@@ -21,6 +21,24 @@ _CACHE: dict[str, tuple[float, list[dict]]] = {}
 CACHE_TTL_SECONDS = 300  # 5 minutos
 REQUEST_HEADERS = {"User-Agent": "VagaMatchPDF/2.0 (Job Search Aggregator)"}
 
+# Páginas de carreiras oficiais de empresas (Greenhouse Boards API pública)
+COMPANY_CAREER_BOARDS_BR: list[tuple[str, str]] = [
+    ("vtex", "VTEX"),
+    ("quintoandar", "QuintoAndar"),
+    ("ebanx", "EBANX"),
+    ("gympass", "Wellhub (Gympass)"),
+    ("brex", "Brex"),
+]
+
+COMPANY_CAREER_BOARDS_GLOBAL: list[tuple[str, str]] = [
+    ("cloudflare", "Cloudflare"),
+    ("gitlab", "GitLab"),
+    ("elastic", "Elastic"),
+    ("datadog", "Datadog"),
+    ("mongodb", "MongoDB"),
+    ("canonical", "Canonical"),
+]
+
 
 def _strip_html(raw: str) -> str:
     if not raw:
@@ -479,6 +497,100 @@ def fetch_github_br_jobs(repo: str = "backend-br/vagas", limit: int = 20) -> lis
     return jobs
 
 
+def fetch_greenhouse_company_jobs(
+    slug: str,
+    company_name: str,
+    is_br_company: bool = False,
+    user_country: str = "Brasil",
+    search_terms: list[str] | None = None,
+    limit: int = 12,
+) -> list[dict]:
+    """Busca vagas diretamente na página de carreiras oficial (Greenhouse) da empresa."""
+    cache_key = f"greenhouse:{slug}"
+    now = time.time()
+    if cache_key in _CACHE and (now - _CACHE[cache_key][0]) < CACHE_TTL_SECONDS:
+        raw_items = _CACHE[cache_key][1]
+    else:
+        try:
+            resp = requests.get(
+                f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
+                headers=REQUEST_HEADERS,
+                timeout=6,
+            )
+            resp.raise_for_status()
+            raw_items = resp.json().get("jobs", [])
+            _CACHE[cache_key] = (now, raw_items)
+        except Exception:
+            return []
+
+    norm_terms = [normalize_text(t) for t in (search_terms or []) if t and len(t) >= 2]
+    country_norm = normalize_text(user_country)
+    br_hints = ("brazil", "brasil", "sao paulo", "belo horizonte", "rio de janeiro", "curitiba", "latam", "south america", "americas")
+
+    scored: list[tuple[int, dict]] = []
+    for item in raw_items:
+        title = str(item.get("title") or "").strip()
+        loc_obj = item.get("location") or {}
+        location = str(loc_obj.get("name") or ("Brasil" if is_br_company else "Global")).strip()
+        title_norm = normalize_text(title)
+        loc_norm = normalize_text(location)
+
+        priority = 0
+        if is_br_company or (country_norm == "brasil" and any(h in loc_norm for h in br_hints)):
+            priority += 4
+        elif country_norm and country_norm in loc_norm:
+            priority += 4
+        elif "remote" in loc_norm or "remoto" in loc_norm or "anywhere" in loc_norm:
+            priority += 2
+
+        term_hits = sum(1 for t in norm_terms if t in title_norm)
+        priority += term_hits * 5
+        scored.append((priority, item))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    selected = [item for _, item in scored[:limit]]
+
+    jobs: list[dict] = []
+    for item in selected:
+        title = str(item.get("title") or "Vaga").strip()
+        loc_obj = item.get("location") or {}
+        location = str(loc_obj.get("name") or ("Brasil" if is_br_company else "Global")).strip()
+        loc_norm = normalize_text(location)
+        if "remote" in loc_norm or "remoto" in loc_norm or "anywhere" in loc_norm:
+            modality = "Remoto"
+        elif "hybrid" in loc_norm or "hibrido" in loc_norm:
+            modality = "Híbrido"
+        else:
+            modality = "Presencial"
+
+        depts = [str(d.get("name", "")) for d in (item.get("departments") or []) if isinstance(d, dict)]
+        dept_txt = ", ".join(d for d in depts if d)
+        combined = f"{title} {dept_txt} {location}"
+        desc = f"Vaga oficial publicada diretamente na página de carreiras da {company_name}."
+        if dept_txt:
+            desc += f" Área/Departamento: {dept_txt}."
+        desc += f" Localização: {location}."
+
+        jobs.append(
+            {
+                "id": f"company-{slug}-{item.get('id')}",
+                "title": title,
+                "company": company_name,
+                "location": location,
+                "modality": modality,
+                "seniority": _infer_job_seniority(title),
+                "salary": "A combinar",
+                "skills": extract_skills(combined),
+                "description": desc,
+                "url": item.get("absolute_url") or f"https://boards.greenhouse.io/{slug}",
+                "source": f"Carreira Direta ({company_name})",
+                "company_origin": "Brasil" if is_br_company else "Global",
+                "posted_at": str(item.get("updated_at") or "")[:10],
+            }
+        )
+    return jobs
+
+
 def _deduplicate_jobs(jobs: list[dict]) -> list[dict]:
     """Remove vagas duplicadas comparando título e empresa normalizados."""
     seen: set[tuple[str, str]] = set()
@@ -499,11 +611,14 @@ def collect_jobs(
     deep_search: bool = False,
     skills: list[str] | None = None,
     suggested_roles: list[str] | None = None,
+    user_country: str = "Brasil",
 ) -> tuple[list[dict], dict]:
-    """Agrega vagas locais (Brasil) e múltiplas APIs reais da internet em paralelo."""
+    """Agrega vagas locais, sites oficiais de empresas (Brasil + Global) e portais da internet em paralelo."""
     jobs: list[dict] = []
     sources_status = {
         "local_br": 0,
+        "company_sites_br": 0,
+        "company_sites_global": 0,
         "remotive": 0,
         "arbeitnow": 0,
         "jobicy": 0,
@@ -519,31 +634,52 @@ def collect_jobs(
         jobs.extend(local_jobs)
         sources_status["local_br"] = len(local_jobs)
 
-    should_fetch_live = (source_filter == "live") or (include_live and source_filter == "all")
+    should_fetch_live = (source_filter in ("live", "companies")) or (include_live and source_filter == "all")
     if should_fetch_live:
         search_terms = _build_deep_search_terms(skills, suggested_roles, primary_skill) if deep_search else [primary_skill]
 
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=14) as executor:
             futures: list[tuple[str, object]] = []
 
-            # Remotive (multi-query na busca profunda)
-            for term in search_terms[: (3 if deep_search else 1)]:
-                futures.append(("remotive", executor.submit(fetch_remotive_jobs, term, 25 if deep_search else 20)))
+            # Sites oficiais de empresas no Brasil (prioridade)
+            br_boards = COMPANY_CAREER_BOARDS_BR if deep_search else COMPANY_CAREER_BOARDS_BR[:3]
+            for slug, cname in br_boards:
+                futures.append(
+                    (
+                        "company_sites_br",
+                        executor.submit(fetch_greenhouse_company_jobs, slug, cname, True, user_country, search_terms, 12),
+                    )
+                )
 
-            # Jobicy (multi-query na busca profunda)
-            for term in search_terms[: (2 if deep_search else 1)]:
-                futures.append(("jobicy", executor.submit(fetch_jobicy_jobs, term, 20)))
+            # Sites oficiais de empresas globais
+            global_boards = COMPANY_CAREER_BOARDS_GLOBAL if deep_search else COMPANY_CAREER_BOARDS_GLOBAL[:2]
+            for slug, cname in global_boards:
+                futures.append(
+                    (
+                        "company_sites_global",
+                        executor.submit(fetch_greenhouse_company_jobs, slug, cname, False, user_country, search_terms, 10),
+                    )
+                )
 
-            # Arbeitnow
-            futures.append(("arbeitnow", executor.submit(fetch_arbeitnow_jobs, 35 if deep_search else 20)))
+            if source_filter != "companies":
+                # Remotive (multi-query na busca profunda)
+                for term in search_terms[: (3 if deep_search else 1)]:
+                    futures.append(("remotive", executor.submit(fetch_remotive_jobs, term, 25 if deep_search else 20)))
 
-            # GitHub Vagas Brasil (vagas reais brasileiras!)
-            futures.append(("github_br", executor.submit(fetch_github_br_jobs, "backend-br/vagas", 25 if deep_search else 15)))
-            if deep_search:
-                futures.append(("github_br", executor.submit(fetch_github_br_jobs, "qa-brasil/vagas", 15)))
-                futures.append(("remoteok", executor.submit(fetch_remoteok_jobs, 35)))
-                futures.append(("himalayas", executor.submit(fetch_himalayas_jobs, 30)))
-                futures.append(("weworkremotely", executor.submit(fetch_weworkremotely_jobs, 30)))
+                # Jobicy (multi-query na busca profunda)
+                for term in search_terms[: (2 if deep_search else 1)]:
+                    futures.append(("jobicy", executor.submit(fetch_jobicy_jobs, term, 20)))
+
+                # Arbeitnow
+                futures.append(("arbeitnow", executor.submit(fetch_arbeitnow_jobs, 35 if deep_search else 20)))
+
+                # GitHub Vagas Brasil
+                futures.append(("github_br", executor.submit(fetch_github_br_jobs, "backend-br/vagas", 25 if deep_search else 15)))
+                if deep_search:
+                    futures.append(("github_br", executor.submit(fetch_github_br_jobs, "qa-brasil/vagas", 15)))
+                    futures.append(("remoteok", executor.submit(fetch_remoteok_jobs, 35)))
+                    futures.append(("himalayas", executor.submit(fetch_himalayas_jobs, 30)))
+                    futures.append(("weworkremotely", executor.submit(fetch_weworkremotely_jobs, 30)))
 
             for source_key, fut in futures:
                 try:
@@ -556,8 +692,8 @@ def collect_jobs(
     return _deduplicate_jobs(jobs), sources_status
 
 
-def build_external_search_links(skills: list[str], suggested_roles: list[str]) -> list[dict]:
-    """Gera links prontos de busca profunda nos principais portais de vagas da internet."""
+def build_external_search_links(skills: list[str], suggested_roles: list[str], user_country: str = "Brasil") -> list[dict]:
+    """Gera links prontos de busca profunda em sites diretos de empresas e portais de vagas."""
     top_role = suggested_roles[0] if suggested_roles else ""
     secondary_role = suggested_roles[1] if len(suggested_roles) > 1 else ""
     top_skills = " ".join(skills[:3])
@@ -565,13 +701,27 @@ def build_external_search_links(skills: list[str], suggested_roles: list[str]) -
     raw_role = (secondary_role or top_role or query)
     role_parts = [p.strip() for p in raw_role.split("/") if p.strip()]
     role_query = max(role_parts, key=len) if role_parts else query
-    deep_dork = f'("{role_query}" OR "{top_skills}") ("vaga" OR "remote" OR "remoto") Brasil'
+    deep_dork = f'("{role_query}" OR "{top_skills}") ("vaga" OR "remote" OR "remoto") {user_country}'
+    company_br_dork = f'(site:gupy.io OR site:boards.greenhouse.io OR site:jobs.lever.co) ("{role_query}" OR "{top_skills}") ({user_country} OR "Remoto")'
+    company_global_dork = f'(site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com) ("{role_query}" OR "{top_skills}") ("Remote" OR "LATAM" OR "Brazil")'
 
     encoded = quote_plus(query)
     encoded_role = quote_plus(role_query)
     encoded_dork = quote_plus(deep_dork)
+    encoded_comp_br = quote_plus(company_br_dork)
+    encoded_comp_global = quote_plus(company_global_dork)
 
     return [
+        {
+            "portal": f"Sites de Empresas ({user_country})",
+            "query": company_br_dork,
+            "url": f"https://www.google.com/search?q={encoded_comp_br}",
+        },
+        {
+            "portal": "Carreiras Diretas (Global)",
+            "query": company_global_dork,
+            "url": f"https://www.google.com/search?q={encoded_comp_global}",
+        },
         {
             "portal": "Google Jobs (Busca Profunda)",
             "query": deep_dork,
@@ -580,12 +730,12 @@ def build_external_search_links(skills: list[str], suggested_roles: list[str]) -
         {
             "portal": "LinkedIn (Skills)",
             "query": query,
-            "url": f"https://www.linkedin.com/jobs/search/?keywords={encoded}&location=Brasil",
+            "url": f"https://www.linkedin.com/jobs/search/?keywords={encoded}&location={quote_plus(user_country)}",
         },
         {
             "portal": "LinkedIn (Cargo)",
             "query": role_query,
-            "url": f"https://www.linkedin.com/jobs/search/?keywords={encoded_role}&location=Brasil",
+            "url": f"https://www.linkedin.com/jobs/search/?keywords={encoded_role}&location={quote_plus(user_country)}",
         },
         {
             "portal": "Gupy",
@@ -595,7 +745,7 @@ def build_external_search_links(skills: list[str], suggested_roles: list[str]) -
         {
             "portal": "Indeed Brasil",
             "query": query,
-            "url": f"https://br.indeed.com/jobs?q={encoded}&l=Brasil",
+            "url": f"https://br.indeed.com/jobs?q={encoded}&l={quote_plus(user_country)}",
         },
         {
             "portal": "Glassdoor Brasil",

@@ -262,6 +262,50 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         self.assertGreater(plan["projected_score"], plan["current_score"])
         self.assertIn("RESUMO PROFISSIONAL", plan["ats_template"])
 
+    def test_country_detection_and_geo_priority_without_excluding_global(self):
+        from services.resume_parser import detect_country
+
+        self.assertEqual(detect_country("Belo Horizonte - MG | +55 31 98435-9511"), "Brasil")
+        self.assertEqual(detect_country("Lisboa, Portugal | +351 912345678"), "Portugal")
+
+        jobs = [
+            {
+                "id": "intl-1",
+                "title": "Senior Security Engineer",
+                "company": "EuroCorp",
+                "location": "Berlin, Germany",
+                "modality": "Presencial",
+                "seniority": "Sênior",
+                "skills": ["Python", "Rust", "Segurança da Informação"],
+                "description": "Security engineering with Python and Rust.",
+                "source": "Carreira Direta (EuroCorp)",
+            },
+            {
+                "id": "br-company-1",
+                "title": "Senior Security Engineer",
+                "company": "EmpresaBR",
+                "location": "São Paulo, Brazil",
+                "modality": "Remoto",
+                "seniority": "Sênior",
+                "skills": ["Python", "Rust", "Segurança da Informação"],
+                "description": "Security engineering with Python and Rust.",
+                "source": "Carreira Direta (EmpresaBR)",
+                "company_origin": "Brasil",
+            },
+        ]
+        ranked = match_jobs(
+            jobs=jobs,
+            candidate_skills=["Python", "Rust", "Segurança da Informação"],
+            candidate_seniority="Sênior",
+            user_country="Brasil",
+        )
+        # Prioriza a empresa do país do usuário, mas mantém a internacional nos resultados
+        self.assertEqual(len(ranked), 2)
+        self.assertEqual(ranked[0]["id"], "br-company-1")
+        self.assertEqual(ranked[0]["geo_scope"], "local_country")
+        self.assertEqual(ranked[1]["id"], "intl-1")
+        self.assertGreater(ranked[0]["match_score"], ranked[1]["match_score"])
+
 
 if __name__ == "__main__":
     unittest.main()

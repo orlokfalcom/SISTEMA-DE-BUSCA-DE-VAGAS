@@ -152,6 +152,34 @@ def compute_skill_gap_analytics(ranked_jobs: list[dict], top_n: int = 12) -> lis
     ]
 
 
+def _classify_geo_priority(job: dict, user_country: str = "Brasil") -> tuple[str, str, float]:
+    """Classifica o alcance geográfico da vaga e calcula bônus de prioridade para o país do usuário."""
+    country_norm = normalize_text(user_country or "Brasil")
+    hay = normalize_text(
+        f"{job.get('location', '')} {job.get('source', '')} {job.get('company_origin', '')}"
+    )
+    br_signals = (
+        "brasil", "brazil", "sao paulo", "belo horizonte", "rio de janeiro",
+        "curitiba", "porto alegre", "campinas", "florianopolis", "recife",
+        "goiania", "base brasil", "github br", ", sp", ", rj", ", mg", ", rs", ", pr",
+    )
+    is_user_country = False
+    if country_norm == "brasil":
+        is_user_country = any(s in hay for s in br_signals)
+    elif country_norm:
+        is_user_country = country_norm in hay
+
+    if is_user_country:
+        flag = "🇧🇷" if country_norm == "brasil" else "📍"
+        return "local_country", f"{flag} {user_country}", 7.0
+
+    global_signals = ("anywhere", "worldwide", "remoto global", "latam", "south america", "americas", "global")
+    if any(s in hay for s in global_signals):
+        return "global_remote", "🌎 Global / LATAM", 2.0
+
+    return "international", "🌐 Internacional", 0.0
+
+
 def match_jobs(
     jobs: list[dict],
     candidate_skills: list[str],
@@ -163,6 +191,7 @@ def match_jobs(
     search_query: str = "",
     min_score: int = 0,
     sort_by: str = "match",
+    user_country: str = "Brasil",
 ) -> list[dict]:
     """Ranqueia vagas usando TF-IDF real, matching semântico de skills e score explicável."""
     suggested_roles = suggested_roles or []
@@ -233,14 +262,15 @@ def match_jobs(
         title_tokens = set(_tokenize(job.get("title", "")))
         role_score = 1.0 if (role_tokens & title_tokens) else 0.35
 
-        # Score final ponderado (0 a 100)
+        # Score final ponderado (0 a 100) + prioridade geográfica para empresas do país do usuário
+        geo_scope, geo_label, geo_bonus = _classify_geo_priority(job, user_country=user_country)
         weighted = (
             0.55 * skill_score
             + 0.22 * text_sim
             + 0.13 * sen_score
             + 0.10 * role_score
         )
-        score_pct = int(round(min(max(weighted * 100, 5), 99)))
+        score_pct = int(round(min(max(weighted * 100 + geo_bonus, 5), 99)))
 
         if score_pct < min_score:
             continue
@@ -270,6 +300,8 @@ def match_jobs(
         enriched["related_skills"] = related_skills[:4]
         enriched["missing_skills"] = missing_skills[:6]
         enriched["match_reason"] = reason
+        enriched["geo_scope"] = geo_scope
+        enriched["geo_label"] = geo_label
         enriched["salary_numeric"] = parse_salary_value(job.get("salary", ""))
         enriched["pitch_suggestion"] = _build_pitch(job, matched_skills, candidate_seniority)
         results.append(enriched)

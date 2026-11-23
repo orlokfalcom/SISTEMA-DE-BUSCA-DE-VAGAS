@@ -217,6 +217,7 @@
             sort_by: sortFilter.value,
             include_live: forceLive,
             deep_search: Boolean(deepSearchCheck && deepSearchCheck.checked),
+            country: (state.profile && state.profile.country) || "Brasil",
           }),
         });
         const data = await resp.json();
@@ -350,6 +351,8 @@
   function renderJobs() {
     const visibleJobs = getFilteredJobs();
     const liveTotal =
+      (state.sources.company_sites_br || 0) +
+      (state.sources.company_sites_global || 0) +
       (state.sources.remotive || 0) +
       (state.sources.arbeitnow || 0) +
       (state.sources.jobicy || 0) +
@@ -367,12 +370,14 @@
 
     if (sourcesStrip) {
       const sourceLabels = [
+        ["Empresas BR (Carreiras)", state.sources.company_sites_br],
+        ["Empresas Globais (Carreiras)", state.sources.company_sites_global],
         ["Base Brasil", state.sources.local_br],
+        ["GitHub BR", state.sources.github_br],
         ["Remotive", state.sources.remotive],
         ["Jobicy", state.sources.jobicy],
         ["Arbeitnow", state.sources.arbeitnow],
         ["RemoteOK", state.sources.remoteok],
-        ["GitHub BR", state.sources.github_br],
         ["Himalayas", state.sources.himalayas],
         ["We Work Remotely", state.sources.weworkremotely],
       ].filter(([, count]) => Number(count || 0) > 0);
@@ -421,6 +426,7 @@
             </div>
 
             <div class="job-meta-tags">
+              ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
               <span>📍 ${escapeHtml(job.location)}</span>
               <span>💼 ${escapeHtml(job.modality)}</span>
               <span>🎯 ${escapeHtml(job.seniority)}</span>

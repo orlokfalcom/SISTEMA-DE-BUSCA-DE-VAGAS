@@ -191,6 +191,7 @@ class ResumeProfile:
     phone: str | None
     linkedin: str | None
     github: str | None
+    country: str
     ats_audit: dict
     summary_excerpt: str
     raw_text: str
@@ -354,6 +355,29 @@ def detect_languages(text: str) -> list[str]:
         if any(k in lower for k in keywords):
             found.append(lang)
     return found
+
+
+def detect_country(text: str) -> str:
+    """Detecta o país do candidato a partir do endereço, DDD/telefone ou idioma do currículo."""
+    lower = normalize_text(text)
+    br_signals = [
+        r"\bbrasil\b", r"\bbrazil\b", r"\+55\b",
+        r"\b(belo\s+horizonte|sao\s+paulo|rio\s+de\s+janeiro|curitiba|porto\s+alegre|campinas|florianopolis|recife|salvador|brasilia|fortaleza|goiania|minas\s+gerais)\b",
+        r"[-–—]\s*(sp|rj|mg|rs|pr|sc|ba|pe|ce|df|go|es|pa|am)\b",
+    ]
+    if any(re.search(p, lower) for p in br_signals):
+        return "Brasil"
+    if re.search(r"\b(portugal|lisboa|porto|\+351)\b", lower):
+        return "Portugal"
+    if re.search(r"\b(united\s+states|estados\s+unidos|new\s+york|san\s+francisco|california)\b", lower):
+        return "Estados Unidos"
+    if re.search(r"\b(united\s+kingdom|london|reino\s+unido)\b", lower):
+        return "Reino Unido"
+    if re.search(r"\b(germany|deutschland|berlin|munich|alemanha)\b", lower):
+        return "Alemanha"
+    if re.search(r"\b(canada|toronto|vancouver|montreal)\b", lower):
+        return "Canadá"
+    return "Brasil"
 
 
 def detect_education(text: str) -> list[str]:
@@ -742,6 +766,7 @@ def parse_resume_pdf(file_stream: BinaryIO, filename: str = "curriculo.pdf") -> 
     roles = suggest_roles(skills, raw_text)
     languages = detect_languages(raw_text)
     education = detect_education(raw_text)
+    country = detect_country(raw_text)
 
     email_match = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", raw_text)
     phone_match = re.search(r"(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}", raw_text)
@@ -784,6 +809,7 @@ def parse_resume_pdf(file_stream: BinaryIO, filename: str = "curriculo.pdf") -> 
         phone=phone,
         linkedin=linkedin,
         github=github,
+        country=country,
         ats_audit=ats_audit,
         summary_excerpt=clean_excerpt,
         raw_text=raw_text,

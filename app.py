@@ -106,6 +106,7 @@ def analyze_resume():
         deep_search=deep_search,
         skills=profile.skills,
         suggested_roles=profile.suggested_roles,
+        user_country=profile.country,
     )
 
     ranked_jobs = match_jobs(
@@ -115,10 +116,11 @@ def analyze_resume():
         candidate_seniority=profile.seniority,
         suggested_roles=profile.suggested_roles,
         modality_filter=modality_filter,
+        user_country=profile.country,
     )
 
     skill_gaps = compute_skill_gap_analytics(ranked_jobs)
-    external_links = build_external_search_links(profile.skills, profile.suggested_roles)
+    external_links = build_external_search_links(profile.skills, profile.suggested_roles, user_country=profile.country)
 
     return jsonify(
         {
@@ -150,6 +152,7 @@ def search_jobs_by_profile():
     sort_by = str(payload.get("sort_by") or "match").strip().lower()
     include_live = bool(payload.get("include_live", True))
     deep_search = bool(payload.get("deep_search", True))
+    user_country = str(payload.get("country") or "Brasil").strip()
     try:
         min_score = max(0, min(100, int(payload.get("min_score") or 0)))
     except (ValueError, TypeError):
@@ -165,6 +168,7 @@ def search_jobs_by_profile():
         deep_search=deep_search,
         skills=skills,
         suggested_roles=roles,
+        user_country=user_country,
     )
 
     ranked_jobs = match_jobs(
@@ -178,10 +182,11 @@ def search_jobs_by_profile():
         search_query=search_query,
         min_score=min_score,
         sort_by=sort_by,
+        user_country=user_country,
     )
 
     skill_gaps = compute_skill_gap_analytics(ranked_jobs)
-    external_links = build_external_search_links(skills, roles)
+    external_links = build_external_search_links(skills, roles, user_country=user_country)
 
     return jsonify(
         {
