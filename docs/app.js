@@ -62,8 +62,16 @@
   const sourcesStrip = document.getElementById("sourcesStrip");
   const jobsGrid = document.getElementById("jobsGrid");
   const exportCsvBtn = document.getElementById("exportCsvBtn");
+  const homeLiveStatus = document.getElementById("homeLiveStatus");
+  const homeRefreshBtn = document.getElementById("homeRefreshBtn");
+  const homeLiveGrid = document.getElementById("homeLiveGrid");
+  const resultsLiveStatus = document.getElementById("resultsLiveStatus");
+  const autoRefreshCheck = document.getElementById("autoRefreshCheck");
+  const manualRefreshBtn = document.getElementById("manualRefreshBtn");
   const toastEl = document.getElementById("toast");
   let toastTimer = null;
+  let autoRefreshInterval = null;
+  const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
   // Job Modal
   const jobModal = document.getElementById("jobModal");
@@ -192,7 +200,11 @@
     }
   }
 
-  async function runSearchPipeline() {
+  async function runSearchPipeline(forceRefresh = false) {
+    const prevIds = new Set(state.jobs.map((j) => j.id));
+    if (forceRefresh && resultsLiveStatus) {
+      resultsLiveStatus.textContent = "🔄 Atualizando vagas ao vivo...";
+    }
     const roles = Engine.suggestRoles(state.skills, state.resumeTextSnippet);
     if (state.profile) {
       state.profile.suggested_roles = roles;
@@ -206,6 +218,7 @@
       deepSearch: Boolean(deepSearchCheck && deepSearchCheck.checked),
       skills: state.skills,
       suggestedRoles: roles,
+      forceRefresh,
     });
 
     const ranked = Engine.matchJobs({
@@ -227,20 +240,79 @@
     state.skillGaps = Engine.computeSkillGaps(ranked);
     state.externalLinks = Engine.buildExternalLinks(state.skills, roles, (state.profile && state.profile.country) || "Brasil");
 
+    if (resultsLiveStatus) {
+      resultsLiveStatus.textContent = `🟢 Atualizado às ${new Date().toLocaleTimeString("pt-BR")}`;
+    }
+    if (forceRefresh && prevIds.size > 0) {
+      const newCount = state.jobs.filter((j) => !prevIds.has(j.id)).length;
+      showToast(newCount > 0 ? `🔄 +${newCount} nova(s) vaga(s) carregada(s)!` : "🟢 Vagas atualizadas com sucesso!");
+    }
+
     renderSkillGaps();
     renderExternalLinks();
     renderJobs();
   }
 
   let debounceTimer = null;
-  function triggerResearch(immediate = false) {
+  function triggerResearch(immediate = false, forceRefresh = false) {
     clearTimeout(debounceTimer);
     const exec = () => {
-      resultsSummary.innerHTML = `<span>Atualizando vagas e recalculando compatibilidade...</span>`;
-      runSearchPipeline();
+      if (!forceRefresh) {
+        resultsSummary.innerHTML = `<span>Atualizando vagas e recalculando compatibilidade...</span>`;
+      }
+      runSearchPipeline(forceRefresh);
     };
     if (immediate) exec();
     else debounceTimer = setTimeout(exec, 240);
+  }
+
+  async function loadHomeLiveJobs(forceRefresh = false) {
+    if (!homeLiveGrid) return;
+    if (homeLiveStatus) homeLiveStatus.textContent = "🔄 Carregando vagas ao vivo...";
+    try {
+      const { jobs } = await Engine.collectJobs({
+        sourceFilter: "all",
+        primarySkill: "",
+        includeLive: true,
+        deepSearch: false,
+        forceRefresh,
+      });
+      const ranked = Engine.matchJobs({
+        jobs,
+        candidateSkills: [],
+        sortBy: "recent",
+        userCountry: "Brasil",
+      });
+      const ts = new Date().toLocaleTimeString("pt-BR");
+      if (homeLiveStatus) homeLiveStatus.textContent = `🟢 ${ranked.length} vagas · Atualizado às ${ts}`;
+      homeLiveGrid.innerHTML = ranked
+        .slice(0, 6)
+        .map(
+          (j) => `
+          <a class="mini-job-card" href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer">
+            <span class="source-tag">${escapeHtml(j.source)}</span>
+            <strong>${escapeHtml(j.title)}</strong>
+            <span class="mini-job-meta">${escapeHtml(j.company)} · ${escapeHtml(j.geo_label || j.location)} · ${escapeHtml(j.modality)}</span>
+          </a>`
+        )
+        .join("");
+      if (forceRefresh) showToast("🟢 Vagas recentes atualizadas!");
+    } catch {
+      if (homeLiveStatus) homeLiveStatus.textContent = "⚠️ Indisponível no momento";
+    }
+  }
+
+  function startAutoRefreshLoop() {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = setInterval(() => {
+      if (document.hidden) return;
+      if (autoRefreshCheck && !autoRefreshCheck.checked) return;
+      if (!resultsSection.classList.contains("hidden") && state.profile) {
+        triggerResearch(true, true);
+      } else {
+        loadHomeLiveJobs(true);
+      }
+    }, AUTO_REFRESH_MS);
   }
 
   function renderProfile() {
@@ -966,4 +1038,15 @@
       if (improveModal && !improveModal.classList.contains("hidden")) improveModal.classList.add("hidden");
     }
   });
+
+  if (homeRefreshBtn) homeRefreshBtn.addEventListener("click", () => loadHomeLiveJobs(true));
+  if (manualRefreshBtn) manualRefreshBtn.addEventListener("click", () => triggerResearch(true, true));
+  if (autoRefreshCheck) {
+    autoRefreshCheck.addEventListener("change", () => {
+      showToast(autoRefreshCheck.checked ? "🟢 Auto-atualização ativada (a cada 5 min)" : "⏸ Auto-atualização pausada");
+    });
+  }
+
+  loadHomeLiveJobs(false);
+  startAutoRefreshLoop();
 })();

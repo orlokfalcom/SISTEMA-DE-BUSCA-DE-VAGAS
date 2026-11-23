@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import os
+from datetime import datetime
 
 from flask import Flask, jsonify, render_template, request, send_file
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -54,6 +55,37 @@ def index():
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.get("/api/live-jobs")
+def live_jobs_feed():
+    """Carrega automaticamente vagas recentes (empresas + portais) para exibição inicial e pré-aquecimento."""
+    force_refresh = request.args.get("force_refresh", "false").lower() == "true"
+    deep_search = request.args.get("deep_search", "false").lower() == "true"
+    raw_jobs, sources_status = collect_jobs(
+        source_filter="all",
+        primary_skill="",
+        include_live=True,
+        deep_search=deep_search,
+        user_country="Brasil",
+        force_refresh=force_refresh,
+    )
+    ranked_jobs = match_jobs(
+        jobs=raw_jobs,
+        candidate_skills=[],
+        candidate_text="",
+        candidate_seniority="Pleno",
+        sort_by="recent",
+        user_country="Brasil",
+    )
+    return jsonify(
+        {
+            "jobs": ranked_jobs[:24],
+            "total_jobs": len(ranked_jobs),
+            "sources": sources_status,
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
+        }
+    )
 
 
 @app.get("/api/sample-resume")
@@ -131,6 +163,7 @@ def analyze_resume():
             "skill_gaps": skill_gaps,
             "sources": sources_status,
             "external_links": external_links,
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
         }
     )
 
@@ -152,6 +185,7 @@ def search_jobs_by_profile():
     sort_by = str(payload.get("sort_by") or "match").strip().lower()
     include_live = bool(payload.get("include_live", True))
     deep_search = bool(payload.get("deep_search", True))
+    force_refresh = bool(payload.get("force_refresh", False))
     user_country = str(payload.get("country") or "Brasil").strip()
     try:
         min_score = max(0, min(100, int(payload.get("min_score") or 0)))
@@ -169,6 +203,7 @@ def search_jobs_by_profile():
         skills=skills,
         suggested_roles=roles,
         user_country=user_country,
+        force_refresh=force_refresh,
     )
 
     ranked_jobs = match_jobs(
@@ -196,6 +231,7 @@ def search_jobs_by_profile():
             "skill_gaps": skill_gaps,
             "sources": sources_status,
             "external_links": external_links,
+            "updated_at": datetime.now().strftime("%H:%M:%S"),
         }
     )
 

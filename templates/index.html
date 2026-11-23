@@ -78,6 +78,21 @@
         <div class="spinner"></div>
         <span>Analisando seu currículo, auditando qualidade ATS e executando busca profunda na internet...</span>
       </div>
+
+      <!-- Feed Automático de Vagas Recentes ao Abrir a Página -->
+      <div class="live-feed-card" id="liveFeedSection">
+        <div class="live-feed-header">
+          <div>
+            <span class="meta-label">Carregamento Automático em Tempo Real</span>
+            <h3>🔥 Vagas Recentes (Empresas &amp; Portais)</h3>
+          </div>
+          <div class="live-feed-controls">
+            <span class="live-status-pill" id="homeLiveStatus">🔄 Carregando vagas...</span>
+            <button type="button" class="btn btn-secondary btn-small" id="homeRefreshBtn">🔄 Atualizar</button>
+          </div>
+        </div>
+        <div class="live-feed-grid" id="homeLiveGrid"></div>
+      </div>
     </section>
 
     <!-- Painel de Resultados -->
@@ -170,6 +185,16 @@
       <!-- Coluna Principal: Ferramentas, Filtros e Vagas -->
       <section class="jobs-column">
         <div class="toolbar-top">
+          <div class="live-sync-group">
+            <span class="live-status-pill" id="resultsLiveStatus">🟢 Atualizado agora</span>
+            <label class="checkbox-label" style="font-size:0.78rem;">
+              <input type="checkbox" id="autoRefreshCheck" checked />
+              <span>Auto-atualizar (5 min)</span>
+            </label>
+            <button type="button" class="btn btn-ghost btn-small" id="manualRefreshBtn" title="Buscar novas vagas agora ignorando cache">
+              🔄 Atualizar
+            </button>
+          </div>
           <button type="button" class="btn btn-primary btn-small" id="deepSearchBtn">
             🌐 Executar Busca Profunda na Internet
           </button>

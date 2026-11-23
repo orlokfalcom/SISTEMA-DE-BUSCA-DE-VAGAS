@@ -958,7 +958,12 @@ window.VagaMatchEngine = (() => {
     }
   }
 
-  async function collectJobs({ sourceFilter = "all", primarySkill = "", includeLive = true, deepSearch = true, skills = [], suggestedRoles = [] }) {
+  async function collectJobs({ sourceFilter = "all", primarySkill = "", includeLive = true, deepSearch = true, skills = [], suggestedRoles = [], forceRefresh = false }) {
+    if (forceRefresh) {
+      for (const k of [...cache.keys()]) {
+        if (k !== "local") cache.delete(k);
+      }
+    }
     let jobs = [];
     const sources = { local_br: 0, remotive: 0, arbeitnow: 0, jobicy: 0, remoteok: 0, github_br: 0, deep_search: deepSearch };
 

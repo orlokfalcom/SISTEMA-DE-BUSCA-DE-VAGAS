@@ -853,8 +853,11 @@ def collect_jobs(
     skills: list[str] | None = None,
     suggested_roles: list[str] | None = None,
     user_country: str = "Brasil",
+    force_refresh: bool = False,
 ) -> tuple[list[dict], dict]:
     """Agrega vagas locais, sites oficiais de empresas (Brasil + Global) e portais da internet em paralelo."""
+    if force_refresh:
+        _CACHE.clear()
     jobs: list[dict] = []
     sources_status = {
         "local_br": 0,
