@@ -296,44 +296,39 @@ def estimate_experience_years(text: str) -> int | None:
     )
 
     start_points: list[int] = []
-    end_points: list[int] = []
     for m in range_regex.finditer(exp_section):
-        s_month_tok, s_year_s, is_present, e_month_tok, e_year_s = m.groups()
+        s_month_tok, s_year_s, _is_present, _e_month_tok, _e_year_s = m.groups()
         start_y = int(s_year_s)
-        if not (1975 <= start_y <= current_year):
+        if not (1970 <= start_y <= current_year):
             continue
-        start_m = _parse_month_token(s_month_tok, 1)
-        if is_present:
-            end_y, end_m = current_year, current_month
-        else:
-            end_y = int(e_year_s)
-            if not (start_y <= end_y <= current_year + 1):
-                continue
-            end_y = min(end_y, current_year)
-            # Se só anos foram informados ("2023 - 2026"), usa mesmo mês para dar exatamente end_y - start_y
-            end_m = _parse_month_token(e_month_tok, start_m if not s_month_tok else 12)
-        start_idx = start_y * 12 + start_m
-        end_idx = end_y * 12 + end_m
-        if end_idx >= start_idx:
-            start_points.append(start_idx)
-            end_points.append(end_idx)
+        start_m = _parse_month_token(s_month_tok, current_month)
+        start_points.append(start_y * 12 + start_m)
 
-    # Também captura "desde 2015" ou "desde jan/2018" na seção de experiência
+    # Também captura "desde 1992" / "desde 01/1992" ou qualquer data explícita "MM/YYYY" ou "Mês/YYYY" na experiência
     since_regex = re.compile(rf"\b(?:desde|since|a\s+partir\s+de)\s+(?:({month_pat})\s*(?:de\s+|[/.\-]\s*|\s+))?\b({year_pat})\b")
     for m in since_regex.finditer(exp_section):
         s_month_tok, s_year_s = m.groups()
         start_y = int(s_year_s)
-        if 1975 <= start_y <= current_year:
+        if 1970 <= start_y <= current_year:
+            start_m = _parse_month_token(s_month_tok, current_month)
+            start_points.append(start_y * 12 + start_m)
+
+    single_date_regex = re.compile(rf"\b({month_pat})\s*(?:de\s+|[/.\-]\s*)\s*({year_pat})\b")
+    for m in single_date_regex.finditer(exp_section):
+        s_month_tok, s_year_s = m.groups()
+        start_y = int(s_year_s)
+        if 1970 <= start_y <= current_year:
             start_m = _parse_month_token(s_month_tok, 1)
             start_points.append(start_y * 12 + start_m)
-            end_points.append(current_year * 12 + current_month)
 
     date_span_years: int | None = None
-    if start_points and end_points:
-        total_months = max(end_points) - min(start_points)
+    if start_points:
+        # Data final é sempre a data atual, partindo da data mais antiga registrada na experiência
+        now_idx = current_year * 12 + current_month
+        total_months = now_idx - min(start_points)
         if total_months >= 6:
             calc_years = max(1, int(round(total_months / 12.0)))
-            if 0 < calc_years <= 45:
+            if 0 < calc_years <= 55:
                 date_span_years = calc_years
 
     # 2. Captura menção explícita de anos de experiência/trajetória

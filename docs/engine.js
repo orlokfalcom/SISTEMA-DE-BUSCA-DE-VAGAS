@@ -268,43 +268,37 @@ window.VagaMatchEngine = (() => {
     );
 
     const startPts = [];
-    const endPts = [];
     for (const m of expSection.matchAll(rangeRe)) {
-      const [, sMonthTok, sYearS, isPresent, eMonthTok, eYearS] = m;
+      const [, sMonthTok, sYearS] = m;
       const startY = parseInt(sYearS, 10);
-      if (startY < 1975 || startY > currentYear) continue;
-      const startM = parseMonthToken(sMonthTok, 1);
-      let endY = currentYear;
-      let endM = currentMonth;
-      if (!isPresent) {
-        endY = parseInt(eYearS, 10);
-        if (endY < startY || endY > currentYear + 1) continue;
-        endY = Math.min(endY, currentYear);
-        endM = parseMonthToken(eMonthTok, sMonthTok ? 12 : startM);
-      }
-      const sIdx = startY * 12 + startM;
-      const eIdx = endY * 12 + endM;
-      if (eIdx >= sIdx) {
-        startPts.push(sIdx);
-        endPts.push(eIdx);
-      }
+      if (startY < 1970 || startY > currentYear) continue;
+      const startM = parseMonthToken(sMonthTok, currentMonth);
+      startPts.push(startY * 12 + startM);
     }
 
     const sinceRe = new RegExp(`\\b(?:desde|since|a\\s+partir\\s+de)\\s+(?:(${monthPat})\\s*(?:de\\s+|[/\\.\\-]\\s*|\\s+))?\\b(${yearPat})\\b`, "g");
     for (const m of expSection.matchAll(sinceRe)) {
       const startY = parseInt(m[2], 10);
-      if (startY >= 1975 && startY <= currentYear) {
+      if (startY >= 1970 && startY <= currentYear) {
+        startPts.push(startY * 12 + parseMonthToken(m[1], currentMonth));
+      }
+    }
+
+    const singleDateRe = new RegExp(`\\b(${monthPat})\\s*(?:de\\s+|[/\\.\\-]\\s*)\\s*(${yearPat})\\b`, "g");
+    for (const m of expSection.matchAll(singleDateRe)) {
+      const startY = parseInt(m[2], 10);
+      if (startY >= 1970 && startY <= currentYear) {
         startPts.push(startY * 12 + parseMonthToken(m[1], 1));
-        endPts.push(currentYear * 12 + currentMonth);
       }
     }
 
     let dateSpanYears = null;
-    if (startPts.length && endPts.length) {
-      const totalMonths = Math.max(...endPts) - Math.min(...startPts);
+    if (startPts.length) {
+      const nowIdx = currentYear * 12 + currentMonth;
+      const totalMonths = nowIdx - Math.min(...startPts);
       if (totalMonths >= 6) {
         const calc = Math.max(1, Math.round(totalMonths / 12));
-        if (calc > 0 && calc <= 45) dateSpanYears = calc;
+        if (calc > 0 && calc <= 55) dateSpanYears = calc;
       }
     }
 
