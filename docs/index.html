@@ -9,10 +9,10 @@
 <body>
   <div class="app-shell">
     <header class="hero">
-      <div class="hero-badge">100% no Navegador (Privado) · Análise PDF · Diagnóstico ATS · TF-IDF</div>
+      <div class="hero-badge">100% no Navegador · Busca Profunda Multi-Fonte · Editor de Currículo ATS ao Vivo</div>
       <h1>VagaMatch <span class="accent">PDF</span></h1>
       <p class="hero-subtitle">
-        Envie seu currículo em PDF para receber diagnóstico ATS, análise de lacunas de habilidades (Skill Gap) e vagas ranqueadas com explicabilidade transparente — tudo processado diretamente no seu navegador.
+        Envie seu currículo em PDF para varrer vagas em toda a internet, aprimorar seu currículo em um editor ATS em tempo real e ranquear oportunidades com explicabilidade transparente — tudo direto no navegador.
       </p>
     </header>
 
@@ -40,10 +40,41 @@
         </div>
       </div>
 
+      <div class="feature-strip">
+        <div class="feature-item">
+          <span class="feature-icon">🌐</span>
+          <div>
+            <strong>Busca Profunda Multi-Fonte</strong>
+            <p>Varredura paralela em APIs abertas + 8 portais com busca avançada.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">✨</span>
+          <div>
+            <strong>Editor de Currículo ATS</strong>
+            <p>Edite o currículo ao vivo com auto-correção, score em tempo real e exportação PDF.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🎯</span>
+          <div>
+            <strong>Matching Semântico TF-IDF</strong>
+            <p>Score explicável por skills exatas, relacionadas, senioridade e texto.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">⚡</span>
+          <div>
+            <strong>Simulador &amp; Rastreador</strong>
+            <p>Compare com qualquer vaga colada, acompanhe candidaturas e exporte CSV.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="status-banner hidden" id="statusBanner"></div>
       <div class="loader hidden" id="loader">
         <div class="spinner"></div>
-        <span>Lendo seu PDF, auditando qualidade ATS e calculando compatibilidade...</span>
+        <span>Lendo seu PDF, auditando qualidade ATS e executando busca profunda na internet...</span>
       </div>
     </section>
 
@@ -194,9 +225,13 @@
             <option value="Entrevista">💬 Entrevista</option>
             <option value="Proposta">🎉 Proposta</option>
           </select>
+          <button type="button" class="btn btn-ghost btn-small" id="clearFiltersBtn" title="Limpar todos os filtros">
+            ✕ Limpar
+          </button>
         </div>
 
         <div class="results-summary" id="resultsSummary"></div>
+        <div class="sources-strip" id="sourcesStrip"></div>
 
         <div class="jobs-grid" id="jobsGrid"></div>
       </section>
@@ -270,21 +305,62 @@
     </div>
   </div>
 
-  <!-- Modal Aprimorador de Currículo ATS -->
+  <!-- Modal Editor de Currículo ATS -->
   <div class="modal-overlay hidden" id="improveModal" role="dialog" aria-modal="true">
-    <div class="modal-card modal-wide">
+    <div class="modal-card modal-editor">
       <div class="modal-header">
         <div>
-          <span class="source-tag">Consultor Automático ATS</span>
-          <h3>Aprimorar Currículo — Modificações Necessárias para ATS</h3>
+          <span class="source-tag">Editor Inteligente de Currículo ATS</span>
+          <h3>Editor de Currículo &amp; Melhorias Necessárias para ATS</h3>
         </div>
         <button type="button" class="modal-close" id="closeImproveBtn" aria-label="Fechar">✕</button>
       </div>
-      <div class="modal-body" id="improveBody">
-        <span>Carregando diagnóstico detalhado...</span>
+      <div class="editor-shell">
+        <div class="editor-pane">
+          <div class="editor-toolbar">
+            <div class="editor-score-pill" id="editorLiveScore">ATS: —/100</div>
+            <div class="editor-toolbar-actions">
+              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn" title="Corrige formatação, telefone e marcadores duplicados automaticamente">
+                ⚡ Auto-Corrigir
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn" title="Substitui pelo modelo estruturado ATS pré-preenchido">
+                📄 Modelo ATS
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorCopyBtn">
+                📋 Copiar
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorPrintPdfBtn">
+                🖨️ Salvar PDF
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="atsResumeEditor"
+            class="resume-editor-textarea"
+            spellcheck="true"
+            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."
+          ></textarea>
+          <div class="editor-statusbar">
+            <span id="editorWordCount">0 palavras</span>
+            <span id="editorSyncStatus">Edite o currículo acima — o score e as melhorias atualizam ao vivo</span>
+          </div>
+        </div>
+        <div class="improvements-pane">
+          <div id="improveBody" class="improvements-scroll">
+            <span>Carregando diagnóstico detalhado...</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-small" id="editorDownloadTxtBtn">⬇ Baixar .TXT</button>
+        <button type="button" class="btn btn-primary btn-small" id="applyEditedResumeBtn">
+          ✅ Aplicar Currículo Editado na Busca de Vagas
+        </button>
       </div>
     </div>
   </div>
+
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
   <!-- PDF.js via CDN (leitura 100% client-side para GitHub Pages) -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>

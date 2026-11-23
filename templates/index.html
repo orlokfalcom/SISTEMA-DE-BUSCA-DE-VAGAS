@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VagaMatch PDF — Busca Inteligente de Vagas &amp; Diagnóstico ATS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
 </head>
+
 <body>
   <div class="app-shell">
     <header class="hero">
-      <div class="hero-badge">Análise de Currículo PDF · Diagnóstico ATS · Matching Semântico TF-IDF</div>
+      <div class="hero-badge">Busca Profunda em 7+ Fontes · Editor de Currículo ATS ao Vivo · Matching TF-IDF</div>
       <h1>VagaMatch <span class="accent">PDF</span></h1>
       <p class="hero-subtitle">
-        Envie seu currículo em PDF para receber diagnóstico ATS, análise de lacunas de habilidades (Skill Gap) e vagas ranqueadas com explicabilidade transparente.
+        Envie seu currículo em PDF para varrer vagas em toda a internet, aprimorar seu currículo em um editor ATS em tempo real e ranquear oportunidades com explicabilidade transparente.
       </p>
     </header>
 
@@ -40,10 +42,41 @@
         </div>
       </div>
 
+      <div class="feature-strip">
+        <div class="feature-item">
+          <span class="feature-icon">🌐</span>
+          <div>
+            <strong>Busca Profunda Multi-Fonte</strong>
+            <p>Varredura paralela em 7 fontes ao vivo + 8 portais com busca avançada.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">✨</span>
+          <div>
+            <strong>Editor de Currículo ATS</strong>
+            <p>Edite o currículo ao vivo com auto-correção, score em tempo real e exportação PDF.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">🎯</span>
+          <div>
+            <strong>Matching Semântico TF-IDF</strong>
+            <p>Score explicável por skills exatas, relacionadas, senioridade e texto.</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <span class="feature-icon">⚡</span>
+          <div>
+            <strong>Simulador &amp; Rastreador</strong>
+            <p>Compare com qualquer vaga colada, acompanhe candidaturas e exporte CSV.</p>
+          </div>
+        </div>
+      </div>
+
       <div class="status-banner hidden" id="statusBanner"></div>
       <div class="loader hidden" id="loader">
         <div class="spinner"></div>
-        <span>Analisando seu currículo, auditando qualidade ATS e calculando compatibilidade...</span>
+        <span>Analisando seu currículo, auditando qualidade ATS e executando busca profunda na internet...</span>
       </div>
     </section>
 
@@ -71,7 +104,8 @@
             <div class="ats-bar-fill" id="atsBarFill" style="width: 0%"></div>
           </div>
           <ul class="ats-checks" id="atsChecks"></ul>
-          <button type="button" class="btn btn-primary btn-small" id="openImproveBtn" style="width:100%;margin-top:10px;">
+          <button type="button" class="btn btn-primary btn-small" id="openImproveBtn"
+            style="width:100%;margin-top:10px;">
             ✨ Aprimorar Currículo (ATS)
           </button>
         </div>
@@ -104,13 +138,8 @@
           </div>
           <div class="pill-list editable" id="skillsList"></div>
           <div class="add-skill-row">
-            <input
-              type="text"
-              id="newSkillInput"
-              list="skillSuggestions"
-              placeholder="Adicionar habilidade (ex: Python)"
-              class="text-input"
-            />
+            <input type="text" id="newSkillInput" list="skillSuggestions"
+              placeholder="Adicionar habilidade (ex: Python)" class="text-input" />
             <datalist id="skillSuggestions">
               {% for skill in available_skills %}
               <option value="{{ skill }}"></option>
@@ -156,12 +185,8 @@
         </div>
 
         <div class="filters-bar">
-          <input
-            type="text"
-            id="queryInput"
-            class="text-input search-input"
-            placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..."
-          />
+          <input type="text" id="queryInput" class="text-input search-input"
+            placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..." />
           <select id="modalityFilter" class="select-input">
             <option value="">Todas modalidades</option>
             <option value="Remoto">Remoto</option>
@@ -199,9 +224,13 @@
             <option value="Entrevista">💬 Entrevista</option>
             <option value="Proposta">🎉 Proposta</option>
           </select>
+          <button type="button" class="btn btn-ghost btn-small" id="clearFiltersBtn" title="Limpar todos os filtros">
+            ✕ Limpar
+          </button>
         </div>
 
         <div class="results-summary" id="resultsSummary"></div>
+        <div class="sources-strip" id="sourcesStrip"></div>
 
         <div class="jobs-grid" id="jobsGrid"></div>
       </section>
@@ -267,8 +296,10 @@
         <button type="button" class="modal-close" id="closeCompareBtn" aria-label="Fechar">✕</button>
       </div>
       <div class="modal-body">
-        <input type="text" id="compareTitleInput" class="text-input" placeholder="Título da vaga (ex: Desenvolvedor Python Sênior)" />
-        <textarea id="compareDescInput" class="textarea-input" rows="6" placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
+        <input type="text" id="compareTitleInput" class="text-input"
+          placeholder="Título da vaga (ex: Desenvolvedor Python Sênior)" />
+        <textarea id="compareDescInput" class="textarea-input" rows="6"
+          placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
         <button type="button" class="btn btn-primary" id="runCompareBtn">Calcular Compatibilidade ATS</button>
         <div id="compareResult" class="compare-result hidden"></div>
       </div>
@@ -291,10 +322,12 @@
           <div class="editor-toolbar">
             <div class="editor-score-pill" id="editorLiveScore">ATS: —/100</div>
             <div class="editor-toolbar-actions">
-              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn" title="Corrige formatação, telefone e marcadores duplicados automaticamente">
+              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn"
+                title="Corrige formatação, telefone e marcadores duplicados automaticamente">
                 ⚡ Auto-Corrigir
               </button>
-              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn" title="Substitui pelo modelo estruturado ATS pré-preenchido">
+              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn"
+                title="Substitui pelo modelo estruturado ATS pré-preenchido">
                 📄 Modelo ATS
               </button>
               <button type="button" class="btn btn-secondary btn-small" id="editorCopyBtn">
@@ -305,12 +338,8 @@
               </button>
             </div>
           </div>
-          <textarea
-            id="atsResumeEditor"
-            class="resume-editor-textarea"
-            spellcheck="true"
-            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."
-          ></textarea>
+          <textarea id="atsResumeEditor" class="resume-editor-textarea" spellcheck="true"
+            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."></textarea>
           <div class="editor-statusbar">
             <span id="editorWordCount">0 palavras</span>
             <span id="editorSyncStatus">Edite o currículo acima — o score e as melhorias atualizam ao vivo</span>
@@ -333,6 +362,9 @@
     </div>
   </div>
 
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
+
 </html>

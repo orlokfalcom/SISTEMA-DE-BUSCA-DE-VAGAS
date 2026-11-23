@@ -23,8 +23,8 @@
 body {
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.16), transparent 40%),
-              radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 35%),
-              var(--bg);
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.12), transparent 35%),
+    var(--bg);
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
@@ -238,7 +238,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hidden {
@@ -1085,4 +1087,108 @@ body {
   margin: 0;
   max-height: 260px;
   overflow-y: auto;
+}
+
+/* Feature Strip na tela inicial */
+.feature-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+@media (max-width: 640px) {
+  .feature-strip {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.feature-icon {
+  font-size: 1.3rem;
+  line-height: 1.2;
+}
+
+.feature-item strong {
+  display: block;
+  font-size: 0.86rem;
+  color: #f8fafc;
+  margin-bottom: 2px;
+}
+
+.feature-item p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Source Breakdown Strip */
+.sources-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.source-chip {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: #cbd5e1;
+}
+
+.source-chip strong {
+  color: var(--accent);
+}
+
+/* Itens clicáveis para localizar no editor */
+.pill.jump-item {
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.pill.jump-item:hover {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.15);
+  color: #e0f2fe;
+}
+
+/* Toast Notification */
+.toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 200;
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 12px;
+  padding: 11px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 12px 32px rgba(2, 6, 23, 0.55);
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

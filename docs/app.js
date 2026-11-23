@@ -57,9 +57,13 @@
   const minScoreFilter = document.getElementById("minScoreFilter");
   const sortFilter = document.getElementById("sortFilter");
   const trackerFilter = document.getElementById("trackerFilter");
+  const clearFiltersBtn = document.getElementById("clearFiltersBtn");
   const resultsSummary = document.getElementById("resultsSummary");
+  const sourcesStrip = document.getElementById("sourcesStrip");
   const jobsGrid = document.getElementById("jobsGrid");
   const exportCsvBtn = document.getElementById("exportCsvBtn");
+  const toastEl = document.getElementById("toast");
+  let toastTimer = null;
 
   // Job Modal
   const jobModal = document.getElementById("jobModal");
@@ -87,12 +91,24 @@
   const runCompareBtn = document.getElementById("runCompareBtn");
   const compareResult = document.getElementById("compareResult");
 
-  // Improve ATS Modal
+  // Improve ATS Editor Modal
   const openImproveBtn = document.getElementById("openImproveBtn");
   const openImproveTopBtn = document.getElementById("openImproveTopBtn");
   const improveModal = document.getElementById("improveModal");
   const closeImproveBtn = document.getElementById("closeImproveBtn");
   const improveBody = document.getElementById("improveBody");
+  const atsResumeEditor = document.getElementById("atsResumeEditor");
+  const editorLiveScore = document.getElementById("editorLiveScore");
+  const editorWordCount = document.getElementById("editorWordCount");
+  const editorSyncStatus = document.getElementById("editorSyncStatus");
+  const editorAutoFixBtn = document.getElementById("editorAutoFixBtn");
+  const editorLoadTemplateBtn = document.getElementById("editorLoadTemplateBtn");
+  const editorCopyBtn = document.getElementById("editorCopyBtn");
+  const editorPrintPdfBtn = document.getElementById("editorPrintPdfBtn");
+  const editorDownloadTxtBtn = document.getElementById("editorDownloadTxtBtn");
+  const applyEditedResumeBtn = document.getElementById("applyEditedResumeBtn");
+  let latestAtsPlan = null;
+  let editorDebounce = null;
 
   function showError(msg) {
     statusBanner.textContent = msg;
@@ -106,6 +122,16 @@
 
   function setLoading(isLoading) {
     loader.classList.toggle("hidden", !isLoading);
+  }
+
+  function showToast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.remove("hidden");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.add("hidden");
+    }, 2800);
   }
 
   function persistTracker() {
@@ -329,6 +355,20 @@
       <span>Base Brasil: ${state.sources.local_br || 0} · ${modeLabel}: ${liveTotal}</span>
     `;
 
+    if (sourcesStrip) {
+      const sourceLabels = [
+        ["Base Brasil", state.sources.local_br],
+        ["Remotive", state.sources.remotive],
+        ["Jobicy", state.sources.jobicy],
+        ["Arbeitnow", state.sources.arbeitnow],
+        ["RemoteOK", state.sources.remoteok],
+        ["GitHub BR", state.sources.github_br],
+      ].filter(([, count]) => Number(count || 0) > 0);
+      sourcesStrip.innerHTML = sourceLabels
+        .map(([label, count]) => `<span class="source-chip">${escapeHtml(label)}: <strong>${count}</strong></span>`)
+        .join("");
+    }
+
     if (!visibleJobs.length) {
       jobsGrid.innerHTML = `
         <div class="empty-state">
@@ -548,6 +588,13 @@
     pdfInput.click();
   });
 
+  dropzone.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      pdfInput.click();
+    }
+  });
+
   pdfInput.addEventListener("change", () => {
     const file = pdfInput.files && pdfInput.files[0];
     if (file) analyzeUpload({ file });
@@ -636,12 +683,29 @@
   minScoreFilter.addEventListener("change", () => triggerResearch(true));
   sortFilter.addEventListener("change", () => triggerResearch(true));
   trackerFilter.addEventListener("change", renderJobs);
-  exportCsvBtn.addEventListener("click", exportJobsCsv);
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener("click", () => {
+      queryInput.value = "";
+      modalityFilter.value = "";
+      jobSeniorityFilter.value = "";
+      sourceFilter.value = "all";
+      minScoreFilter.value = "0";
+      sortFilter.value = "match";
+      trackerFilter.value = "";
+      triggerResearch(true);
+      showToast("Filtros limpos");
+    });
+  }
+  exportCsvBtn.addEventListener("click", () => {
+    exportJobsCsv();
+    showToast("Exportação CSV iniciada");
+  });
   if (deepSearchBtn) {
     deepSearchBtn.addEventListener("click", () => {
       if (includeLiveCheck) includeLiveCheck.checked = true;
       if (deepSearchCheck) deepSearchCheck.checked = true;
       if (sourceFilter.value === "local") sourceFilter.value = "all";
+      showToast("Executando Busca Profunda na internet...");
       triggerResearch(true);
     });
   }
@@ -673,29 +737,44 @@
     }
   });
 
-  function openImproveModal() {
-    if (!state.profile || !state.resumeTextSnippet) return;
-    improveModal.classList.remove("hidden");
+  function updateEditorStats(text) {
+    const words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    if (editorWordCount) editorWordCount.textContent = `${words} palavra(s) · ${String(text || "").length} caracteres`;
+  }
+
+  function refreshImprovePlan(text, reparse = true) {
+    if (!state.profile) return;
+    const parsed = reparse ? Engine.parseResumeText(text, state.profile.filename, state.profile.pages) : state.profile;
     const plan = Engine.buildAtsImprovementPlan({
-      rawText: state.resumeTextSnippet,
-      pages: state.profile.pages,
-      wordCount: state.profile.word_count,
-      skills: state.skills,
-      suggestedRoles: state.profile.suggested_roles || [],
+      rawText: text,
+      pages: parsed.pages,
+      wordCount: parsed.word_count,
+      skills: reparse ? parsed.skills : state.skills,
+      suggestedRoles: parsed.suggested_roles || [],
       seniority: state.seniority,
-      email: state.profile.email,
-      phone: state.profile.phone,
-      linkedin: state.profile.linkedin,
-      github: state.profile.github,
+      email: parsed.email,
+      phone: parsed.phone,
+      linkedin: parsed.linkedin,
+      github: parsed.github,
       skillGaps: state.skillGaps || [],
     });
+    plan.detected_skills = parsed.skills || state.skills;
+    latestAtsPlan = plan;
+
+    if (editorLiveScore) {
+      editorLiveScore.textContent = `ATS: ${plan.current_score}/100 (${plan.current_level}) ➜ Meta: ${plan.projected_score}/100`;
+      editorLiveScore.className = "editor-score-pill " + (plan.current_score >= 85 ? "score-high" : plan.current_score >= 65 ? "score-mid" : "score-low");
+    }
 
     const prioClass = (p) => (p === "Alta" ? "prio-high" : p === "Média" ? "prio-mid" : "prio-low");
     const modsHtml = (plan.modifications || [])
       .map((m, idx) => {
         const foundHtml = (m.found_items || []).length
           ? `<div class="pill-list" style="margin:6px 0;">${m.found_items
-              .map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`)
+              .map(
+                (it) =>
+                  `<button type="button" class="pill missing jump-item" data-jump-text="${escapeHtml(it)}" title="Clique para localizar este trecho no editor">🔍 ${escapeHtml(it)}</button>`
+              )
               .join("")}</div>`
           : "";
         return `
@@ -723,36 +802,54 @@
         </div>
         <div class="improve-arrow">➜</div>
         <div>
-          <span class="meta-label">Score Projetado após Ajustes</span>
-          <div class="improve-score-val projected">${plan.projected_score}/100 <small>(Excelente)</small></div>
+          <span class="meta-label">Projetado</span>
+          <div class="improve-score-val projected">${plan.projected_score}/100</div>
         </div>
         <div>
-          <span class="meta-label">Modificações</span>
+          <span class="meta-label">Melhorias</span>
           <div class="improve-score-val">${plan.total_modifications}</div>
         </div>
       </div>
 
-      <h4>Modificações Necessárias no Seu Currículo</h4>
+      <h4>Melhorias Necessárias para Atender ATS</h4>
       <div class="mod-list">${modsHtml}</div>
-
-      <h4>Modelo Estruturado ATS Pronto para Copiar</h4>
-      <div class="pitch-box">
-        <pre class="ats-template-pre">${escapeHtml(plan.ats_template || "")}</pre>
-        <button type="button" class="btn btn-primary btn-small" id="copyAtsTemplateBtn">📋 Copiar Modelo Otimizado ATS</button>
-      </div>
     `;
+    if (editorSyncStatus) editorSyncStatus.textContent = "Diagnóstico ATS atualizado em tempo real";
+  }
 
-    const copyBtn = document.getElementById("copyAtsTemplateBtn");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(plan.ats_template || "");
-          copyBtn.textContent = "✓ Modelo Copiado!";
-        } catch {
-          copyBtn.textContent = "Selecione e copie o texto acima";
-        }
-      });
+  function openImproveModal() {
+    if (!state.profile || !state.resumeTextSnippet) return;
+    improveModal.classList.remove("hidden");
+    if (atsResumeEditor) {
+      atsResumeEditor.value = state.resumeTextSnippet;
+      updateEditorStats(atsResumeEditor.value);
     }
+    refreshImprovePlan(state.resumeTextSnippet, false);
+  }
+
+  function applyQuickAutoFixes() {
+    if (!atsResumeEditor) return;
+    let txt = atsResumeEditor.value;
+    txt = txt.replace(/\[(\d{2})(\d{5})(\d{4})\b/g, "($1) $2-$3");
+    txt = txt.replace(/\b(\d{2})(\d{5})(\d{4})\b/g, "($1) $2-$3");
+    txt = txt.replace(/([•\*\-])\s*[•\*\-]\s+/g, "$1 ");
+    txt = txt.replace(/[ \t]{2,}/g, " ");
+    atsResumeEditor.value = txt;
+    updateEditorStats(txt);
+    refreshImprovePlan(txt, true);
+  }
+
+  function printResumeAsPdf() {
+    if (!atsResumeEditor) return;
+    const content = escapeHtml(atsResumeEditor.value).replaceAll("\n", "<br/>");
+    const win = window.open("", "_blank", "width=850,height=950");
+    if (!win) return;
+    win.document.write(
+      `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Currículo Otimizado ATS</title>` +
+      `<style>body{font-family:Arial,Helvetica,sans-serif;max-width:780px;margin:32px auto;padding:0 24px;line-height:1.5;color:#111827;font-size:13px;}@media print{body{margin:0;}}</style>` +
+      `</head><body><div>${content}</div><script>window.onload=function(){window.print();};</script></body></html>`
+    );
+    win.document.close();
   }
 
   openCompareBtn.addEventListener("click", () => compareModal.classList.remove("hidden"));
@@ -768,6 +865,95 @@
   if (improveModal) {
     improveModal.addEventListener("click", (e) => {
       if (e.target === improveModal) improveModal.classList.add("hidden");
+    });
+  }
+  if (atsResumeEditor) {
+    atsResumeEditor.addEventListener("input", () => {
+      const txt = atsResumeEditor.value;
+      updateEditorStats(txt);
+      clearTimeout(editorDebounce);
+      editorDebounce = setTimeout(() => {
+        if (txt.trim().length >= 30) refreshImprovePlan(txt, true);
+      }, 300);
+    });
+  }
+  if (editorAutoFixBtn) {
+    editorAutoFixBtn.addEventListener("click", () => {
+      applyQuickAutoFixes();
+      showToast("Correções automáticas aplicadas!");
+    });
+  }
+  if (improveBody) {
+    improveBody.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-jump-text]");
+      if (!btn || !atsResumeEditor) return;
+      const needle = btn.getAttribute("data-jump-text") || "";
+      const haystack = atsResumeEditor.value;
+      const pos = haystack.toLowerCase().indexOf(needle.toLowerCase());
+      if (pos >= 0) {
+        atsResumeEditor.focus();
+        atsResumeEditor.setSelectionRange(pos, pos + needle.length);
+        showToast("Trecho selecionado no editor");
+      } else {
+        showToast("Trecho já corrigido ou não encontrado literalmente");
+      }
+    });
+  }
+  if (editorLoadTemplateBtn) {
+    editorLoadTemplateBtn.addEventListener("click", () => {
+      if (!latestAtsPlan || !latestAtsPlan.ats_template || !atsResumeEditor) return;
+      atsResumeEditor.value = latestAtsPlan.ats_template;
+      updateEditorStats(atsResumeEditor.value);
+      refreshImprovePlan(atsResumeEditor.value, true);
+    });
+  }
+  if (editorCopyBtn) {
+    editorCopyBtn.addEventListener("click", async () => {
+      if (!atsResumeEditor) return;
+      try {
+        await navigator.clipboard.writeText(atsResumeEditor.value);
+        editorCopyBtn.textContent = "✓ Copiado!";
+        setTimeout(() => {
+          editorCopyBtn.textContent = "📋 Copiar";
+        }, 1800);
+      } catch {
+        editorCopyBtn.textContent = "Ctrl+C no texto";
+      }
+    });
+  }
+  if (editorPrintPdfBtn) editorPrintPdfBtn.addEventListener("click", printResumeAsPdf);
+  if (editorDownloadTxtBtn) {
+    editorDownloadTxtBtn.addEventListener("click", () => {
+      if (!atsResumeEditor) return;
+      const blob = new Blob([atsResumeEditor.value], { type: "text/plain;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "curriculo_otimizado_ats.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+  if (applyEditedResumeBtn) {
+    applyEditedResumeBtn.addEventListener("click", () => {
+      if (!atsResumeEditor || !state.profile) return;
+      const editedText = atsResumeEditor.value.trim();
+      if (!editedText) return;
+      state.resumeTextSnippet = editedText;
+      if (latestAtsPlan) {
+        if (Array.isArray(latestAtsPlan.detected_skills) && latestAtsPlan.detected_skills.length) {
+          state.skills = [...latestAtsPlan.detected_skills];
+          renderSkills();
+        }
+        state.profile.ats_audit.score = latestAtsPlan.current_score;
+        state.profile.ats_audit.level = latestAtsPlan.current_level;
+        atsScore.textContent = `${latestAtsPlan.current_score}`;
+        atsLevel.textContent = latestAtsPlan.current_level;
+        atsBarFill.style.width = `${latestAtsPlan.current_score}%`;
+      }
+      improveModal.classList.add("hidden");
+      triggerResearch(true);
+      showToast("Currículo editado aplicado à busca de vagas!");
     });
   }
 
