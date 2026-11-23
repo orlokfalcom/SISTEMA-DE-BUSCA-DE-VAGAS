@@ -275,18 +275,60 @@
     </div>
   </div>
 
-  <!-- Modal Aprimorador de Currículo ATS -->
+  <!-- Modal Editor de Currículo ATS -->
   <div class="modal-overlay hidden" id="improveModal" role="dialog" aria-modal="true">
-    <div class="modal-card modal-wide">
+    <div class="modal-card modal-editor">
       <div class="modal-header">
         <div>
-          <span class="source-tag">Consultor Automático ATS</span>
-          <h3>Aprimorar Currículo — Modificações Necessárias para ATS</h3>
+          <span class="source-tag">Editor Inteligente de Currículo ATS</span>
+          <h3>Editor de Currículo &amp; Melhorias Necessárias para ATS</h3>
         </div>
         <button type="button" class="modal-close" id="closeImproveBtn" aria-label="Fechar">✕</button>
       </div>
-      <div class="modal-body" id="improveBody">
-        <span>Carregando diagnóstico detalhado...</span>
+      <div class="editor-shell">
+        <!-- Esquerda: Editor de Texto do Currículo -->
+        <div class="editor-pane">
+          <div class="editor-toolbar">
+            <div class="editor-score-pill" id="editorLiveScore">ATS: —/100</div>
+            <div class="editor-toolbar-actions">
+              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn" title="Corrige formatação, telefone e marcadores duplicados automaticamente">
+                ⚡ Auto-Corrigir
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn" title="Substitui pelo modelo estruturado ATS pré-preenchido">
+                📄 Modelo ATS
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorCopyBtn">
+                📋 Copiar
+              </button>
+              <button type="button" class="btn btn-secondary btn-small" id="editorPrintPdfBtn">
+                🖨️ Salvar PDF
+              </button>
+            </div>
+          </div>
+          <textarea
+            id="atsResumeEditor"
+            class="resume-editor-textarea"
+            spellcheck="true"
+            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."
+          ></textarea>
+          <div class="editor-statusbar">
+            <span id="editorWordCount">0 palavras</span>
+            <span id="editorSyncStatus">Edite o currículo acima — o score e as melhorias atualizam ao vivo</span>
+          </div>
+        </div>
+
+        <!-- Direita: Painel Vivo de Melhorias ATS -->
+        <div class="improvements-pane">
+          <div id="improveBody" class="improvements-scroll">
+            <span>Carregando diagnóstico detalhado...</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-small" id="editorDownloadTxtBtn">⬇ Baixar .TXT</button>
+        <button type="button" class="btn btn-primary btn-small" id="applyEditedResumeBtn">
+          ✅ Aplicar Currículo Editado na Busca de Vagas
+        </button>
       </div>
     </div>
   </div>

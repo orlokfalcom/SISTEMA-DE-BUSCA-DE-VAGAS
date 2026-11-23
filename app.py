@@ -15,6 +15,7 @@ from services.job_sources import build_external_search_links, collect_jobs
 from services.resume_parser import (
     SKILL_CATALOG,
     build_ats_improvement_plan,
+    extract_skills,
     generate_sample_resume_pdf,
     parse_resume_pdf,
     suggest_roles,
@@ -224,21 +225,40 @@ def compare_custom_job():
 
 @app.post("/api/improve-resume")
 def improve_resume():
-    """Gera o plano detalhado de modificações ATS para aprimorar o currículo atual."""
+    """Gera o plano detalhado de modificações ATS para aprimorar o currículo atual (inclusive ao vivo no editor)."""
+    import re
+
     payload = request.get_json(silent=True) or {}
     resume_text = str(payload.get("resume_text") or "").strip()
     if not resume_text:
         return jsonify({"error": "Analise um currículo em PDF antes de gerar o plano de aprimoramento ATS."}), 400
 
+    reparse = bool(payload.get("reparse", False))
     raw_skills = payload.get("skills", [])
     if not isinstance(raw_skills, list):
         return jsonify({"error": "O campo 'skills' deve ser uma lista de habilidades."}), 400
-    skills = [str(s).strip() for s in raw_skills if str(s).strip()]
+
+    skills = extract_skills(resume_text) if reparse else [str(s).strip() for s in raw_skills if str(s).strip()]
     seniority = str(payload.get("seniority") or "Pleno").strip()
-    pages = int(payload.get("pages") or 1)
-    word_count = int(payload.get("word_count") or len(resume_text.split()))
-    suggested_roles = payload.get("suggested_roles") or suggest_roles(skills, resume_text)
+    pages = int(payload.get("pages") or max(1, min(3, round(len(resume_text.split()) / 420) or 1)))
+    word_count = len(resume_text.split()) if reparse else int(payload.get("word_count") or len(resume_text.split()))
+    suggested_roles = suggest_roles(skills, resume_text) if reparse else (payload.get("suggested_roles") or suggest_roles(skills, resume_text))
     skill_gaps = payload.get("skill_gaps") if isinstance(payload.get("skill_gaps"), list) else []
+
+    if reparse:
+        email_m = re.search(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", resume_text)
+        phone_m = re.search(r"(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?(?:9\d{4}|\d{4})[-.\s]?\d{4}", resume_text)
+        linkedin_m = re.search(r"(?:https?://)?(?:www\.)?linkedin\.com/in/[a-zA-Z0-9\-_%]+", resume_text, flags=re.IGNORECASE)
+        github_m = re.search(r"(?:https?://)?(?:www\.)?github\.com/[a-zA-Z0-9\-_]+", resume_text, flags=re.IGNORECASE)
+        email = email_m.group(0) if email_m else None
+        phone = phone_m.group(0).strip() if phone_m else None
+        linkedin = linkedin_m.group(0) if linkedin_m else None
+        github = github_m.group(0) if github_m else None
+    else:
+        email = payload.get("email")
+        phone = payload.get("phone")
+        linkedin = payload.get("linkedin")
+        github = payload.get("github")
 
     plan = build_ats_improvement_plan(
         raw_text=resume_text,
@@ -247,12 +267,14 @@ def improve_resume():
         skills=skills,
         suggested_roles=suggested_roles,
         seniority=seniority,
-        email=payload.get("email"),
-        phone=payload.get("phone"),
-        linkedin=payload.get("linkedin"),
-        github=payload.get("github"),
+        email=email,
+        phone=phone,
+        linkedin=linkedin,
+        github=github,
         skill_gaps=skill_gaps,
     )
+    plan["detected_skills"] = skills
+    plan["word_count"] = word_count
     return jsonify({"improvement_plan": plan})
 
 

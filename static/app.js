@@ -79,12 +79,24 @@
   const runCompareBtn = document.getElementById("runCompareBtn");
   const compareResult = document.getElementById("compareResult");
 
-  // Improve ATS Modal
+  // Improve ATS Editor Modal
   const openImproveBtn = document.getElementById("openImproveBtn");
   const openImproveTopBtn = document.getElementById("openImproveTopBtn");
   const improveModal = document.getElementById("improveModal");
   const closeImproveBtn = document.getElementById("closeImproveBtn");
   const improveBody = document.getElementById("improveBody");
+  const atsResumeEditor = document.getElementById("atsResumeEditor");
+  const editorLiveScore = document.getElementById("editorLiveScore");
+  const editorWordCount = document.getElementById("editorWordCount");
+  const editorSyncStatus = document.getElementById("editorSyncStatus");
+  const editorAutoFixBtn = document.getElementById("editorAutoFixBtn");
+  const editorLoadTemplateBtn = document.getElementById("editorLoadTemplateBtn");
+  const editorCopyBtn = document.getElementById("editorCopyBtn");
+  const editorPrintPdfBtn = document.getElementById("editorPrintPdfBtn");
+  const editorDownloadTxtBtn = document.getElementById("editorDownloadTxtBtn");
+  const applyEditedResumeBtn = document.getElementById("applyEditedResumeBtn");
+  let latestAtsPlan = null;
+  let editorDebounce = null;
 
   function showError(msg) {
     statusBanner.textContent = msg;
@@ -525,6 +537,19 @@
       if (!resp.ok) throw new Error(data.error || "Erro na comparação.");
 
       const c = data.comparison;
+      const compareMatchedHtml = (c.matched_skills || [])
+        .map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`)
+        .join("");
+      const compareRelatedHtml = (c.related_skills || [])
+        .map((s) => `<span class="pill related">≈ ${escapeHtml(s)}</span>`)
+        .join("");
+      const compareMissingHtml = (c.missing_skills || []).length
+        ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
+        : '<span class="pill matched">Nenhuma lacuna detectada!</span>';
+      const compareTipsHtml = (c.optimization_tips || [])
+        .map((t) => `<li><span>💡</span><span>${escapeHtml(t)}</span></li>`)
+        .join("");
+
       compareResult.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <strong>${escapeHtml(c.title)}</strong>
@@ -534,24 +559,20 @@
         <div>
           <span class="meta-label">Skills Compatíveis &amp; Relacionadas</span>
           <div class="pill-list">
-            ${(c.matched_skills || []).map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`).join("")}
-            ${(c.related_skills || []).map((s) => `<span class="pill related">≈ ${escapeHtml(s)}</span>`).join("")}
+            ${compareMatchedHtml}
+            ${compareRelatedHtml}
           </div>
         </div>
         <div>
           <span class="meta-label">Skills Faltantes</span>
           <div class="pill-list">
-            ${(c.missing_skills || []).length
-          ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
-          : `<span class="pill matched">Nenhuma lacuna detectada!</span>`}
-          ? c.missing_skills.map((s) => `< span class="pill missing" > ${ escapeHtml(s) }</span > `).join("")
-          : `< span class="pill matched" > Nenhuma lacuna detectada!</span > `}
+            ${compareMissingHtml}
           </div>
         </div>
         <div>
           <span class="meta-label">Dicas de Otimização ATS</span>
           <ul class="ats-checks" style="margin-top:6px;">
-            ${(c.optimization_tips || []).map((t) => `<li><span>💡</span><span>${escapeHtml(t)}</span></li>`).join("")}
+            ${compareTipsHtml}
           </ul>
         </div>
       `;
@@ -713,16 +734,21 @@
     }
   });
 
-  async function openImproveModal() {
-    if (!state.profile || !state.resumeTextSnippet) return;
-    improveModal.classList.remove("hidden");
-    improveBody.innerHTML = `<span>Gerando plano detalhado de modificações ATS...</span>`;
+  function updateEditorStats(text) {
+    const words = String(text || "").trim().split(/\s+/).filter(Boolean).length;
+    if (editorWordCount) editorWordCount.textContent = `${words} palavra(s) · ${String(text || "").length} caracteres`;
+  }
+
+  async function refreshImprovePlan(text, reparse = true) {
+    if (!state.profile) return;
+    if (editorSyncStatus) editorSyncStatus.textContent = "Recalculando diagnóstico ATS...";
     try {
       const resp = await fetch("/api/improve-resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          resume_text: state.resumeTextSnippet,
+          resume_text: text,
+          reparse,
           pages: state.profile.pages,
           word_count: state.profile.word_count,
           skills: state.skills,
@@ -737,34 +763,83 @@
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "Erro ao gerar plano ATS.");
-      renderImprovementPlan(data.improvement_plan);
+      latestAtsPlan = data.improvement_plan;
+      renderImprovementPlan(latestAtsPlan);
+      if (editorSyncStatus) editorSyncStatus.textContent = "Diagnóstico ATS atualizado em tempo real";
     } catch (err) {
       improveBody.innerHTML = `<span style="color:#fca5a5;">${escapeHtml(err.message)}</span>`;
+      if (editorSyncStatus) editorSyncStatus.textContent = "Erro ao atualizar diagnóstico";
     }
   }
 
+  async function openImproveModal() {
+    if (!state.profile || !state.resumeTextSnippet) return;
+    improveModal.classList.remove("hidden");
+    if (atsResumeEditor) {
+      atsResumeEditor.value = state.resumeTextSnippet;
+      updateEditorStats(atsResumeEditor.value);
+    }
+    improveBody.innerHTML = `<span>Analisando seu currículo para montar o checklist de melhorias ATS...</span>`;
+    await refreshImprovePlan(state.resumeTextSnippet, false);
+  }
+
+  function applyQuickAutoFixes() {
+    if (!atsResumeEditor) return;
+    let txt = atsResumeEditor.value;
+    // 1. Remove colchete solto antes de telefone e formata (DD) 9XXXX-XXXX
+    txt = txt.replace(/\[(\d{2})(\d{5})(\d{4})\b/g, "($1) $2-$3");
+    txt = txt.replace(/\b(\d{2})(\d{5})(\d{4})\b/g, "($1) $2-$3");
+    // 2. Corrige marcadores duplicados (• • ou * * ou - -)
+    txt = txt.replace(/([•\*\-])\s*[•\*\-]\s+/g, "$1 ");
+    // 3. Limpa espaços extras
+    txt = txt.replace(/[ \t]{2,}/g, " ");
+    atsResumeEditor.value = txt;
+    updateEditorStats(txt);
+    refreshImprovePlan(txt, true);
+  }
+
+  function printResumeAsPdf() {
+    if (!atsResumeEditor) return;
+    const content = escapeHtml(atsResumeEditor.value).replaceAll("\n", "<br/>");
+    const win = window.open("", "_blank", "width=850,height=950");
+    if (!win) return;
+    win.document.write(
+      `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Currículo Otimizado ATS</title>` +
+      `<style>body{font-family:Arial,Helvetica,sans-serif;max-width:780px;margin:32px auto;padding:0 24px;line-height:1.5;color:#111827;font-size:13px;}@media print{body{margin:0;}}</style>` +
+      `</head><body><div>${content}</div><script>window.onload=function(){window.print();};</script></body></html>`
+    );
+    win.document.close();
+  }
+
   function renderImprovementPlan(plan) {
+    if (editorLiveScore) {
+      editorLiveScore.textContent = `ATS: ${plan.current_score}/100 (${plan.current_level}) ➜ Meta: ${plan.projected_score}/100`;
+      editorLiveScore.className = "editor-score-pill " + (plan.current_score >= 85 ? "score-high" : plan.current_score >= 65 ? "score-mid" : "score-low");
+    }
+
     const prioClass = (p) => (p === "Alta" ? "prio-high" : p === "Média" ? "prio-mid" : "prio-low");
     const modsHtml = (plan.modifications || [])
-      .map(
-        (m, idx) => `
+      .map((m, idx) => {
+        const foundHtml = (m.found_items || []).length
+          ? `<div class="pill-list" style="margin:6px 0;">${m.found_items
+              .map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`)
+              .join("")}</div>`
+          : "";
+        return `
         <div class="mod-card">
           <div class="mod-card-header">
             <strong>${idx + 1}. ${escapeHtml(m.category)}</strong>
             <span class="prio-badge ${prioClass(m.priority)}">Prioridade ${escapeHtml(m.priority)} · +${m.impact_points} pts</span>
           </div>
           <p class="mod-issue">${escapeHtml(m.issue)}</p>
-          ${(m.found_items || []).length
-            ? `<div class="pill-list" style="margin:6px 0;">${m.found_items.map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`).join("")}</div>`
-            : ""
-          }
+          ${foundHtml}
           <p class="mod-action"><strong>O que fazer:</strong> ${escapeHtml(m.action)}</p>
           <div class="before-after-grid">
             <div class="ba-box ba-before"><span class="meta-label">❌ Antes</span><p>${escapeHtml(m.before_example)}</p></div>
             <div class="ba-box ba-after"><span class="meta-label">✅ Depois (ATS)</span><p>${escapeHtml(m.after_example)}</p></div>
           </div>
-        </div>`
-      )
+        </div>`;
+      })
       .join("");
 
     improveBody.innerHTML = `
@@ -775,36 +850,18 @@
         </div>
         <div class="improve-arrow">➜</div>
         <div>
-          <span class="meta-label">Score Projetado após Ajustes</span>
-          <div class="improve-score-val projected">${plan.projected_score}/100 <small>(Excelente)</small></div>
+          <span class="meta-label">Projetado</span>
+          <div class="improve-score-val projected">${plan.projected_score}/100</div>
         </div>
         <div>
-          <span class="meta-label">Modificações</span>
+          <span class="meta-label">Melhorias</span>
           <div class="improve-score-val">${plan.total_modifications}</div>
         </div>
       </div>
 
-      <h4>Modificações Necessárias no Seu Currículo</h4>
+      <h4>Melhorias Necessárias para Atender ATS</h4>
       <div class="mod-list">${modsHtml}</div>
-
-      <h4>Modelo Estruturado ATS Pronto para Copiar</h4>
-      <div class="pitch-box">
-        <pre class="ats-template-pre" id="atsTemplateText">${escapeHtml(plan.ats_template || "")}</pre>
-        <button type="button" class="btn btn-primary btn-small" id="copyAtsTemplateBtn">📋 Copiar Modelo Otimizado ATS</button>
-      </div>
     `;
-
-    const copyBtn = document.getElementById("copyAtsTemplateBtn");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(plan.ats_template || "");
-          copyBtn.textContent = "✓ Modelo Copiado!";
-        } catch {
-          copyBtn.textContent = "Selecione e copie o texto acima";
-        }
-      });
-    }
   }
 
   // Compare modal events
@@ -819,13 +876,80 @@
   });
   runCompareBtn.addEventListener("click", runCustomComparison);
 
-  // Improve ATS modal events
+  // Improve ATS Editor modal events
   if (openImproveBtn) openImproveBtn.addEventListener("click", openImproveModal);
   if (openImproveTopBtn) openImproveTopBtn.addEventListener("click", openImproveModal);
   if (closeImproveBtn) closeImproveBtn.addEventListener("click", () => improveModal.classList.add("hidden"));
   if (improveModal) {
     improveModal.addEventListener("click", (e) => {
       if (e.target === improveModal) improveModal.classList.add("hidden");
+    });
+  }
+  if (atsResumeEditor) {
+    atsResumeEditor.addEventListener("input", () => {
+      const txt = atsResumeEditor.value;
+      updateEditorStats(txt);
+      clearTimeout(editorDebounce);
+      editorDebounce = setTimeout(() => {
+        if (txt.trim().length >= 30) refreshImprovePlan(txt, true);
+      }, 450);
+    });
+  }
+  if (editorAutoFixBtn) editorAutoFixBtn.addEventListener("click", applyQuickAutoFixes);
+  if (editorLoadTemplateBtn) {
+    editorLoadTemplateBtn.addEventListener("click", () => {
+      if (!latestAtsPlan || !latestAtsPlan.ats_template || !atsResumeEditor) return;
+      atsResumeEditor.value = latestAtsPlan.ats_template;
+      updateEditorStats(atsResumeEditor.value);
+      refreshImprovePlan(atsResumeEditor.value, true);
+    });
+  }
+  if (editorCopyBtn) {
+    editorCopyBtn.addEventListener("click", async () => {
+      if (!atsResumeEditor) return;
+      try {
+        await navigator.clipboard.writeText(atsResumeEditor.value);
+        editorCopyBtn.textContent = "✓ Copiado!";
+        setTimeout(() => {
+          editorCopyBtn.textContent = "📋 Copiar";
+        }, 1800);
+      } catch {
+        editorCopyBtn.textContent = "Ctrl+C no texto";
+      }
+    });
+  }
+  if (editorPrintPdfBtn) editorPrintPdfBtn.addEventListener("click", printResumeAsPdf);
+  if (editorDownloadTxtBtn) {
+    editorDownloadTxtBtn.addEventListener("click", () => {
+      if (!atsResumeEditor) return;
+      const blob = new Blob([atsResumeEditor.value], { type: "text/plain;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "curriculo_otimizado_ats.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+  if (applyEditedResumeBtn) {
+    applyEditedResumeBtn.addEventListener("click", () => {
+      if (!atsResumeEditor || !state.profile) return;
+      const editedText = atsResumeEditor.value.trim();
+      if (!editedText) return;
+      state.resumeTextSnippet = editedText;
+      if (latestAtsPlan) {
+        if (Array.isArray(latestAtsPlan.detected_skills) && latestAtsPlan.detected_skills.length) {
+          state.skills = [...latestAtsPlan.detected_skills];
+          renderSkills();
+        }
+        state.profile.ats_audit.score = latestAtsPlan.current_score;
+        state.profile.ats_audit.level = latestAtsPlan.current_level;
+        atsScore.textContent = `${latestAtsPlan.current_score}`;
+        atsLevel.textContent = latestAtsPlan.current_level;
+        atsBarFill.style.width = `${latestAtsPlan.current_score}%`;
+      }
+      improveModal.classList.add("hidden");
+      triggerResearch(true);
     });
   }
 

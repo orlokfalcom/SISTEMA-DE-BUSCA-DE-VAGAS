@@ -479,6 +479,19 @@
       suggestedRoles: (state.profile && state.profile.suggested_roles) || [],
     });
 
+    const compareMatchedHtml = (c.matched_skills || [])
+      .map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`)
+      .join("");
+    const compareRelatedHtml = (c.related_skills || [])
+      .map((s) => `<span class="pill related">≈ ${escapeHtml(s)}</span>`)
+      .join("");
+    const compareMissingHtml = (c.missing_skills || []).length
+      ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
+      : '<span class="pill matched">Nenhuma lacuna detectada!</span>';
+    const compareTipsHtml = (c.optimization_tips || [])
+      .map((t) => `<li><span>💡</span><span>${escapeHtml(t)}</span></li>`)
+      .join("");
+
     compareResult.classList.remove("hidden");
     compareResult.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -489,22 +502,20 @@
       <div>
         <span class="meta-label">Skills Compatíveis &amp; Relacionadas</span>
         <div class="pill-list">
-          ${(c.matched_skills || []).map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`).join("")}
-          ${(c.related_skills || []).map((s) => `<span class="pill related">≈ ${escapeHtml(s)}</span>`).join("")}
+          ${compareMatchedHtml}
+          ${compareRelatedHtml}
         </div>
       </div>
       <div>
         <span class="meta-label">Skills Faltantes</span>
         <div class="pill-list">
-          ${(c.missing_skills || []).length
-            ? c.missing_skills.map((s) => `<span class="pill missing">${escapeHtml(s)}</span>`).join("")
-            : `<span class="pill matched">Nenhuma lacuna detectada!</span>`}
+          ${compareMissingHtml}
         </div>
       </div>
       <div>
         <span class="meta-label">Dicas de Otimização ATS</span>
         <ul class="ats-checks" style="margin-top:6px;">
-          ${(c.optimization_tips || []).map((t) => `<li><span>💡</span><span>${escapeHtml(t)}</span></li>`).join("")}
+          ${compareTipsHtml}
         </ul>
       </div>
     `;
@@ -681,26 +692,27 @@
 
     const prioClass = (p) => (p === "Alta" ? "prio-high" : p === "Média" ? "prio-mid" : "prio-low");
     const modsHtml = (plan.modifications || [])
-      .map(
-        (m, idx) => `
+      .map((m, idx) => {
+        const foundHtml = (m.found_items || []).length
+          ? `<div class="pill-list" style="margin:6px 0;">${m.found_items
+              .map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`)
+              .join("")}</div>`
+          : "";
+        return `
         <div class="mod-card">
           <div class="mod-card-header">
             <strong>${idx + 1}. ${escapeHtml(m.category)}</strong>
             <span class="prio-badge ${prioClass(m.priority)}">Prioridade ${escapeHtml(m.priority)} · +${m.impact_points} pts</span>
           </div>
           <p class="mod-issue">${escapeHtml(m.issue)}</p>
-          ${
-            (m.found_items || []).length
-              ? `<div class="pill-list" style="margin:6px 0;">${m.found_items.map((it) => `<span class="pill missing">${escapeHtml(it)}</span>`).join("")}</div>`
-              : ""
-          }
+          ${foundHtml}
           <p class="mod-action"><strong>O que fazer:</strong> ${escapeHtml(m.action)}</p>
           <div class="before-after-grid">
             <div class="ba-box ba-before"><span class="meta-label">❌ Antes</span><p>${escapeHtml(m.before_example)}</p></div>
             <div class="ba-box ba-after"><span class="meta-label">✅ Depois (ATS)</span><p>${escapeHtml(m.after_example)}</p></div>
           </div>
-        </div>`
-      )
+        </div>`;
+      })
       .join("");
 
     improveBody.innerHTML = `
