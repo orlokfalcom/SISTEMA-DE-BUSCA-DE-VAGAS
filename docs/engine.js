@@ -509,9 +509,21 @@ window.VagaMatchEngine = (() => {
 
   function parseSalaryValue(salaryStr) {
     if (!salaryStr) return 0;
-    const matches = salaryStr.match(/(\d{1,3}(?:\.\d{3})+|\d{4,6})/g) || [];
-    const nums = matches.map((m) => parseInt(m.replace(/\./g, ""), 10));
+    const nums = [];
+    for (const m of salaryStr.matchAll(/(\d+(?:[.,]\d+)?)\s*k\b/gi)) {
+      const val = Math.round(parseFloat(m[1].replace(",", ".")) * 1000);
+      if (!Number.isNaN(val)) nums.push(val);
+    }
+    for (const m of salaryStr.matchAll(/(\d{1,3}(?:[.,]\d{3})+|\d{4,6})/g)) {
+      const cleaned = m[1].replace(/[.,]/g, "");
+      if (/^\d+$/.test(cleaned)) nums.push(parseInt(cleaned, 10));
+    }
     return nums.length ? Math.max(...nums) : 0;
+  }
+
+  function postedSortKey(postedAt) {
+    const val = String(postedAt || "").trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(val) ? `1:${val}` : "0:";
   }
 
   function seniorityScore(cSen, jSen) {
@@ -620,7 +632,7 @@ window.VagaMatchEngine = (() => {
     if (sortBy === "salary") {
       results.sort((a, b) => b.salary_numeric - a.salary_numeric || b.match_score - a.match_score);
     } else if (sortBy === "recent") {
-      results.sort((a, b) => String(b.posted_at || "").localeCompare(String(a.posted_at || "")) || b.match_score - a.match_score);
+      results.sort((a, b) => postedSortKey(b.posted_at).localeCompare(postedSortKey(a.posted_at)) || b.match_score - a.match_score);
     } else {
       results.sort((a, b) => b.match_score - a.match_score || b.matched_skills.length - a.matched_skills.length);
     }
@@ -741,7 +753,7 @@ window.VagaMatchEngine = (() => {
           description: desc.slice(0, 950) + (desc.length > 950 ? "..." : ""),
           url: item.url || "https://www.arbeitnow.com",
           source: "Arbeitnow (Ao Vivo)",
-          posted_at: "Recente",
+          posted_at: item.created_at ? new Date(item.created_at * 1000).toISOString().slice(0, 10) : "",
         };
       });
       cache.set(key, { ts: Date.now(), data: jobs });
@@ -792,13 +804,22 @@ window.VagaMatchEngine = (() => {
   }
 
   function compareCustomJob({ jobTitle, jobDescription, candidateSkills, candidateText, candidateSeniority, suggestedRoles }) {
+    const inferredSeniority = (() => {
+      const combined = normalizeText(`${jobTitle} ${String(jobDescription || "").slice(0, 300)}`);
+      if (/\b(staff|principal|tech\s+lead|lead|head|architect|arquiteto|especialista)\b/.test(combined)) return "Sênior / Liderança";
+      if (/\b(senior|sr\.?)\b/.test(combined)) return "Sênior";
+      if (/\b(estagio|estagiario|intern|trainee)\b/.test(combined)) return "Estágio / Trainee";
+      if (/\b(junior|jr\.?)\b/.test(combined)) return "Júnior";
+      if (/\b(pleno|mid[- ]?level)\b/.test(combined)) return "Pleno";
+      return candidateSeniority;
+    })();
     const synthetic = {
       id: "custom-job",
       title: jobTitle || "Vaga Personalizada",
       company: "Vaga Colada",
       location: "Conforme descrição",
       modality: "Não informada",
-      seniority: candidateSeniority,
+      seniority: inferredSeniority,
       salary: "A combinar",
       skills: extractSkills(`${jobTitle} ${jobDescription}`),
       description: jobDescription,

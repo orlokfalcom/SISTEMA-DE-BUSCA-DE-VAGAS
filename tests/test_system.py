@@ -4,9 +4,16 @@ import io
 import unittest
 
 from app import app
-from services.job_matcher import compute_skill_gap_analytics, match_jobs
+from services.job_matcher import compute_skill_gap_analytics, match_jobs, parse_salary_value
 from services.job_sources import load_local_jobs
-from services.resume_parser import estimate_experience_years, generate_sample_resume_pdf, parse_resume_pdf
+from services.resume_parser import (
+    detect_education,
+    detect_seniority,
+    estimate_experience_years,
+    extract_skills,
+    generate_sample_resume_pdf,
+    parse_resume_pdf,
+)
 
 
 class ResumeJobSearchTestCase(unittest.TestCase):
@@ -130,6 +137,78 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         for job in data["jobs"]:
             self.assertIn("Híbrido", job["modality"])
             self.assertIn("Júnior", job["seniority"])
+
+    def test_search_rejects_invalid_min_score_and_non_list_skills(self):
+        resp_min = self.client.post(
+            "/api/search",
+            json={"skills": ["Python"], "min_score": "abc", "include_live": False},
+        )
+        self.assertEqual(resp_min.status_code, 400)
+
+        resp_skills = self.client.post(
+            "/api/search",
+            json={"skills": "Python", "include_live": False},
+        )
+        self.assertEqual(resp_skills.status_code, 400)
+
+    def test_parse_salary_value_supports_international_and_k_formats(self):
+        self.assertEqual(parse_salary_value("R$ 9.500 - R$ 13.000"), 13000)
+        self.assertEqual(parse_salary_value("$80,000 - $120,000"), 120000)
+        self.assertEqual(parse_salary_value("$170k - $200k"), 200000)
+        self.assertEqual(parse_salary_value("$3.5k–$5k/month"), 5000)
+        self.assertEqual(parse_salary_value("70K-80K"), 80000)
+
+    def test_sort_recent_prioritizes_iso_dates_over_generic_labels(self):
+        jobs = [
+            {"id": "a", "title": "Dev A", "company": "A", "skills": ["Python"], "posted_at": "Recente"},
+            {"id": "b", "title": "Dev B", "company": "B", "skills": ["Python"], "posted_at": "2026-11-22"},
+            {"id": "c", "title": "Dev C", "company": "C", "skills": ["Python"], "posted_at": "2026-11-20"},
+        ]
+        ranked = match_jobs(jobs=jobs, candidate_skills=["Python"], sort_by="recent")
+        self.assertEqual([j["id"] for j in ranked], ["b", "c", "a"])
+
+    def test_compare_custom_job_infers_real_seniority(self):
+        resp = self.client.post(
+            "/api/compare-job",
+            json={
+                "job_title": "Estágio em Python",
+                "job_description": "Vaga de estágio para estudantes de TI com conhecimentos em Python e SQL.",
+                "skills": ["Python", "SQL"],
+                "seniority": "Sênior",
+                "resume_text": "Profissional Sênior com 20 anos de experiência em Python e SQL.",
+            },
+        )
+        self.assertEqual(resp.status_code, 200)
+        comp = resp.get_json()["comparison"]
+        self.assertEqual(comp["seniority"], "Estágio / Trainee")
+        self.assertLess(comp["score_breakdown"]["seniority"], 50)
+
+    def test_parser_accuracy_for_cybersecurity_cst_and_edge_cases(self):
+        # CST ADS sem a palavra "engenharia" deve detectar Ensino Superior
+        self.assertIn(
+            "Ensino Superior",
+            detect_education("Curso Superior de Tecnologia em Análise e Desenvolvimento de Sistemas (CST ADS) - UNINTER 2027"),
+        )
+        # "Engenharia de prompts" sozinha não deve gerar falso positivo de Ensino Superior
+        self.assertEqual(detect_education("Experiência com IA generativa e engenharia de prompts."), [])
+
+        # Não confundir idade da empresa com experiência do candidato
+        years = estimate_experience_years("Empresa com 35 anos de mercado. Desenvolvedor (2024 - 2026).")
+        self.assertEqual(years, 2)
+
+        # Capturar "trajetória superior a 20 anos"
+        self.assertEqual(estimate_experience_years("Profissional de TI com trajetória superior a 20 anos."), 20)
+
+        # Sênior com 20 anos que orienta estágio não deve ser classificado como estagiário
+        self.assertEqual(
+            detect_seniority("Professor com 20 anos de experiência. Orientação de estágio para alunos.", 20),
+            "Sênior",
+        )
+
+        # Skills de Cibersegurança, Threat Hunting/YARA, SQLite, Streamlit e DevOps
+        skills = extract_skills("Cyber Security Engineer com Threat Hunting, YARA, Rust, Python, SQLite, Streamlit e DevOps.")
+        for expected in ("Segurança da Informação", "Threat Hunting / YARA", "Rust", "Python", "SQLite", "Streamlit", "DevOps"):
+            self.assertIn(expected, skills)
 
 
 if __name__ == "__main__":
