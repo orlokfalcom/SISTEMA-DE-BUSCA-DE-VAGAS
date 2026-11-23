@@ -11,6 +11,7 @@ from services.job_matcher import (
     compare_custom_job_description,
     compute_skill_gap_analytics,
     match_jobs,
+    recommend_courses,
 )
 from services.job_sources import build_external_search_links, collect_jobs
 from services.resume_parser import (
@@ -152,6 +153,7 @@ def analyze_resume():
     )
 
     skill_gaps = compute_skill_gap_analytics(ranked_jobs)
+    recommended_courses = recommend_courses(skill_gaps, profile.skills, profile.suggested_roles)
     external_links = build_external_search_links(profile.skills, profile.suggested_roles, user_country=profile.country)
 
     return jsonify(
@@ -161,6 +163,7 @@ def analyze_resume():
             "jobs": ranked_jobs,
             "total_jobs": len(ranked_jobs),
             "skill_gaps": skill_gaps,
+            "recommended_courses": recommended_courses,
             "sources": sources_status,
             "external_links": external_links,
             "updated_at": datetime.now().strftime("%H:%M:%S"),
@@ -221,6 +224,7 @@ def search_jobs_by_profile():
     )
 
     skill_gaps = compute_skill_gap_analytics(ranked_jobs)
+    recommended_courses = recommend_courses(skill_gaps, skills, roles)
     external_links = build_external_search_links(skills, roles, user_country=user_country)
 
     return jsonify(
@@ -229,6 +233,7 @@ def search_jobs_by_profile():
             "jobs": ranked_jobs,
             "total_jobs": len(ranked_jobs),
             "skill_gaps": skill_gaps,
+            "recommended_courses": recommended_courses,
             "sources": sources_status,
             "external_links": external_links,
             "updated_at": datetime.now().strftime("%H:%M:%S"),

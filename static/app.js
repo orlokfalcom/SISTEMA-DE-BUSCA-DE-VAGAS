@@ -6,6 +6,7 @@
     seniority: "Pleno",
     jobs: [],
     skillGaps: [],
+    courses: [],
     sources: {},
     externalLinks: [],
     tracker: JSON.parse(localStorage.getItem("vagamatch_tracker") || "{}"),
@@ -39,6 +40,7 @@
   const newSkillInput = document.getElementById("newSkillInput");
   const addSkillBtn = document.getElementById("addSkillBtn");
   const skillGapList = document.getElementById("skillGapList");
+  const coursesList = document.getElementById("coursesList");
   const extraInfoList = document.getElementById("extraInfoList");
   const externalLinks = document.getElementById("externalLinks");
 
@@ -186,6 +188,7 @@
       state.seniority = data.profile.seniority || "Pleno";
       state.jobs = data.jobs || [];
       state.skillGaps = data.skill_gaps || [];
+      state.courses = data.recommended_courses || [];
       state.sources = data.sources || {};
       state.externalLinks = data.external_links || [];
 
@@ -196,6 +199,7 @@
 
       renderProfile();
       renderSkillGaps();
+      renderCourses();
       renderExternalLinks();
       renderJobs();
 
@@ -245,6 +249,7 @@
 
         state.jobs = data.jobs || [];
         state.skillGaps = data.skill_gaps || [];
+        state.courses = data.recommended_courses || [];
         state.sources = data.sources || {};
         state.externalLinks = data.external_links || [];
         if (state.profile && data.suggested_roles) {
@@ -260,6 +265,7 @@
           showToast(newCount > 0 ? `🔄 +${newCount} nova(s) vaga(s) carregada(s)!` : "🟢 Vagas atualizadas com sucesso!");
         }
         renderSkillGaps();
+        renderCourses();
         renderExternalLinks();
         renderJobs();
       } catch (err) {
@@ -386,6 +392,28 @@
           <span>+ ${escapeHtml(g.skill)}</span>
           <span class="gap-pct">em ${g.demand_pct}% das top vagas</span>
         </button>`
+      )
+      .join("");
+  }
+
+  function renderCourses() {
+    if (!coursesList) return;
+    if (!state.courses.length) {
+      coursesList.innerHTML = `<span class="helper-text">Nenhuma recomendação adicional no momento.</span>`;
+      return;
+    }
+    coursesList.innerHTML = state.courses
+      .map(
+        (c) => `
+        <a class="course-card" href="${escapeHtml(c.url)}" target="_blank" rel="noopener noreferrer">
+          <div class="course-top">
+            <span class="course-skill-tag">${escapeHtml(c.target_skill)}</span>
+            <span class="course-cost-tag">${escapeHtml(c.cost || "Gratuito")}</span>
+          </div>
+          <strong class="course-title">${escapeHtml(c.title)}</strong>
+          <span class="course-provider">${escapeHtml(c.provider)} ↗</span>
+          <p class="course-why">${escapeHtml(c.why || "")}</p>
+        </a>`
       )
       .join("");
   }

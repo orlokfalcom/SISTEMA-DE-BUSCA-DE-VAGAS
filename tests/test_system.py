@@ -306,6 +306,19 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         self.assertEqual(ranked[1]["id"], "intl-1")
         self.assertGreater(ranked[0]["match_score"], ranked[1]["match_score"])
 
+    def test_recommend_courses_uses_skill_gaps_and_roles(self):
+        from services.job_matcher import recommend_courses
+
+        courses = recommend_courses(
+            skill_gaps=[{"skill": "AWS", "demand_pct": 58}, {"skill": "Docker", "demand_pct": 42}],
+            candidate_skills=["Python", "Rust", "Segurança da Informação"],
+            suggested_roles=["Engenheiro / Analista de Cibersegurança"],
+        )
+        self.assertGreaterEqual(len(courses), 3)
+        self.assertEqual(courses[0]["target_skill"], "AWS")
+        self.assertEqual(courses[1]["target_skill"], "Docker")
+        self.assertTrue(all(c["url"].startswith("https://") for c in courses))
+
 
 if __name__ == "__main__":
     unittest.main()

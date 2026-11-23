@@ -1301,6 +1301,52 @@ window.VagaMatchEngine = (() => {
     };
   }
 
+  const COURSE_CATALOG = {
+    AWS: { title: "AWS Cloud Practitioner Essentials & Security Fundamentals", provider: "AWS Skill Builder", cost: "Gratuito", url: "https://skillbuilder.aws/", why: "Cloud AWS lidera os requisitos nas vagas de Dados, Backend e Segurança." },
+    Docker: { title: "Docker & Containers na Prática", provider: "Docker Docs", cost: "Gratuito", url: "https://docs.docker.com/get-started/", why: "Essencial para empacotar e implantar aplicações em produção." },
+    Kubernetes: { title: "Introduction to Kubernetes (LFS158)", provider: "Linux Foundation", cost: "Gratuito", url: "https://training.linuxfoundation.org/training/introduction-to-kubernetes/", why: "Diferencial forte para vagas Sênior de Cloud e DevOps." },
+    Linux: { title: "Linux Essentials & Administração de Sistemas", provider: "Cisco Networking Academy", cost: "Gratuito", url: "https://www.netacad.com/courses/os-it/ndg-linux-essentials", why: "Base indispensável para Cibersegurança, DevOps e nuvem." },
+    "Segurança da Informação": { title: "Certified in Cybersecurity (CC) — Trilha Oficial", provider: "ISC2", cost: "Gratuito", url: "https://www.isc2.org/landing/1mcc", why: "Certificação internacional de alto peso em triagens ATS de segurança." },
+    "Threat Hunting / YARA": { title: "SOC Level 1 & Cyber Defense (Threat Hunting / YARA)", provider: "TryHackMe", cost: "Freemium", url: "https://tryhackme.com/path/outline/soclevel1", why: "Laboratórios práticos de detecção de ameaças, SIEM e incidentes." },
+    "LLM / IA Generativa": { title: "Generative AI with LLMs & Building RAG / AI Agents", provider: "DeepLearning.AI", cost: "Gratuito", url: "https://www.deeplearning.ai/short-courses/", why: "Cursos curtos com foco em produção de agentes e RAG." },
+    "Machine Learning": { title: "Machine Learning & Python para Dados", provider: "Data Science Academy", cost: "Gratuito", url: "https://www.datascienceacademy.com.br/cursosgratuitos", why: "Fortalece modelagem preditiva e portfólio prático." },
+    ETL: { title: "Fundamentos de Engenharia de Dados & Pipelines ETL/ELT", provider: "Data Science Academy", cost: "Gratuito", url: "https://www.datascienceacademy.com.br/cursosgratuitos", why: "Muito cobrado em vagas de Engenharia e Análise de Dados." },
+    FastAPI: { title: "APIs Modernas em Python com FastAPI & Pytest", provider: "FastAPI Official", cost: "Gratuito", url: "https://fastapi.tiangolo.com/tutorial/", why: "Transforma scripts Python/IA em APIs rápidas prontas para produção." },
+    "Power BI": { title: "Microsoft Power BI Para Business Intelligence e Data Science", provider: "Data Science Academy", cost: "Gratuito", url: "https://www.datascienceacademy.com.br/course/microsoft-power-bi-para-business-intelligence-e-data-science", why: "Um dos requisitos mais pedidos em vagas brasileiras de Dados e BI." },
+    React: { title: "Front-End moderno com React & TypeScript", provider: "React Docs", cost: "Gratuito", url: "https://react.dev/learn", why: "Abre oportunidades Full Stack integrando frontends modernos a APIs." },
+    TypeScript: { title: "TypeScript Handbook & Tipagem Avançada", provider: "TypeScript Official", cost: "Gratuito", url: "https://www.typescriptlang.org/docs/", why: "Padrão de mercado em times web Full Stack e Frontend." },
+    JavaScript: { title: "JavaScript Algorithms and Data Structures", provider: "freeCodeCamp", cost: "Gratuito", url: "https://www.freecodecamp.org/learn/", why: "Base fundamental para desenvolvimento web e automação." },
+    Terraform: { title: "Infrastructure as Code com Terraform", provider: "HashiCorp Developer", cost: "Gratuito", url: "https://developer.hashicorp.com/terraform/tutorials", why: "Principal ferramenta de Infraestrutura como Código em DevOps/Cloud." },
+    "QA / Testes": { title: "Automação de Testes E2E e APIs (Playwright / Pytest)", provider: "Test Automation University", cost: "Gratuito", url: "https://testautomationu.applitools.com/", why: "Eleva a qualidade de entregas exigida em times ágeis." },
+  };
+
+  function recommendCourses(skillGaps = [], candidateSkills = [], suggestedRoles = [], limit = 5) {
+    const recs = [];
+    const seen = new Set();
+    for (const gap of skillGaps || []) {
+      const c = COURSE_CATALOG[gap.skill];
+      if (c && !seen.has(c.title)) {
+        seen.add(c.title);
+        recs.push({ target_skill: gap.skill, demand_pct: gap.demand_pct || 0, ...c });
+      }
+      if (recs.length >= limit) return recs;
+    }
+    const roleTxt = normalizeText((suggestedRoles || []).join(" "));
+    const fallbacks = [];
+    if (roleTxt.includes("ciberseguran")) fallbacks.push("Threat Hunting / YARA", "Segurança da Informação", "Linux", "AWS", "Docker");
+    if (roleTxt.includes("dados") || roleTxt.includes("ia")) fallbacks.push("AWS", "LLM / IA Generativa", "ETL", "Power BI", "FastAPI");
+    if (!fallbacks.length) fallbacks.push("AWS", "Docker", "Linux", "FastAPI", "LLM / IA Generativa");
+    const candSet = new Set((candidateSkills || []).map((s) => s.toLowerCase()));
+    for (const sk of fallbacks) {
+      const c = COURSE_CATALOG[sk];
+      if (!c || seen.has(c.title)) continue;
+      seen.add(c.title);
+      recs.push({ target_skill: sk, demand_pct: 0, is_upskill: candSet.has(sk.toLowerCase()), ...c });
+      if (recs.length >= limit) break;
+    }
+    return recs;
+  }
+
   return {
     availableSkills: Object.keys(SKILL_CATALOG).sort(),
     sampleResumeText: SAMPLE_RESUME_LINES.join("\n"),
@@ -1310,6 +1356,7 @@ window.VagaMatchEngine = (() => {
     collectJobs,
     matchJobs,
     computeSkillGaps,
+    recommendCourses,
     buildExternalLinks,
     compareCustomJob,
     buildAtsImprovementPlan,

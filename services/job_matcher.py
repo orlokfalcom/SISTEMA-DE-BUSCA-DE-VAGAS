@@ -152,6 +152,185 @@ def compute_skill_gap_analytics(ranked_jobs: list[dict], top_n: int = 12) -> lis
     ]
 
 
+COURSE_CATALOG: dict[str, dict] = {
+    "AWS": {
+        "title": "AWS Cloud Practitioner Essentials & Security Fundamentals",
+        "provider": "AWS Skill Builder",
+        "cost": "Gratuito",
+        "url": "https://skillbuilder.aws/",
+        "why": "Cloud AWS lidera os requisitos nas vagas de Dados, Backend e Segurança.",
+    },
+    "Docker": {
+        "title": "Docker & Containers na Prática",
+        "provider": "Docker Docs / Play with Docker",
+        "cost": "Gratuito",
+        "url": "https://docs.docker.com/get-started/",
+        "why": "Essencial para empacotar e implantar aplicações e ferramentas em produção.",
+    },
+    "Kubernetes": {
+        "title": "Introduction to Kubernetes (LFS158)",
+        "provider": "Linux Foundation / edX",
+        "cost": "Gratuito",
+        "url": "https://training.linuxfoundation.org/training/introduction-to-kubernetes/",
+        "why": "Diferencial forte para vagas Sênior de Cloud, DevOps e Backend escalável.",
+    },
+    "Linux": {
+        "title": "Linux Essentials & Administração de Sistemas",
+        "provider": "Cisco Networking Academy",
+        "cost": "Gratuito",
+        "url": "https://www.netacad.com/courses/os-it/ndg-linux-essentials",
+        "why": "Base indispensável para Cibersegurança, DevOps e servidores em nuvem.",
+    },
+    "Segurança da Informação": {
+        "title": "Certified in Cybersecurity (CC) — Trilha Oficial",
+        "provider": "ISC2",
+        "cost": "Gratuito",
+        "url": "https://www.isc2.org/landing/1mcc",
+        "why": "Certificação internacional de alto peso em triagens ATS de segurança.",
+    },
+    "Threat Hunting / YARA": {
+        "title": "SOC Level 1 & Cyber Defense (Threat Hunting / YARA)",
+        "provider": "TryHackMe",
+        "cost": "Freemium",
+        "url": "https://tryhackme.com/path/outline/soclevel1",
+        "why": "Laboratórios práticos de detecção de ameaças, SIEM e análise de incidentes.",
+    },
+    "LLM / IA Generativa": {
+        "title": "Generative AI with LLMs & Building RAG / AI Agents",
+        "provider": "DeepLearning.AI",
+        "cost": "Gratuito",
+        "url": "https://www.deeplearning.ai/short-courses/",
+        "why": "Cursos curtos e atualizados com foco em produção de agentes e RAG.",
+    },
+    "Machine Learning": {
+        "title": "Machine Learning Specialization & Python para Dados",
+        "provider": "Data Science Academy / Coursera",
+        "cost": "Gratuito",
+        "url": "https://www.datascienceacademy.com.br/cursosgratuitos",
+        "why": "Fortalece modelagem preditiva, avaliação de modelos e portfólio prático.",
+    },
+    "ETL": {
+        "title": "Fundamentos de Engenharia de Dados & Pipelines ETL/ELT",
+        "provider": "Data Science Academy",
+        "cost": "Gratuito",
+        "url": "https://www.datascienceacademy.com.br/cursosgratuitos",
+        "why": "Muito cobrado em vagas de Engenharia e Análise de Dados.",
+    },
+    "FastAPI": {
+        "title": "APIs Modernas em Python com FastAPI & Pytest",
+        "provider": "FastAPI Official Tutorial",
+        "cost": "Gratuito",
+        "url": "https://fastapi.tiangolo.com/tutorial/",
+        "why": "Transforma scripts Python/IA em APIs rápidas prontas para produção.",
+    },
+    "Microsserviços": {
+        "title": "Arquitetura de Microsserviços, APIs e Mensageria",
+        "provider": "Microsoft Learn",
+        "cost": "Gratuito",
+        "url": "https://learn.microsoft.com/pt-br/training/paths/create-microservices-with-dotnet/",
+        "why": "Amplia aderência a vagas Pleno e Sênior de Engenharia de Software.",
+    },
+    "Power BI": {
+        "title": "Microsoft Power BI Para Business Intelligence e Data Science",
+        "provider": "Data Science Academy",
+        "cost": "Gratuito",
+        "url": "https://www.datascienceacademy.com.br/course/microsoft-power-bi-para-business-intelligence-e-data-science",
+        "why": "Um dos requisitos mais pedidos em vagas brasileiras de Dados e BI.",
+    },
+    "React": {
+        "title": "Front-End moderno com React & TypeScript",
+        "provider": "freeCodeCamp / React Docs",
+        "cost": "Gratuito",
+        "url": "https://react.dev/learn",
+        "why": "Abre oportunidades Full Stack integrando frontends modernos a APIs.",
+    },
+    "TypeScript": {
+        "title": "TypeScript Handbook & Tipagem Avançada",
+        "provider": "TypeScript Official",
+        "cost": "Gratuito",
+        "url": "https://www.typescriptlang.org/docs/",
+        "why": "Padrão de mercado em times web Full Stack e Frontend.",
+    },
+    "JavaScript": {
+        "title": "JavaScript Algorithms and Data Structures",
+        "provider": "freeCodeCamp",
+        "cost": "Gratuito",
+        "url": "https://www.freecodecamp.org/learn/",
+        "why": "Base fundamental para desenvolvimento web e automação de testes.",
+    },
+    "Terraform": {
+        "title": "Infrastructure as Code com Terraform",
+        "provider": "HashiCorp Developer",
+        "cost": "Gratuito",
+        "url": "https://developer.hashicorp.com/terraform/tutorials",
+        "why": "Principal ferramenta de Infraestrutura como Código em vagas DevOps/Cloud.",
+    },
+    "QA / Testes": {
+        "title": "Automação de Testes E2E e APIs (Playwright / Pytest)",
+        "provider": "Test Automation University",
+        "cost": "Gratuito",
+        "url": "https://testautomationu.applitools.com/",
+        "why": "Eleva a qualidade de entregas e cobertura de testes exigida em times ágeis.",
+    },
+}
+
+
+def recommend_courses(
+    skill_gaps: list[dict] | None,
+    candidate_skills: list[str] | None = None,
+    suggested_roles: list[str] | None = None,
+    limit: int = 5,
+) -> list[dict]:
+    """Recomenda cursos práticos priorizando as skill gaps das top vagas e a trilha de carreira."""
+    recommendations: list[dict] = []
+    seen_titles: set[str] = set()
+
+    # 1. Prioriza cursos que fecham diretamente os Skill Gaps das top vagas
+    for gap in (skill_gaps or []):
+        skill = gap.get("skill", "")
+        course = COURSE_CATALOG.get(skill)
+        if course and course["title"] not in seen_titles:
+            seen_titles.add(course["title"])
+            recommendations.append(
+                {
+                    "target_skill": skill,
+                    "demand_pct": gap.get("demand_pct", 0),
+                    **course,
+                }
+            )
+        if len(recommendations) >= limit:
+            return recommendations
+
+    # 2. Complementa com trilhas estratégicas conforme os cargos sugeridos
+    role_text = " ".join(suggested_roles or []).lower()
+    fallback_skills: list[str] = []
+    if "ciberseguran" in role_text:
+        fallback_skills.extend(["Threat Hunting / YARA", "Segurança da Informação", "Linux", "AWS", "Docker"])
+    if "dados" in role_text or "ia" in role_text:
+        fallback_skills.extend(["AWS", "LLM / IA Generativa", "ETL", "Power BI", "FastAPI"])
+    if not fallback_skills:
+        fallback_skills = ["AWS", "Docker", "Linux", "FastAPI", "LLM / IA Generativa"]
+
+    cand_set = {s.lower() for s in (candidate_skills or [])}
+    for skill in fallback_skills:
+        course = COURSE_CATALOG.get(skill)
+        if not course or course["title"] in seen_titles:
+            continue
+        seen_titles.add(course["title"])
+        recommendations.append(
+            {
+                "target_skill": skill,
+                "demand_pct": 0,
+                "is_upskill": skill.lower() in cand_set,
+                **course,
+            }
+        )
+        if len(recommendations) >= limit:
+            break
+
+    return recommendations
+
+
 def _classify_geo_priority(job: dict, user_country: str = "Brasil") -> tuple[str, str, float]:
     """Classifica o alcance geográfico da vaga e calcula bônus de prioridade para o país do usuário."""
     country_norm = normalize_text(user_country or "Brasil")
