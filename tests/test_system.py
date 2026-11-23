@@ -196,8 +196,18 @@ class ResumeJobSearchTestCase(unittest.TestCase):
         years = estimate_experience_years("Empresa com 35 anos de mercado. Desenvolvedor (2024 - 2026).")
         self.assertEqual(years, 2)
 
-        # Capturar "trajetória superior a 20 anos"
-        self.assertEqual(estimate_experience_years("Profissional de TI com trajetória superior a 20 anos."), 20)
+        # Capturar "trajetória superior a 20 anos" mesmo com quebra de linha e acento NFD
+        self.assertEqual(estimate_experience_years("Profissional de TI com trajeto\u0301ria\nsuperior a 20 anos em ambientes de tecnologia."), 20)
+
+        # Capturar intervalos de mês/ano inicial até data final ou Atual
+        exp_dates = (
+            "EXPERIÊNCIA PROFISSIONAL\n"
+            "Engenheiro de Segurança | Empresa B | 03/2021 - Atual\n"
+            "Analista de Sistemas | Empresa A | Jan/2016 - Fev/2021\n"
+            "FORMAÇÃO ACADÊMICA\n"
+            "CST ADS (2023 - 2027)\n"
+        )
+        self.assertGreaterEqual(estimate_experience_years(exp_dates), 10)
 
         # Sênior com 20 anos que orienta estágio não deve ser classificado como estagiário
         self.assertEqual(

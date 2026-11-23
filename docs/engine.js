@@ -220,42 +220,104 @@ window.VagaMatchEngine = (() => {
     return found;
   }
 
-  function estimateExperienceYears(text) {
-    const explicit = [
-      ...text.matchAll(/(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experi[eê]ncia|atua[cç][aã]o|carreira|trajet[oó]ria|ti)|of\s+experience)/gi),
-      ...text.matchAll(/(?:trajet[oó]ria|experi[eê]ncia|atua[cç][aã]o|carreira)[^.\n]{0,35}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b/gi),
-    ]
-      .map((m) => parseInt(m[1], 10))
-      .filter((n) => n > 0 && n <= 40);
-    if (explicit.length) return Math.max(...explicit);
+  const MONTH_NAME_MAP = {
+    jan: 1, janeiro: 1, january: 1,
+    fev: 2, fevereiro: 2, feb: 2, february: 2,
+    mar: 3, marco: 3, march: 3,
+    abr: 4, abril: 4, apr: 4, april: 4,
+    mai: 5, maio: 5, may: 5,
+    jun: 6, junho: 6, june: 6,
+    jul: 7, julho: 7, july: 7,
+    ago: 8, agosto: 8, aug: 8, august: 8,
+    set: 9, setembro: 9, sep: 9, sept: 9, september: 9,
+    out: 10, outubro: 10, oct: 10, october: 10,
+    nov: 11, novembro: 11, november: 11,
+    dez: 12, dezembro: 12, dec: 12, december: 12,
+  };
 
-    const currentYear = new Date().getFullYear();
-    let expSection = text;
-    const secMatch = text.match(
-      /(?:experi[eê]ncia(?:\s+profissional)?|hist[oó]rico\s+profissional|work\s+experience)([\s\S]*?)(?:forma[cç][aã]o|educa[cç][aã]o|idiomas|certifica[cç][oõ]es|$)/i
+  function parseMonthToken(token, fallback) {
+    if (!token) return fallback;
+    const c = String(token).trim().toLowerCase().replace(/\.$/, "");
+    if (/^\d+$/.test(c)) {
+      const m = parseInt(c, 10);
+      return m >= 1 && m <= 12 ? m : fallback;
+    }
+    return MONTH_NAME_MAP[c] || fallback;
+  }
+
+  function estimateExperienceYears(text) {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const norm = normalizeText(text);
+
+    let expSection = norm;
+    const secMatch = norm.match(
+      /(?:experiencia(?:\s+profissional)?|historico\s+profissional|work\s+experience)([\s\S]*?)(?:formacao|educacao|idiomas|certificacoes|projetos|$)/
     );
-    if (secMatch && secMatch[1].trim().length > 30) {
+    if (secMatch && secMatch[1].trim().length > 20) {
       expSection = secMatch[1];
     }
 
-    const ranges = [...expSection.matchAll(/\b(199\d|20[0-2]\d)\s*[-–—aà]+\s*(199\d|20[0-2]\d|atual|presente|present|current)\b/gi)];
-    if (ranges.length) {
-      const starts = [];
-      const ends = [];
-      for (const r of ranges) {
-        const s = parseInt(r[1], 10);
-        const e = /^\d+$/.test(r[2]) ? parseInt(r[2], 10) : currentYear;
-        if (s >= 1990 && s <= currentYear && s <= e && e <= currentYear + 1) {
-          starts.push(s);
-          ends.push(Math.min(e, currentYear));
-        }
+    const monthPat = "(?:0?[1-9]|1[0-2]|jan(?:eiro|uary)?|fev(?:ereiro)?|feb(?:ruary)?|mar(?:co|ch)?|abr(?:il)?|apr(?:il)?|mai(?:o)?|may|jun(?:ho|e)?|jul(?:ho|y)?|ago(?:sto)?|aug(?:ust)?|set(?:embro)?|sept?(?:ember)?|out(?:ubro)?|oct(?:ober)?|nov(?:embro|ember)?|dez(?:embro)?|dec(?:ember)?)";
+    const yearPat = "(?:19[7-9]\\d|20[0-3]\\d)";
+    const presentPat = "(?:atual(?:mente)?|presente|present|current|hoje|o\\s+momento|momento)";
+    const rangeRe = new RegExp(
+      `(?:(${monthPat})\\s*(?:de\\s+|[/\\.\\-]\\s*|\\s+))?\\b(${yearPat})\\b\\s*(?:[-–—]+|\\ba\\b|\\bate\\b|\\bto\\b)\\s*(?:(${presentPat})\\b|(?:(${monthPat})\\s*(?:de\\s+|[/\\.\\-]\\s*|\\s+))?\\b(${yearPat})\\b)`,
+      "g"
+    );
+
+    const startPts = [];
+    const endPts = [];
+    for (const m of expSection.matchAll(rangeRe)) {
+      const [, sMonthTok, sYearS, isPresent, eMonthTok, eYearS] = m;
+      const startY = parseInt(sYearS, 10);
+      if (startY < 1975 || startY > currentYear) continue;
+      const startM = parseMonthToken(sMonthTok, 1);
+      let endY = currentYear;
+      let endM = currentMonth;
+      if (!isPresent) {
+        endY = parseInt(eYearS, 10);
+        if (endY < startY || endY > currentYear + 1) continue;
+        endY = Math.min(endY, currentYear);
+        endM = parseMonthToken(eMonthTok, sMonthTok ? 12 : startM);
       }
-      if (starts.length && ends.length) {
-        const span = Math.max(...ends) - Math.min(...starts);
-        if (span > 0 && span <= 35) return span;
+      const sIdx = startY * 12 + startM;
+      const eIdx = endY * 12 + endM;
+      if (eIdx >= sIdx) {
+        startPts.push(sIdx);
+        endPts.push(eIdx);
       }
     }
-    return null;
+
+    const sinceRe = new RegExp(`\\b(?:desde|since|a\\s+partir\\s+de)\\s+(?:(${monthPat})\\s*(?:de\\s+|[/\\.\\-]\\s*|\\s+))?\\b(${yearPat})\\b`, "g");
+    for (const m of expSection.matchAll(sinceRe)) {
+      const startY = parseInt(m[2], 10);
+      if (startY >= 1975 && startY <= currentYear) {
+        startPts.push(startY * 12 + parseMonthToken(m[1], 1));
+        endPts.push(currentYear * 12 + currentMonth);
+      }
+    }
+
+    let dateSpanYears = null;
+    if (startPts.length && endPts.length) {
+      const totalMonths = Math.max(...endPts) - Math.min(...startPts);
+      if (totalMonths >= 6) {
+        const calc = Math.max(1, Math.round(totalMonths / 12));
+        if (calc > 0 && calc <= 45) dateSpanYears = calc;
+      }
+    }
+
+    const explicit = [
+      ...norm.matchAll(/\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experiencia|atuacao|carreira|trajetoria|ti)|em\s+(?:ambientes|tecnologia|ti|desenvolvimento|dados|seguranca)|of\s+experience)/g),
+      ...norm.matchAll(/(?:trajetoria|experiencia|atuacao|carreira|mais\s+de|superior\s+a|acima\s+de|ha\s+mais\s+de)[^.]{0,40}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b/g),
+    ]
+      .map((m) => parseInt(m[1], 10))
+      .filter((n) => n > 0 && n <= 45);
+    const explicitYears = explicit.length ? Math.max(...explicit) : null;
+
+    if (dateSpanYears !== null && explicitYears !== null) return Math.max(dateSpanYears, explicitYears);
+    return dateSpanYears !== null ? dateSpanYears : explicitYears;
   }
 
   function detectSeniority(text, years) {

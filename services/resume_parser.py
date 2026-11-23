@@ -243,54 +243,114 @@ def extract_skills(text: str) -> list[str]:
     return found
 
 
-def estimate_experience_years(text: str) -> int | None:
-    """Estima anos de experiência evitando confundir anos de graduação ou idade da empresa."""
-    explicit_matches = re.findall(
-        r"(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experi[eê]ncia|atua[cç][aã]o|carreira|trajet[oó]ria|ti)|of\s+experience)",
-        text,
-        flags=re.IGNORECASE,
-    )
-    prefix_matches = re.findall(
-        r"(?:trajet[oó]ria|experi[eê]ncia|atua[cç][aã]o|carreira)[^.\n]{0,35}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b",
-        text,
-        flags=re.IGNORECASE,
-    )
-    candidates = [int(m) for m in (explicit_matches + prefix_matches) if 0 < int(m) <= 40]
-    if candidates:
-        return max(candidates)
+MONTH_NAME_MAP: dict[str, int] = {
+    "jan": 1, "janeiro": 1, "january": 1,
+    "fev": 2, "fevereiro": 2, "feb": 2, "february": 2,
+    "mar": 3, "marco": 3, "march": 3,
+    "abr": 4, "abril": 4, "apr": 4, "april": 4,
+    "mai": 5, "maio": 5, "may": 5,
+    "jun": 6, "junho": 6, "june": 6,
+    "jul": 7, "julho": 7, "july": 7,
+    "ago": 8, "agosto": 8, "aug": 8, "august": 8,
+    "set": 9, "setembro": 9, "sep": 9, "sept": 9, "september": 9,
+    "out": 10, "outubro": 10, "oct": 10, "october": 10,
+    "nov": 11, "novembro": 11, "november": 11,
+    "dez": 12, "dezembro": 12, "dec": 12, "december": 12,
+}
 
-    current_year = date.today().year
-    # Tenta isolar a seção de experiência profissional antes de extrair intervalos de datas
-    exp_section = text
+
+def _parse_month_token(token: str | None, default_month: int) -> int:
+    if not token:
+        return default_month
+    cleaned = token.strip().lower().rstrip(".")
+    if cleaned.isdigit():
+        m = int(cleaned)
+        return m if 1 <= m <= 12 else default_month
+    return MONTH_NAME_MAP.get(cleaned, default_month)
+
+
+def estimate_experience_years(text: str) -> int | None:
+    """Calcula anos de experiência lendo do ano/mês inicial até a data final (ou menção explícita)."""
+    today = date.today()
+    current_year = today.year
+    current_month = today.month
+    norm = normalize_text(text)
+
+    # 1. Tenta isolar a seção de experiência profissional para ler os intervalos (ano inicial -> data final)
+    exp_section = norm
     exp_match = re.search(
-        r"(?:experi[eê]ncia(?:\s+profissional)?|hist[oó]rico\s+profissional|work\s+experience)(.*?)(?:forma[cç][aã]o|educa[cç][aã]o|idiomas|certifica[cç][oõ]es|$)",
-        text,
-        flags=re.IGNORECASE | re.DOTALL,
+        r"(?:experiencia(?:\s+profissional)?|historico\s+profissional|work\s+experience)(.*?)(?:formacao|educacao|idiomas|certificacoes|projetos|$)",
+        norm,
     )
-    if exp_match and len(exp_match.group(1).strip()) > 30:
+    if exp_match and len(exp_match.group(1).strip()) > 20:
         exp_section = exp_match.group(1)
 
-    # Captura intervalos tipo "2020 - 2024" ou "2021 - atual"
-    ranges = re.findall(
-        r"\b(199\d|20[0-2]\d)\s*[-–—aà]+\s*(199\d|20[0-2]\d|atual|presente|present|current)\b",
-        exp_section,
-        flags=re.IGNORECASE,
-    )
-    if ranges:
-        starts: list[int] = []
-        ends: list[int] = []
-        for start_s, end_s in ranges:
-            start_y = int(start_s)
-            end_y = current_year if not end_s.isdigit() else int(end_s)
-            if 1990 <= start_y <= current_year and start_y <= end_y <= current_year + 1:
-                starts.append(start_y)
-                ends.append(min(end_y, current_year))
-        if starts and ends:
-            span = max(ends) - min(starts)
-            if 0 < span <= 35:
-                return span
+    month_pat = r"(?:0?[1-9]|1[0-2]|jan(?:eiro|uary)?|fev(?:ereiro)?|feb(?:ruary)?|mar(?:co|ch)?|abr(?:il)?|apr(?:il)?|mai(?:o)?|may|jun(?:ho|e)?|jul(?:ho|y)?|ago(?:sto)?|aug(?:ust)?|set(?:embro)?|sept?(?:ember)?|out(?:ubro)?|oct(?:ober)?|nov(?:embro|ember)?|dez(?:embro)?|dec(?:ember)?)"
+    year_pat = r"(?:19[7-9]\d|20[0-3]\d)"
+    present_pat = r"(?:atual(?:mente)?|presente|present|current|hoje|o\s+momento|momento)"
 
-    return None
+    range_regex = re.compile(
+        rf"(?:({month_pat})\s*(?:de\s+|[/.\-]\s*|\s+))?\b({year_pat})\b"
+        rf"\s*(?:[-–—]+|\ba\b|\bate\b|\bto\b)\s*"
+        rf"(?:({present_pat})\b|(?:({month_pat})\s*(?:de\s+|[/.\-]\s*|\s+))?\b({year_pat})\b)"
+    )
+
+    start_points: list[int] = []
+    end_points: list[int] = []
+    for m in range_regex.finditer(exp_section):
+        s_month_tok, s_year_s, is_present, e_month_tok, e_year_s = m.groups()
+        start_y = int(s_year_s)
+        if not (1975 <= start_y <= current_year):
+            continue
+        start_m = _parse_month_token(s_month_tok, 1)
+        if is_present:
+            end_y, end_m = current_year, current_month
+        else:
+            end_y = int(e_year_s)
+            if not (start_y <= end_y <= current_year + 1):
+                continue
+            end_y = min(end_y, current_year)
+            # Se só anos foram informados ("2023 - 2026"), usa mesmo mês para dar exatamente end_y - start_y
+            end_m = _parse_month_token(e_month_tok, start_m if not s_month_tok else 12)
+        start_idx = start_y * 12 + start_m
+        end_idx = end_y * 12 + end_m
+        if end_idx >= start_idx:
+            start_points.append(start_idx)
+            end_points.append(end_idx)
+
+    # Também captura "desde 2015" ou "desde jan/2018" na seção de experiência
+    since_regex = re.compile(rf"\b(?:desde|since|a\s+partir\s+de)\s+(?:({month_pat})\s*(?:de\s+|[/.\-]\s*|\s+))?\b({year_pat})\b")
+    for m in since_regex.finditer(exp_section):
+        s_month_tok, s_year_s = m.groups()
+        start_y = int(s_year_s)
+        if 1975 <= start_y <= current_year:
+            start_m = _parse_month_token(s_month_tok, 1)
+            start_points.append(start_y * 12 + start_m)
+            end_points.append(current_year * 12 + current_month)
+
+    date_span_years: int | None = None
+    if start_points and end_points:
+        total_months = max(end_points) - min(start_points)
+        if total_months >= 6:
+            calc_years = max(1, int(round(total_months / 12.0)))
+            if 0 < calc_years <= 45:
+                date_span_years = calc_years
+
+    # 2. Captura menção explícita de anos de experiência/trajetória
+    explicit_matches = re.findall(
+        r"\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experiencia|atuacao|carreira|trajetoria|ti)|em\s+(?:ambientes|tecnologia|ti|desenvolvimento|dados|seguranca)|of\s+experience)",
+        norm,
+    )
+    prefix_matches = re.findall(
+        r"(?:trajetoria|experiencia|atuacao|carreira|mais\s+de|superior\s+a|acima\s+de|ha\s+mais\s+de)[^.]{0,40}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b",
+        norm,
+    )
+    explicit_candidates = [int(m) for m in (explicit_matches + prefix_matches) if 0 < int(m) <= 45]
+    explicit_years = max(explicit_candidates) if explicit_candidates else None
+
+    if date_span_years is not None and explicit_years is not None:
+        return max(date_span_years, explicit_years)
+    return date_span_years if date_span_years is not None else explicit_years
 
 
 def detect_seniority(text: str, years: int | None) -> str:
