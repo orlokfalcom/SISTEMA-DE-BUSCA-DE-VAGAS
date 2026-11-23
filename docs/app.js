@@ -141,7 +141,7 @@
 
       const profile = Engine.parseResumeText(rawText, filename, pages);
       state.profile = profile;
-      state.resumeTextSnippet = rawText.slice(0, 2500);
+      state.resumeTextSnippet = rawText.slice(0, 15000);
       state.skills = [...profile.skills];
       state.seniority = profile.seniority;
 
@@ -542,6 +542,17 @@
     resultsSection.classList.add("hidden");
     uploadSection.classList.remove("hidden");
     pdfInput.value = "";
+    queryInput.value = "";
+    modalityFilter.value = "";
+    jobSeniorityFilter.value = "";
+    sourceFilter.value = "all";
+    minScoreFilter.value = "0";
+    sortFilter.value = "match";
+    trackerFilter.value = "";
+    compareTitleInput.value = "";
+    compareDescInput.value = "";
+    compareResult.innerHTML = "";
+    compareResult.classList.add("hidden");
     clearError();
   });
 

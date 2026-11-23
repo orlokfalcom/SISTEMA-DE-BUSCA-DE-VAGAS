@@ -292,5 +292,33 @@
     "url": "https://www.linkedin.com/jobs/search/?keywords=Engenheiro+IA+Generativa+LLM+Python&location=Brasil",
     "source": "Base Brasil",
     "posted_at": "2026-11-22"
+  },
+  {
+    "id": "br-022",
+    "title": "Engenheiro(a) de Cibersegurança & Threat Hunting",
+    "company": "EscudoDigital Security",
+    "location": "Belo Horizonte, MG (Remoto Brasil)",
+    "modality": "Remoto",
+    "seniority": "Sênior",
+    "salary": "R$ 13.500 - R$ 18.000",
+    "skills": ["Segurança da Informação", "Threat Hunting / YARA", "Python", "Rust", "Linux", "SQL", "Git"],
+    "description": "Atuação em detecção proativa de ameaças (Threat Hunting), desenvolvimento de regras YARA, automação de análise de incidentes em Python/Rust, análise de riscos e governança de segurança.",
+    "url": "https://www.linkedin.com/jobs/search/?keywords=Cyber+Security+Threat+Hunting+YARA+Python&location=Brasil",
+    "source": "Base Brasil",
+    "posted_at": "2026-11-22"
+  },
+  {
+    "id": "br-023",
+    "title": "Analista de Segurança da Informação & Dados",
+    "company": "SeguroNet Brasil",
+    "location": "Remoto (Brasil)",
+    "modality": "Remoto",
+    "seniority": "Pleno",
+    "salary": "R$ 9.500 - R$ 13.500",
+    "skills": ["Segurança da Informação", "Python", "SQL", "DevOps", "CI/CD", "Linux", "Scrum / Ágil"],
+    "description": "Apoio à análise de riscos, proteção de dados, desenvolvimento seguro (DevSecOps), automação de auditorias em Python/SQL e melhoria contínua de processos de TI.",
+    "url": "https://www.linkedin.com/jobs/search/?keywords=Analista+Seguranca+Informacao+Python+SQL&location=Brasil",
+    "source": "Base Brasil",
+    "posted_at": "2026-11-21"
   }
 ]

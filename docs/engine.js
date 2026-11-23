@@ -45,7 +45,9 @@ window.VagaMatchEngine = (() => {
     Microsserviços: [/\bmicrosservi[cç]os\b/i, /\bmicroservices?\b/i],
     PostgreSQL: [/\bpostgres(?:ql)?\b/i],
     MySQL: [/\bmysql\b/i],
+    SQLite: [/\bsqlite\b/i],
     MongoDB: [/\bmongo(?:db)?\b/i],
+    NoSQL: [/\bnosql\b/i],
     Redis: [/\bredis\b/i],
     "SQL Server": [/\bsql\s*server\b/i],
     Oracle: [/\boracle\b/i],
@@ -56,11 +58,15 @@ window.VagaMatchEngine = (() => {
     Docker: [/\bdocker\b/i],
     Kubernetes: [/\bkubernetes\b/i, /\bk8s\b/i],
     Terraform: [/\bterraform\b/i],
-    "CI/CD": [/\bci\s*\/\s*cd\b/i, /\bgithub\s+actions\b/i, /\bgitlab\s+ci\b/i, /\bjenkins\b/i],
+    DevOps: [/\bdevops\b/i],
+    "CI/CD": [/\bci\s*\/\s*cd\b/i, /\bgithub\s+actions\b/i, /\bgitlab\s+ci\b/i, /\bjenkins\b/i, /\bintegra[cç][aã]o\s+cont[ií]nua\b/i],
     Linux: [/\blinux\b/i, /\bubuntu\b/i, /\bbash\b/i, /\bshell\s*script\b/i],
     Git: [/\bgit\b/i, /\bgithub\b/i, /\bgitlab\b/i],
+    "Segurança da Informação": [/\bseguran[cç]a\s+da\s+informa[cç][aã]o\b/i, /\bcyber\s*security\b/i, /\bciberseguran[cç]a\b/i, /\binfosec\b/i],
+    "Threat Hunting / YARA": [/\bthreat\s+hunting\b/i, /\byara\b/i, /\bsoc\b/i, /\bsiem\b/i],
     Pandas: [/\bpandas\b/i],
     NumPy: [/\bnumpy\b/i],
+    Streamlit: [/\bstreamlit\b/i],
     "Machine Learning": [/\bmachine\s+learning\b/i, /\bscikit[- ]?learn\b/i, /\baprendizado\s+de\s+m[aá]quina\b/i],
     "Deep Learning": [/\bdeep\s+learning\b/i, /\bpytorch\b/i, /\btensorflow\b/i, /\bkeras\b/i],
     "LLM / IA Generativa": [/\bllms?\b/i, /\blangchain\b/i, /\bopenai\b/i, /\bia\s+generativa\b/i, /\bgenerative\s+ai\b/i, /\brag\b/i],
@@ -99,14 +105,19 @@ window.VagaMatchEngine = (() => {
     "Node.js": ["Express", "NestJS", "TypeScript", "JavaScript", "REST API"],
     Express: ["Node.js", "NestJS", "REST API"],
     NestJS: ["Node.js", "TypeScript", "Express", "REST API"],
-    PostgreSQL: ["SQL", "MySQL", "SQL Server", "Oracle"],
-    MySQL: ["SQL", "PostgreSQL", "SQL Server"],
+    PostgreSQL: ["SQL", "MySQL", "SQLite", "SQL Server", "Oracle"],
+    MySQL: ["SQL", "PostgreSQL", "SQLite", "SQL Server"],
+    SQLite: ["SQL", "PostgreSQL", "MySQL"],
     "SQL Server": ["SQL", "PostgreSQL", "MySQL"],
-    AWS: ["Azure", "GCP", "Docker", "Terraform"],
-    Azure: ["AWS", "GCP", "Docker"],
-    GCP: ["AWS", "Azure", "Docker"],
-    Docker: ["Kubernetes", "CI/CD", "Linux"],
-    Kubernetes: ["Docker", "AWS", "GCP", "Azure", "Terraform"],
+    AWS: ["Azure", "GCP", "Docker", "Terraform", "DevOps"],
+    Azure: ["AWS", "GCP", "Docker", "DevOps"],
+    GCP: ["AWS", "Azure", "Docker", "DevOps"],
+    Docker: ["Kubernetes", "CI/CD", "Linux", "DevOps"],
+    Kubernetes: ["Docker", "AWS", "GCP", "Azure", "Terraform", "DevOps"],
+    DevOps: ["Docker", "Kubernetes", "CI/CD", "Linux", "AWS"],
+    "Segurança da Informação": ["Threat Hunting / YARA", "Linux", "Python", "DevOps"],
+    "Threat Hunting / YARA": ["Segurança da Informação", "Python", "Rust", "Linux"],
+    Streamlit: ["Python", "Pandas", "Power BI"],
     "Power BI": ["Tableau", "Excel", "SQL"],
     Tableau: ["Power BI", "SQL", "Excel"],
     Cypress: ["Playwright", "Selenium", "QA / Testes"],
@@ -126,7 +137,8 @@ window.VagaMatchEngine = (() => {
     "Engenheiro de Dados / Analytics": ["Python", "SQL", "Apache Spark", "Airflow", "ETL", "AWS", "GCP", "Azure", "PostgreSQL", "Pandas"],
     "Cientista de Dados / IA": ["Python", "Machine Learning", "Deep Learning", "Pandas", "NumPy", "LLM / IA Generativa", "SQL"],
     "Analista de Dados / BI": ["SQL", "Power BI", "Tableau", "Excel", "Python", "ETL"],
-    "Engenheiro DevOps / Cloud": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux"],
+    "Engenheiro DevOps / Cloud": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux", "DevOps"],
+    "Engenheiro / Analista de Cibersegurança": ["Segurança da Informação", "Threat Hunting / YARA", "Python", "Rust", "Linux", "SQL", "DevOps"],
     "Desenvolvedor Mobile": ["React Native", "Flutter", "Kotlin", "Swift", "Android", "iOS", "Dart"],
     "Engenheiro de QA": ["QA / Testes", "Cypress", "Selenium", "Playwright", "CI/CD", "JavaScript", "Python"],
     "Product Designer (UI/UX)": ["Figma", "UI/UX", "HTML", "CSS", "Product Management"],
@@ -136,10 +148,13 @@ window.VagaMatchEngine = (() => {
     "Executivo Comercial / Vendas": ["Vendas / Comercial", "CRM", "Excel"],
   };
 
-  const ACTION_VERBS = [
-    "desenvolv", "lider", "cri", "implement", "otimiz", "reduz", "aument", "gerenci",
-    "arquitet", "automatiz", "coord", "constru", "entreg", "projet", "migra",
-    "built", "led", "developed", "implemented", "optimized", "reduced", "increased", "managed",
+  const ACTION_VERB_PATTERNS = [
+    /\bdesenvolv\w*/, /\blider\w*/, /\bcri(?:ou|ei|ando|acao|ar)\b/, /\bimplement\w*/,
+    /\botimiz\w*/, /\breduz\w*/, /\baument\w*/, /\bgerenci\w*/, /\barquitet\w*/,
+    /\bautomatiz\w*/, /\bcoord\w*/, /\bconstru\w*/, /\bentreg\w*/, /\bprojet(?:ou|ei|ando|ar)\b/,
+    /\bmigr\w*/, /\bconduz\w*/, /\bplanej\w*/,
+    /\bbuilt\b/, /\bled\b/, /\bdeveloped\b/, /\bimplemented\b/, /\boptimized\b/,
+    /\breduced\b/, /\bincreased\b/, /\bmanaged\b/,
   ];
 
   const STOPWORDS = new Set([
@@ -206,7 +221,10 @@ window.VagaMatchEngine = (() => {
   }
 
   function estimateExperienceYears(text) {
-    const explicit = [...text.matchAll(/(\d{1,2})\s*\+?\s*(?:anos?|years?)\s*(?:de\s+experi[eê]ncia|of\s+experience)?/gi)]
+    const explicit = [
+      ...text.matchAll(/(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experi[eê]ncia|atua[cç][aã]o|carreira|trajet[oó]ria|ti)|of\s+experience)/gi),
+      ...text.matchAll(/(?:trajet[oó]ria|experi[eê]ncia|atua[cç][aã]o|carreira)[^.\n]{0,35}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b/gi),
+    ]
       .map((m) => parseInt(m[1], 10))
       .filter((n) => n > 0 && n <= 40);
     if (explicit.length) return Math.max(...explicit);
@@ -246,13 +264,13 @@ window.VagaMatchEngine = (() => {
       return "Sênior / Liderança";
     }
     if (/\b(senior|sr\.?)\b/.test(lower)) return "Sênior";
+    if (years !== null && years >= 6) return "Sênior";
     if (/\b(pleno|mid[- ]?level)\b/.test(lower)) return "Pleno";
+    if (years !== null && years >= 3) return "Pleno";
     if (/\b(estagiario|estagio|intern|trainee)\b/.test(lower)) return "Estágio / Trainee";
     if (/\b(junior|jr\.?)\b/.test(lower)) return "Júnior";
 
     if (years !== null) {
-      if (years >= 6) return "Sênior";
-      if (years >= 3) return "Pleno";
       if (years >= 1) return "Júnior";
       return "Estágio / Trainee";
     }
@@ -291,16 +309,21 @@ window.VagaMatchEngine = (() => {
   }
 
   function detectEducation(text) {
-    const lower = normalizeText(text);
+    const lower = normalizeText(text).replace(/\bengenharia\s+de\s+prompts?\b/g, "");
     const map = {
-      Doutorado: ["doutorado", "phd", "ph.d"],
-      Mestrado: ["mestrado", "master", "m.sc"],
-      "Pós-graduação / MBA": ["pos-graduacao", "pos graduacao", "mba", "especializacao"],
-      "Ensino Superior": ["bacharelado", "graduacao", "tecnologo", "licenciatura", "ciencia da computacao", "engenharia", "sistemas de informacao", "administracao"],
-      "Curso Técnico": ["tecnico em", "ensino tecnico"],
+      Doutorado: [/\bdoutorado\b/, /\bphd\b/, /\bph\.d\b/],
+      Mestrado: [/\bmestrado\b/, /\bmaster\b/, /\bm\.sc\b/],
+      "Pós-graduação / MBA": [/\bpos[- ]graduacao\b/, /\bmba\b/, /\bespecializacao\b/],
+      "Ensino Superior": [
+        /\bbacharelado\b/, /\bgraduacao\b/, /\btecnologo\b/, /\blicenciatura\b/,
+        /\bcurso\s+superior\b/, /\bensino\s+superior\b/, /\bcst\b/,
+        /\banalise\s+e\s+desenvolvimento\s+de\s+sistemas\b/, /\bciencia\s+da\s+computacao\b/,
+        /\bengenharia\b/, /\bsistemas\s+de\s+informacao\b/, /\badministracao\b/,
+      ],
+      "Curso Técnico": [/\btecnico\s+em\b/, /\bensino\s+tecnico\b/],
     };
     return Object.entries(map)
-      .filter(([, kws]) => kws.some((k) => lower.includes(k)))
+      .filter(([, patterns]) => patterns.some((p) => p.test(lower)))
       .map(([label]) => label);
   }
 
@@ -359,7 +382,7 @@ window.VagaMatchEngine = (() => {
     }
 
     const hasMetrics = /(\d+\s*%|r\$\s*\d|\$\s*\d|\b\d+x\b|\b\d{2,}\s*(?:usuarios|clientes|projetos|mil|k)\b)/.test(norm);
-    const hasVerbs = ACTION_VERBS.filter((v) => norm.includes(v)).length >= 2;
+    const hasVerbs = ACTION_VERB_PATTERNS.filter((p) => p.test(norm)).length >= 2;
     if (hasMetrics && hasVerbs) {
       score += 20;
       checks.push({ status: "ok", label: "Impacto mensurável e verbos de ação", tip: "Ótimo uso de métricas e verbos de conquista nas experiências." });
@@ -369,6 +392,16 @@ window.VagaMatchEngine = (() => {
     } else {
       score += 6;
       checks.push({ status: "warn", label: "Experiências muito descritivas", tip: "Comece os tópicos com verbos de ação (Desenvolveu, Otimizou, Liderou) e métricas." });
+    }
+
+    const placeholders = norm.match(/\[(?:inserir|confirmar|ajustar|informar|digite|seu\s+|preencher)[^\]]*\]/g) || [];
+    if (placeholders.length) {
+      score = Math.max(score - 10, 0);
+      checks.push({
+        status: "warn",
+        label: `${placeholders.length} campo(s) de modelo não preenchido(s)`,
+        tip: "Remova ou preencha instruções entre colchetes como '[Inserir mês/ano...]' antes de enviar o currículo.",
+      });
     }
 
     const level = score >= 85 ? "Excelente" : score >= 65 ? "Bom" : "Precisa de Ajustes";

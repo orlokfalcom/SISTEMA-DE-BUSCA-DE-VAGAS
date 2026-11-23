@@ -4,6 +4,7 @@ import json
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -109,6 +110,10 @@ def fetch_arbeitnow_jobs(limit: int = 25) -> list[dict]:
         combined_text = f"{item.get('title', '')} {' '.join(tags)} {desc}"
         skills = extract_skills(combined_text)
         is_remote = bool(item.get("remote"))
+        created_at = item.get("created_at")
+        posted_at = ""
+        if isinstance(created_at, (int, float)) and created_at > 0:
+            posted_at = datetime.fromtimestamp(created_at, tz=timezone.utc).strftime("%Y-%m-%d")
         jobs.append(
             {
                 "id": f"arbeitnow-{item.get('slug', idx)}",
@@ -122,7 +127,7 @@ def fetch_arbeitnow_jobs(limit: int = 25) -> list[dict]:
                 "description": desc[:950] + ("..." if len(desc) > 950 else ""),
                 "url": item.get("url", "https://www.arbeitnow.com"),
                 "source": "Arbeitnow (Ao Vivo)",
-                "posted_at": "Recente",
+                "posted_at": posted_at,
             }
         )
 

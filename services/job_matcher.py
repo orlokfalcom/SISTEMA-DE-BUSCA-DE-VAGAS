@@ -71,13 +71,46 @@ def _seniority_score(candidate_seniority: str, job_seniority: str) -> float:
 
 
 def parse_salary_value(salary_str: str) -> int:
-    """Extrai o maior valor numérico de salário em reais (para ordenação e filtro)."""
+    """Extrai o maior valor numérico de salário (suporta R$, USD/EUR com vírgula e sufixo k/K)."""
     if not salary_str:
         return 0
-    # Captura números como 9.500, 13.000, 15000
-    matches = re.findall(r"(\d{1,3}(?:\.\d{3})+|\d{4,6})", salary_str)
-    values = [int(m.replace(".", "")) for m in matches]
+    values: list[int] = []
+    # Captura formatos abreviados como $170k, $3.5k, 35,3k, 70K
+    for m in re.findall(r"(\d+(?:[.,]\d+)?)\s*k\b", salary_str, flags=re.IGNORECASE):
+        try:
+            values.append(int(round(float(m.replace(",", ".")) * 1000)))
+        except ValueError:
+            pass
+    # Captura números inteiros/milhares como 9.500, 13.000, 80,000, 120000
+    for m in re.findall(r"(\d{1,3}(?:[.,]\d{3})+|\d{4,6})", salary_str):
+        cleaned = m.replace(".", "").replace(",", "")
+        if cleaned.isdigit():
+            values.append(int(cleaned))
     return max(values) if values else 0
+
+
+def _posted_sort_key(posted_at: str) -> tuple[int, str]:
+    """Garante que datas ISO reais (YYYY-MM-DD) fiquem acima de rótulos genéricos ou vazios."""
+    val = str(posted_at or "").strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", val):
+        return (1, val)
+    return (0, "")
+
+
+def _infer_custom_job_seniority(title: str, description: str, fallback: str) -> str:
+    """Infere a senioridade real de uma vaga colada a partir do título e descrição."""
+    combined = normalize_text(f"{title} {description[:300]}")
+    if re.search(r"\b(staff|principal|tech\s+lead|lead|head|architect|arquiteto|especialista)\b", combined):
+        return "Sênior / Liderança"
+    if re.search(r"\b(senior|sr\.?)\b", combined):
+        return "Sênior"
+    if re.search(r"\b(estagio|estagiario|intern|trainee)\b", combined):
+        return "Estágio / Trainee"
+    if re.search(r"\b(junior|jr\.?)\b", combined):
+        return "Júnior"
+    if re.search(r"\b(pleno|mid[- ]?level)\b", combined):
+        return "Pleno"
+    return fallback
 
 
 def _find_related_matches(candidate_skills: list[str], missing_skills: list[str]) -> list[str]:
@@ -244,7 +277,7 @@ def match_jobs(
     if sort_by == "salary":
         results.sort(key=lambda j: (j["salary_numeric"], j["match_score"]), reverse=True)
     elif sort_by == "recent":
-        results.sort(key=lambda j: (str(j.get("posted_at", "")), j["match_score"]), reverse=True)
+        results.sort(key=lambda j: (_posted_sort_key(j.get("posted_at", "")), j["match_score"]), reverse=True)
     else:
         results.sort(key=lambda j: (j["match_score"], len(j["matched_skills"])), reverse=True)
 
@@ -261,13 +294,14 @@ def compare_custom_job_description(
 ) -> dict:
     """Compara o currículo do usuário diretamente com uma vaga colada manualmente."""
     extracted_skills = extract_skills(f"{job_title} {job_description}")
+    inferred_seniority = _infer_custom_job_seniority(job_title, job_description, candidate_seniority)
     synthetic_job = {
         "id": "custom-job",
         "title": job_title or "Vaga Personalizada",
         "company": "Vaga Colada",
         "location": "Conforme descrição",
         "modality": "Não informada",
-        "seniority": candidate_seniority,
+        "seniority": inferred_seniority,
         "salary": "A combinar",
         "skills": extracted_skills,
         "description": job_description,

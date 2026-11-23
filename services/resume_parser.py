@@ -55,7 +55,9 @@ SKILL_CATALOG: dict[str, list[str]] = {
     # Bancos de Dados
     "PostgreSQL": [r"\bpostgres(?:ql)?\b"],
     "MySQL": [r"\bmysql\b"],
+    "SQLite": [r"\bsqlite\b"],
     "MongoDB": [r"\bmongo(?:db)?\b"],
+    "NoSQL": [r"\bnosql\b"],
     "Redis": [r"\bredis\b"],
     "SQL Server": [r"\bsql\s*server\b"],
     "Oracle": [r"\boracle\b"],
@@ -67,12 +69,17 @@ SKILL_CATALOG: dict[str, list[str]] = {
     "Docker": [r"\bdocker\b"],
     "Kubernetes": [r"\bkubernetes\b", r"\bk8s\b"],
     "Terraform": [r"\bterraform\b"],
-    "CI/CD": [r"\bci\s*/\s*cd\b", r"\bgithub\s+actions\b", r"\bgitlab\s+ci\b", r"\bjenkins\b"],
+    "DevOps": [r"\bdevops\b"],
+    "CI/CD": [r"\bci\s*/\s*cd\b", r"\bgithub\s+actions\b", r"\bgitlab\s+ci\b", r"\bjenkins\b", r"\bintegra[cç][aã]o\s+cont[ií]nua\b"],
     "Linux": [r"\blinux\b", r"\bubuntu\b", r"\bbash\b", r"\bshell\s*script\b"],
     "Git": [r"\bgit\b", r"\bgithub\b", r"\bgitlab\b"],
+    # Segurança da Informação
+    "Segurança da Informação": [r"\bseguran[cç]a\s+da\s+informa[cç][aã]o\b", r"\bcyber\s*security\b", r"\bciberseguran[cç]a\b", r"\binfosec\b"],
+    "Threat Hunting / YARA": [r"\bthreat\s+hunting\b", r"\byara\b", r"\bsoc\b", r"\bsiem\b"],
     # Dados & IA
     "Pandas": [r"\bpandas\b"],
     "NumPy": [r"\bnumpy\b"],
+    "Streamlit": [r"\bstreamlit\b"],
     "Machine Learning": [r"\bmachine\s+learning\b", r"\bscikit[- ]?learn\b", r"\baprendizado\s+de\s+m[aá]quina\b"],
     "Deep Learning": [r"\bdeep\s+learning\b", r"\bpytorch\b", r"\btensorflow\b", r"\bkeras\b"],
     "LLM / IA Generativa": [r"\bllms?\b", r"\blangchain\b", r"\bopenai\b", r"\bia\s+generativa\b", r"\bgenerative\s+ai\b", r"\brag\b"],
@@ -115,14 +122,19 @@ RELATED_SKILLS: dict[str, set[str]] = {
     "Node.js": {"Express", "NestJS", "TypeScript", "JavaScript", "REST API"},
     "Express": {"Node.js", "NestJS", "REST API"},
     "NestJS": {"Node.js", "TypeScript", "Express", "REST API"},
-    "PostgreSQL": {"SQL", "MySQL", "SQL Server", "Oracle"},
-    "MySQL": {"SQL", "PostgreSQL", "SQL Server"},
+    "PostgreSQL": {"SQL", "MySQL", "SQLite", "SQL Server", "Oracle"},
+    "MySQL": {"SQL", "PostgreSQL", "SQLite", "SQL Server"},
+    "SQLite": {"SQL", "PostgreSQL", "MySQL"},
     "SQL Server": {"SQL", "PostgreSQL", "MySQL"},
-    "AWS": {"Azure", "GCP", "Docker", "Terraform"},
-    "Azure": {"AWS", "GCP", "Docker"},
-    "GCP": {"AWS", "Azure", "Docker"},
-    "Docker": {"Kubernetes", "CI/CD", "Linux"},
-    "Kubernetes": {"Docker", "AWS", "GCP", "Azure", "Terraform"},
+    "AWS": {"Azure", "GCP", "Docker", "Terraform", "DevOps"},
+    "Azure": {"AWS", "GCP", "Docker", "DevOps"},
+    "GCP": {"AWS", "Azure", "Docker", "DevOps"},
+    "Docker": {"Kubernetes", "CI/CD", "Linux", "DevOps"},
+    "Kubernetes": {"Docker", "AWS", "GCP", "Azure", "Terraform", "DevOps"},
+    "DevOps": {"Docker", "Kubernetes", "CI/CD", "Linux", "AWS"},
+    "Segurança da Informação": {"Threat Hunting / YARA", "Linux", "Python", "DevOps"},
+    "Threat Hunting / YARA": {"Segurança da Informação", "Python", "Rust", "Linux"},
+    "Streamlit": {"Python", "Pandas", "Power BI"},
     "Power BI": {"Tableau", "Excel", "SQL"},
     "Tableau": {"Power BI", "SQL", "Excel"},
     "Cypress": {"Playwright", "Selenium", "QA / Testes"},
@@ -142,7 +154,8 @@ ROLE_PROFILES: dict[str, set[str]] = {
     "Engenheiro de Dados / Analytics": {"Python", "SQL", "Apache Spark", "Airflow", "ETL", "AWS", "GCP", "Azure", "PostgreSQL", "Pandas"},
     "Cientista de Dados / IA": {"Python", "Machine Learning", "Deep Learning", "Pandas", "NumPy", "LLM / IA Generativa", "SQL"},
     "Analista de Dados / BI": {"SQL", "Power BI", "Tableau", "Excel", "Python", "ETL"},
-    "Engenheiro DevOps / Cloud": {"AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux"},
+    "Engenheiro DevOps / Cloud": {"AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "CI/CD", "Linux", "DevOps"},
+    "Engenheiro / Analista de Cibersegurança": {"Segurança da Informação", "Threat Hunting / YARA", "Python", "Rust", "Linux", "SQL", "DevOps"},
     "Desenvolvedor Mobile": {"React Native", "Flutter", "Kotlin", "Swift", "Android", "iOS", "Dart"},
     "Engenheiro de QA": {"QA / Testes", "Cypress", "Selenium", "Playwright", "CI/CD", "JavaScript", "Python"},
     "Product Designer (UI/UX)": {"Figma", "UI/UX", "HTML", "CSS", "Product Management"},
@@ -152,10 +165,13 @@ ROLE_PROFILES: dict[str, set[str]] = {
     "Executivo Comercial / Vendas": {"Vendas / Comercial", "CRM", "Excel"},
 }
 
-ACTION_VERBS = [
-    "desenvolv", "lider", "cri", "implement", "otimiz", "reduz", "aument", "gerenci",
-    "arquitet", "automatiz", "coord", "constru", "entreg", "projet", "migra",
-    "built", "led", "developed", "implemented", "optimized", "reduced", "increased", "managed",
+ACTION_VERB_PATTERNS = [
+    r"\bdesenvolv\w*", r"\blider\w*", r"\bcri(?:ou|ei|ando|acao|ar)\b", r"\bimplement\w*",
+    r"\botimiz\w*", r"\breduz\w*", r"\baument\w*", r"\bgerenci\w*", r"\barquitet\w*",
+    r"\bautomatiz\w*", r"\bcoord\w*", r"\bconstru\w*", r"\bentreg\w*", r"\bprojet(?:ou|ei|ando|ar)\b",
+    r"\bmigr\w*", r"\bconduz\w*", r"\bplanej\w*",
+    r"\bbuilt\b", r"\bled\b", r"\bdeveloped\b", r"\bimplemented\b", r"\boptimized\b",
+    r"\breduced\b", r"\bincreased\b", r"\bmanaged\b",
 ]
 
 
@@ -227,13 +243,18 @@ def extract_skills(text: str) -> list[str]:
 
 
 def estimate_experience_years(text: str) -> int | None:
-    """Estima anos de experiência evitando confundir anos de graduação com experiência."""
+    """Estima anos de experiência evitando confundir anos de graduação ou idade da empresa."""
     explicit_matches = re.findall(
-        r"(\d{1,2})\s*\+?\s*(?:anos?|years?)\s*(?:de\s+experi[eê]ncia|of\s+experience)?",
+        r"(\d{1,2})\s*\+?\s*(?:anos?|years?)\s+(?:de\s+(?:experi[eê]ncia|atua[cç][aã]o|carreira|trajet[oó]ria|ti)|of\s+experience)",
         text,
         flags=re.IGNORECASE,
     )
-    candidates = [int(m) for m in explicit_matches if 0 < int(m) <= 40]
+    prefix_matches = re.findall(
+        r"(?:trajet[oó]ria|experi[eê]ncia|atua[cç][aã]o|carreira)[^.\n]{0,35}?\b(\d{1,2})\s*\+?\s*(?:anos?|years?)\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    candidates = [int(m) for m in (explicit_matches + prefix_matches) if 0 < int(m) <= 40]
     if candidates:
         return max(candidates)
 
@@ -279,7 +300,11 @@ def detect_seniority(text: str, years: int | None) -> str:
         return "Sênior / Liderança"
     if re.search(r"\b(senior|sr\.?)\b", lower):
         return "Sênior"
+    if years is not None and years >= 6:
+        return "Sênior"
     if re.search(r"\b(pleno|mid[- ]?level)\b", lower):
+        return "Pleno"
+    if years is not None and years >= 3:
         return "Pleno"
     if re.search(r"\b(estagiario|estagio|intern|trainee)\b", lower):
         return "Estágio / Trainee"
@@ -287,10 +312,6 @@ def detect_seniority(text: str, years: int | None) -> str:
         return "Júnior"
 
     if years is not None:
-        if years >= 6:
-            return "Sênior"
-        if years >= 3:
-            return "Pleno"
         if years >= 1:
             return "Júnior"
         return "Estágio / Trainee"
@@ -337,16 +358,23 @@ def detect_languages(text: str) -> list[str]:
 
 def detect_education(text: str) -> list[str]:
     lower = normalize_text(text)
+    # Remove expressão "engenharia de prompts" para evitar falso positivo em Ensino Superior
+    cleaned = re.sub(r"\bengenharia\s+de\s+prompts?\b", "", lower)
     levels: list[str] = []
     edu_map = {
-        "Doutorado": ["doutorado", "phd", "ph.d"],
-        "Mestrado": ["mestrado", "master", "m.sc"],
-        "Pós-graduação / MBA": ["pos-graduacao", "pos graduacao", "mba", "especializacao"],
-        "Ensino Superior": ["bacharelado", "graduacao", "tecnologo", "licenciatura", "ciencia da computacao", "engenharia", "sistemas de informacao", "administracao"],
-        "Curso Técnico": ["tecnico em", "ensino tecnico"],
+        "Doutorado": [r"\bdoutorado\b", r"\bphd\b", r"\bph\.d\b"],
+        "Mestrado": [r"\bmestrado\b", r"\bmaster\b", r"\bm\.sc\b"],
+        "Pós-graduação / MBA": [r"\bpos[- ]graduacao\b", r"\bmba\b", r"\bespecializacao\b"],
+        "Ensino Superior": [
+            r"\bbacharelado\b", r"\bgraduacao\b", r"\btecnologo\b", r"\blicenciatura\b",
+            r"\bcurso\s+superior\b", r"\bensino\s+superior\b", r"\bcst\b",
+            r"\banalise\s+e\s+desenvolvimento\s+de\s+sistemas\b", r"\bciencia\s+da\s+computacao\b",
+            r"\bengenharia\b", r"\bsistemas\s+de\s+informacao\b", r"\badministracao\b",
+        ],
+        "Curso Técnico": [r"\btecnico\s+em\b", r"\bensino\s+tecnico\b"],
     }
-    for label, keywords in edu_map.items():
-        if any(k in lower for k in keywords):
+    for label, patterns in edu_map.items():
+        if any(re.search(p, cleaned) for p in patterns):
             levels.append(label)
     return levels
 
@@ -419,7 +447,7 @@ def evaluate_ats_readiness(
 
     # 5. Resultados mensuráveis & verbos de ação (20 pts)
     has_metrics = bool(re.search(r"(\d+\s*%|r\$\s*\d|\$\s*\d|\b\d+x\b|\b\d{2,}\s*(?:usuarios|clientes|projetos|mil|k)\b)", norm))
-    has_verbs = sum(1 for v in ACTION_VERBS if v in norm) >= 2
+    has_verbs = sum(1 for p in ACTION_VERB_PATTERNS if re.search(p, norm)) >= 2
     if has_metrics and has_verbs:
         score += 20
         checks.append({"status": "ok", "label": "Impacto mensurável e verbos de ação", "tip": "Ótimo uso de métricas e verbos de conquista nas experiências."})
@@ -429,6 +457,21 @@ def evaluate_ats_readiness(
     else:
         score += 6
         checks.append({"status": "warn", "label": "Experiências muito descritivas", "tip": "Comece os tópicos com verbos de ação (Desenvolveu, Otimizou, Liderou) acompanhados de métricas."})
+
+    # 6. Alerta de campos de modelo / placeholders não preenchidos
+    placeholders = re.findall(
+        r"\[(?:inserir|confirmar|ajustar|informar|digite|seu\s+|preencher)[^\]]*\]",
+        norm,
+    )
+    if placeholders:
+        score = max(score - 10, 0)
+        checks.append(
+            {
+                "status": "warn",
+                "label": f"{len(placeholders)} campo(s) de modelo não preenchido(s)",
+                "tip": "Remova ou preencha instruções entre colchetes como '[Inserir mês/ano...]' antes de enviar o currículo.",
+            }
+        )
 
     level = "Excelente" if score >= 85 else ("Bom" if score >= 65 else "Precisa de Ajustes")
     return {

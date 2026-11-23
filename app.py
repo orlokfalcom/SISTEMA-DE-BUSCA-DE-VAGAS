@@ -117,7 +117,7 @@ def analyze_resume():
     return jsonify(
         {
             "profile": profile.to_dict(include_raw_text=False),
-            "resume_text_snippet": profile.raw_text[:2500],
+            "resume_text_snippet": profile.raw_text[:15000],
             "jobs": ranked_jobs,
             "total_jobs": len(ranked_jobs),
             "skill_gaps": skill_gaps,
@@ -131,7 +131,10 @@ def analyze_resume():
 def search_jobs_by_profile():
     """Refaz a busca e o ranqueamento quando o usuário edita skills ou filtros."""
     payload = request.get_json(silent=True) or {}
-    skills = [str(s).strip() for s in payload.get("skills", []) if str(s).strip()]
+    raw_skills = payload.get("skills", [])
+    if not isinstance(raw_skills, list):
+        return jsonify({"error": "O campo 'skills' deve ser uma lista de habilidades."}), 400
+    skills = [str(s).strip() for s in raw_skills if str(s).strip()]
     seniority = str(payload.get("seniority") or "Pleno").strip()
     resume_text = str(payload.get("resume_text") or "")
     source_filter = str(payload.get("source") or "all").strip().lower()
@@ -140,7 +143,10 @@ def search_jobs_by_profile():
     search_query = str(payload.get("query") or "").strip()
     sort_by = str(payload.get("sort_by") or "match").strip().lower()
     include_live = bool(payload.get("include_live", True))
-    min_score = int(payload.get("min_score") or 0)
+    try:
+        min_score = max(0, min(100, int(payload.get("min_score") or 0)))
+    except (ValueError, TypeError):
+        return jsonify({"error": "O campo 'min_score' deve ser um número inteiro entre 0 e 100."}), 400
 
     roles = suggest_roles(skills, resume_text)
     primary_skill = skills[0] if skills else ""
@@ -188,7 +194,10 @@ def compare_custom_job():
     if len(job_description) < 20:
         return jsonify({"error": "Cole uma descrição de vaga com pelo menos 20 caracteres."}), 400
 
-    skills = [str(s).strip() for s in payload.get("skills", []) if str(s).strip()]
+    raw_skills = payload.get("skills", [])
+    if not isinstance(raw_skills, list):
+        return jsonify({"error": "O campo 'skills' deve ser uma lista de habilidades."}), 400
+    skills = [str(s).strip() for s in raw_skills if str(s).strip()]
     seniority = str(payload.get("seniority") or "Pleno").strip()
     resume_text = str(payload.get("resume_text") or "")
     roles = suggest_roles(skills, resume_text)

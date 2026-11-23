@@ -580,6 +580,17 @@
     resultsSection.classList.add("hidden");
     uploadSection.classList.remove("hidden");
     pdfInput.value = "";
+    queryInput.value = "";
+    modalityFilter.value = "";
+    jobSeniorityFilter.value = "";
+    sourceFilter.value = "all";
+    minScoreFilter.value = "0";
+    sortFilter.value = "match";
+    trackerFilter.value = "";
+    compareTitleInput.value = "";
+    compareDescInput.value = "";
+    compareResult.innerHTML = "";
+    compareResult.classList.add("hidden");
     clearError();
   });
 
