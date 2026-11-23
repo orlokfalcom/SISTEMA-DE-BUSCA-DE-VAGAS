@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VagaMatch PDF — Busca Inteligente de Vagas &amp; Diagnóstico ATS</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero-badge">100% no Navegador (Privado) · Análise PDF · Diagnóstico ATS · TF-IDF</div>
+      <h1>VagaMatch <span class="accent">PDF</span></h1>
+      <p class="hero-subtitle">
+        Envie seu currículo em PDF para receber diagnóstico ATS, análise de lacunas de habilidades (Skill Gap) e vagas ranqueadas com explicabilidade transparente — tudo processado diretamente no seu navegador.
+      </p>
+    </header>
+
+    <!-- Seção de Upload -->
+    <section class="upload-card" id="uploadSection">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar ou arrastar arquivo PDF">
+        <div class="dropzone-icon">📄</div>
+        <h2>Arraste seu currículo em PDF aqui</h2>
+        <p>ou clique para selecionar um arquivo do seu computador (processamento local e privado)</p>
+        <input type="file" id="pdfInput" accept=".pdf,application/pdf" hidden />
+        <div class="upload-actions">
+          <button type="button" class="btn btn-primary" id="chooseFileBtn">Escolher PDF</button>
+          <button type="button" class="btn btn-secondary" id="sampleBtn">Testar com Currículo de Exemplo</button>
+          <button type="button" class="btn btn-ghost" id="downloadSampleBtn">Baixar PDF Exemplo</button>
+        </div>
+        <div class="upload-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="includeLiveCheck" checked />
+            <span>Incluir vagas ao vivo de APIs externas (Remotive e Arbeitnow) além da Base Brasil</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="status-banner hidden" id="statusBanner"></div>
+      <div class="loader hidden" id="loader">
+        <div class="spinner"></div>
+        <span>Lendo seu PDF, auditando qualidade ATS e calculando compatibilidade...</span>
+      </div>
+    </section>
+
+    <!-- Painel de Resultados -->
+    <main class="results-layout hidden" id="resultsSection">
+      <aside class="profile-panel">
+        <div class="panel-header">
+          <h3>Perfil Extraído</h3>
+          <button type="button" class="btn-link" id="newUploadBtn">Trocar PDF</button>
+        </div>
+
+        <div class="file-meta" id="fileMeta"></div>
+
+        <!-- Diagnóstico ATS -->
+        <div class="ats-card" id="atsCard">
+          <div class="ats-header">
+            <div>
+              <span class="meta-label">Qualidade ATS do Currículo</span>
+              <div class="ats-level" id="atsLevel">—</div>
+            </div>
+            <div class="ats-score-circle" id="atsScore">0</div>
+          </div>
+          <div class="ats-bar-track">
+            <div class="ats-bar-fill" id="atsBarFill" style="width: 0%"></div>
+          </div>
+          <ul class="ats-checks" id="atsChecks"></ul>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-box">
+            <span class="meta-label">Senioridade</span>
+            <select id="senioritySelect" class="select-input">
+              <option value="Estágio / Trainee">Estágio / Trainee</option>
+              <option value="Júnior">Júnior</option>
+              <option value="Pleno">Pleno</option>
+              <option value="Sênior">Sênior</option>
+              <option value="Sênior / Liderança">Sênior / Liderança</option>
+            </select>
+          </div>
+          <div class="meta-box">
+            <span class="meta-label">Experiência Est.</span>
+            <strong id="yearsValue">—</strong>
+          </div>
+        </div>
+
+        <div class="profile-block">
+          <span class="meta-label">Cargos Sugeridos</span>
+          <div class="pill-list" id="rolesList"></div>
+        </div>
+
+        <div class="profile-block">
+          <div class="block-title-row">
+            <span class="meta-label">Habilidades Detectadas (<span id="skillsCount">0</span>)</span>
+          </div>
+          <div class="pill-list editable" id="skillsList"></div>
+          <div class="add-skill-row">
+            <input
+              type="text"
+              id="newSkillInput"
+              list="skillSuggestions"
+              placeholder="Adicionar habilidade (ex: Python)"
+              class="text-input"
+            />
+            <datalist id="skillSuggestions"></datalist>
+            <button type="button" class="btn btn-small btn-primary" id="addSkillBtn">+</button>
+          </div>
+        </div>
+
+        <!-- Skill Gap de Mercado -->
+        <div class="profile-block" id="skillGapBlock">
+          <span class="meta-label">Skill Gap (Mais Pedidas nas Top Vagas)</span>
+          <p class="helper-text">Clique em uma skill para adicioná-la se você já a domina:</p>
+          <div class="gap-list" id="skillGapList"></div>
+        </div>
+
+        <div class="profile-block" id="languagesBlock">
+          <span class="meta-label">Idiomas &amp; Formação</span>
+          <div class="pill-list" id="extraInfoList"></div>
+        </div>
+
+        <div class="profile-block">
+          <span class="meta-label">Buscar em Portais Externos</span>
+          <div class="external-links" id="externalLinks"></div>
+        </div>
+      </aside>
+
+      <!-- Coluna Principal -->
+      <section class="jobs-column">
+        <div class="toolbar-top">
+          <button type="button" class="btn btn-primary btn-small" id="openCompareBtn">
+            ⚡ Comparar com Vaga Colada (ATS)
+          </button>
+          <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn">
+            ⬇ Exportar Vagas (CSV)
+          </button>
+        </div>
+
+        <div class="filters-bar">
+          <input
+            type="text"
+            id="queryInput"
+            class="text-input search-input"
+            placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..."
+          />
+          <select id="modalityFilter" class="select-input">
+            <option value="">Todas modalidades</option>
+            <option value="Remoto">Remoto</option>
+            <option value="Híbrido">Híbrido</option>
+            <option value="Presencial">Presencial</option>
+          </select>
+          <select id="jobSeniorityFilter" class="select-input">
+            <option value="">Todas senioridades</option>
+            <option value="Estágio">Estágio / Trainee</option>
+            <option value="Júnior">Júnior</option>
+            <option value="Pleno">Pleno</option>
+            <option value="Sênior">Sênior</option>
+          </select>
+          <select id="sourceFilter" class="select-input">
+            <option value="all">Todas as fontes</option>
+            <option value="local">Somente Base Brasil</option>
+            <option value="live">Somente APIs Ao Vivo</option>
+          </select>
+          <select id="minScoreFilter" class="select-input">
+            <option value="0">Qualquer match</option>
+            <option value="40">Match ≥ 40%</option>
+            <option value="60">Match ≥ 60%</option>
+            <option value="75">Match ≥ 75%</option>
+          </select>
+          <select id="sortFilter" class="select-input">
+            <option value="match">Ordenar: Maior Match</option>
+            <option value="salary">Ordenar: Maior Salário</option>
+            <option value="recent">Ordenar: Mais Recentes</option>
+          </select>
+          <select id="trackerFilter" class="select-input">
+            <option value="">Todas (Rastreador)</option>
+            <option value="any_tracked">★ Todas Rastreadas</option>
+            <option value="Salva">☆ Salva</option>
+            <option value="Candidatada">📨 Candidatada</option>
+            <option value="Entrevista">💬 Entrevista</option>
+            <option value="Proposta">🎉 Proposta</option>
+          </select>
+        </div>
+
+        <div class="results-summary" id="resultsSummary"></div>
+
+        <div class="jobs-grid" id="jobsGrid"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal de Detalhes da Vaga -->
+  <div class="modal-overlay hidden" id="jobModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="source-tag" id="modalSource"></span>
+          <h3 id="modalTitle"></h3>
+          <p class="modal-company" id="modalCompany"></p>
+        </div>
+        <button type="button" class="modal-close" id="closeModalBtn" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-meta-row" id="modalMeta"></div>
+        <p class="modal-reason" id="modalReason"></p>
+
+        <h4>Detalhamento Transparente do Match (Explicabilidade)</h4>
+        <div class="breakdown-grid" id="modalBreakdown"></div>
+
+        <h4>Descrição da Vaga</h4>
+        <p class="modal-description" id="modalDescription"></p>
+
+        <h4>Habilidades Compatíveis (Exatas &amp; Relacionadas)</h4>
+        <div class="pill-list" id="modalMatchedSkills"></div>
+
+        <h4>Habilidades para Desenvolver / Destacar</h4>
+        <div class="pill-list" id="modalMissingSkills"></div>
+
+        <h4>Sugestão de Mensagem / Pitch para o Recrutador</h4>
+        <div class="pitch-box">
+          <p id="modalPitch"></p>
+          <button type="button" class="btn btn-secondary btn-small" id="copyPitchBtn">Copiar Mensagem</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <select id="modalStatusSelect" class="select-input">
+          <option value="">Sem status</option>
+          <option value="Salva">☆ Salva</option>
+          <option value="Candidatada">📨 Candidatada</option>
+          <option value="Entrevista">💬 Entrevista</option>
+          <option value="Proposta">🎉 Proposta</option>
+        </select>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modalApplyBtn">
+          Candidatar-se na Vaga ↗
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Comparador de Vaga Personalizada -->
+  <div class="modal-overlay hidden" id="compareModal" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="source-tag">Simulador ATS Instantâneo</span>
+          <h3>Comparar Currículo com Qualquer Vaga</h3>
+        </div>
+        <button type="button" class="modal-close" id="closeCompareBtn" aria-label="Fechar">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="compareTitleInput" class="text-input" placeholder="Título da vaga (ex: Desenvolvedor Python Sênior)" />
+        <textarea id="compareDescInput" class="textarea-input" rows="6" placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
+        <button type="button" class="btn btn-primary" id="runCompareBtn">Calcular Compatibilidade ATS</button>
+        <div id="compareResult" class="compare-result hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF.js via CDN (leitura 100% client-side para GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="./engine.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
