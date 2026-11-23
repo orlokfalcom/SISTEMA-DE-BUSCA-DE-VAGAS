@@ -245,8 +245,12 @@ def improve_resume():
 
     skills = extract_skills(resume_text) if reparse else [str(s).strip() for s in raw_skills if str(s).strip()]
     seniority = str(payload.get("seniority") or "Pleno").strip()
-    pages = int(payload.get("pages") or max(1, min(3, round(len(resume_text.split()) / 420) or 1)))
-    word_count = len(resume_text.split()) if reparse else int(payload.get("word_count") or len(resume_text.split()))
+    try:
+        default_pages = max(1, min(3, round(len(resume_text.split()) / 420) or 1))
+        pages = max(1, int(payload.get("pages") or default_pages))
+        word_count = len(resume_text.split()) if reparse else max(0, int(payload.get("word_count") or len(resume_text.split())))
+    except (ValueError, TypeError):
+        return jsonify({"error": "Os campos 'pages' e 'word_count' devem ser números inteiros."}), 400
     suggested_roles = suggest_roles(skills, resume_text) if reparse else (payload.get("suggested_roles") or suggest_roles(skills, resume_text))
     skill_gaps = payload.get("skill_gaps") if isinstance(payload.get("skill_gaps"), list) else []
 

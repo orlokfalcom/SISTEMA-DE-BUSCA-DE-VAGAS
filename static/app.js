@@ -201,7 +201,8 @@
     const run = async () => {
       resultsSummary.innerHTML = `<span>Atualizando vagas e recalculando compatibilidade...</span>`;
       try {
-        const forceLive = sourceFilter.value === "live" || includeLiveCheck.checked;
+        const forceLive =
+          sourceFilter.value === "live" || sourceFilter.value === "companies" || includeLiveCheck.checked;
         const resp = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
