@@ -3,107 +3,155 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VagaMatch PDF — Busca Inteligente de Vagas &amp; Diagnóstico ATS</title>
+  <title>VagaMatch PDF — Inteligência de Carreira, Busca Profunda &amp; Editor ATS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
+  <div class="ambient-bg" aria-hidden="true"></div>
   <nav class="topbar">
     <div class="topbar-inner">
       <div class="brand-lockup">
-        <span class="brand-dot"></span>
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </span>
         <strong>VagaMatch <span class="accent">PDF</span></strong>
-        <span class="brand-tag">Career Intelligence &amp; ATS</span>
+        <span class="brand-tag">Career Intelligence</span>
       </div>
       <div class="topbar-meta">
-        <span class="topbar-pill">🔒 100% no Navegador</span>
-        <span class="topbar-pill">✨ Editor ATS</span>
-        <span class="topbar-pill">🎓 Cursos</span>
+        <a href="#featuresSection" class="topbar-link">Recursos</a>
+        <a href="#liveFeedSection" class="topbar-link">Vagas ao Vivo</a>
+        <span class="topbar-status"><span class="pulse-dot"></span> 100% no Navegador</span>
       </div>
     </div>
   </nav>
   <div class="app-shell">
-    <header class="hero">
-      <div class="hero-badge">100% no Navegador · Busca Profunda Multi-Fonte · Editor de Currículo ATS ao Vivo</div>
-      <h1>VagaMatch <span class="accent">PDF</span></h1>
-      <p class="hero-subtitle">
-        Envie seu currículo em PDF para varrer vagas em toda a internet, aprimorar seu currículo em um editor ATS em tempo real e ranquear oportunidades com explicabilidade transparente — tudo direto no navegador.
-      </p>
-    </header>
+    <!-- Seção Inicial (Landing + Upload) -->
+    <section class="landing-shell" id="uploadSection">
+      <div class="hero-split">
+        <div class="hero-copy">
+          <div class="hero-eyebrow">
+            <span class="pulse-dot"></span>
+            <span>Processamento Privado no Navegador · Busca Profunda · Editor ATS</span>
+          </div>
+          <h1>Transforme seu currículo em <span class="accent-gradient">oportunidades reais</span> de alto impacto.</h1>
+          <p class="hero-subtitle">
+            Envie seu PDF para varrer vagas em tempo real, diagnosticar e editar seu currículo para sistemas ATS e receber trilhas de cursos recomendados — tudo com privacidade local.
+          </p>
 
-    <!-- Seção de Upload -->
-    <section class="upload-card" id="uploadSection">
-      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar ou arrastar arquivo PDF">
-        <div class="dropzone-icon">📄</div>
-        <h2>Arraste seu currículo em PDF aqui</h2>
-        <p>ou clique para selecionar um arquivo do seu computador (processamento local e privado)</p>
-        <input type="file" id="pdfInput" accept=".pdf,application/pdf" hidden />
-        <div class="upload-actions">
-          <button type="button" class="btn btn-primary" id="chooseFileBtn">Escolher PDF</button>
-          <button type="button" class="btn btn-secondary" id="sampleBtn">Testar com Currículo de Exemplo</button>
-          <button type="button" class="btn btn-ghost" id="downloadSampleBtn">Baixar PDF Exemplo</button>
+          <div class="hero-kpis">
+            <div class="kpi-item">
+              <strong>100%</strong>
+              <span>Privado no Navegador</span>
+            </div>
+            <div class="kpi-item">
+              <strong>14+</strong>
+              <span>Portais &amp; Buscas Diretas</span>
+            </div>
+            <div class="kpi-item">
+              <strong>0–100</strong>
+              <span>Auditoria &amp; Editor ATS</span>
+            </div>
+            <div class="kpi-item">
+              <strong>5 min</strong>
+              <span>Auto-atualização Contínua</span>
+            </div>
+          </div>
         </div>
-        <div class="upload-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="includeLiveCheck" checked />
-            <span>Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
-          </label>
-          <label class="checkbox-label" style="margin-top:6px;">
-            <input type="checkbox" id="deepSearchCheck" checked />
-            <span>🌐 Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
-          </label>
+
+        <div class="upload-panel">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar ou arrastar arquivo PDF">
+            <div class="dropzone-icon-wrap" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+            </div>
+            <h2>Envie seu currículo em PDF</h2>
+            <p>Arraste e solte aqui ou clique para selecionar (processamento local)</p>
+            <input type="file" id="pdfInput" accept=".pdf,application/pdf" hidden />
+            <div class="upload-actions">
+              <button type="button" class="btn btn-primary btn-glow" id="chooseFileBtn">Analisar Meu Currículo PDF</button>
+              <button type="button" class="btn btn-secondary" id="sampleBtn">Testar com Exemplo</button>
+              <button type="button" class="btn btn-ghost" id="downloadSampleBtn">Baixar PDF Exemplo</button>
+            </div>
+            <div class="upload-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="includeLiveCheck" checked />
+                <span>Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="deepSearchCheck" checked />
+                <span>Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="status-banner hidden" id="statusBanner"></div>
+          <div class="loader hidden" id="loader">
+            <div class="spinner"></div>
+            <span>Lendo seu PDF, auditando qualidade ATS e executando busca profunda na internet...</span>
+          </div>
         </div>
       </div>
 
-      <div class="feature-strip">
+      <!-- Faixa de Fontes Monitoradas -->
+      <div class="trust-strip">
+        <span class="trust-label">Portais integrados &amp; busca direta em carreiras</span>
+        <div class="trust-logos">
+          <span>Remotive</span><span>Jobicy</span><span>Arbeitnow</span><span>RemoteOK</span><span>GitHub BR</span><span>LinkedIn</span><span>Gupy</span><span>Catho</span><span>Glassdoor</span><span>Indeed</span><span>Wellfound</span>
+        </div>
+      </div>
+
+      <!-- Bento Grid de Recursos -->
+      <div class="feature-strip bento-grid" id="featuresSection">
         <div class="feature-item">
-          <span class="feature-icon">🌐</span>
+          <div class="feature-icon-box" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
           <div>
             <strong>Busca Profunda Multi-Fonte</strong>
-            <p>Varredura paralela em APIs abertas + 8 portais com busca avançada.</p>
+            <p>Varredura paralela em APIs abertas com prioridade geográfica para o seu país e links diretos para 14 portais.</p>
           </div>
         </div>
         <div class="feature-item">
-          <span class="feature-icon">✨</span>
+          <div class="feature-icon-box" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </div>
           <div>
-            <strong>Editor de Currículo ATS</strong>
-            <p>Edite o currículo ao vivo com auto-correção, score em tempo real e exportação PDF.</p>
+            <strong>Editor de Currículo ATS ao Vivo</strong>
+            <p>Corrija placeholders, métricas e formatação em tela dividida com score recalculado em tempo real e exportação PDF.</p>
           </div>
         </div>
         <div class="feature-item">
-          <span class="feature-icon">🎯</span>
+          <div class="feature-icon-box" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
           <div>
-            <strong>Matching Semântico TF-IDF</strong>
-            <p>Score explicável por skills exatas, relacionadas, senioridade e texto.</p>
+            <strong>Matching Explicável TF-IDF</strong>
+            <p>Pontuação transparente por habilidades exatas, ecossistema relacionado, semântica textual e aderência de senioridade.</p>
           </div>
         </div>
         <div class="feature-item">
-          <span class="feature-icon">⚡</span>
+          <div class="feature-icon-box" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          </div>
           <div>
-            <strong>Simulador &amp; Rastreador</strong>
-            <p>Compare com qualquer vaga colada, acompanhe candidaturas e exporte CSV.</p>
+            <strong>Skill Gap &amp; Trilhas de Cursos</strong>
+            <p>Identifica automaticamente competências mais pedidas pelo mercado e recomenda cursos gratuitos para elevar seu perfil.</p>
           </div>
         </div>
-      </div>
-
-      <div class="status-banner hidden" id="statusBanner"></div>
-      <div class="loader hidden" id="loader">
-        <div class="spinner"></div>
-        <span>Lendo seu PDF, auditando qualidade ATS e executando busca profunda na internet...</span>
       </div>
 
       <!-- Feed Automático de Vagas Recentes ao Abrir a Página -->
       <div class="live-feed-card" id="liveFeedSection">
         <div class="live-feed-header">
           <div>
-            <span class="meta-label">Carregamento Automático em Tempo Real</span>
-            <h3>🔥 Vagas Recentes (Empresas &amp; Portais)</h3>
+            <span class="meta-label">Atualização Automática em Tempo Real</span>
+            <h3>Oportunidades Recentes em Empresas &amp; Portais</h3>
           </div>
           <div class="live-feed-controls">
-            <span class="live-status-pill" id="homeLiveStatus">🔄 Carregando vagas...</span>
-            <button type="button" class="btn btn-secondary btn-small" id="homeRefreshBtn">🔄 Atualizar</button>
+            <span class="live-status-pill" id="homeLiveStatus">Carregando vagas...</span>
+            <button type="button" class="btn btn-secondary btn-small" id="homeRefreshBtn">Atualizar Agora</button>
           </div>
         </div>
         <div class="live-feed-grid" id="homeLiveGrid"></div>
