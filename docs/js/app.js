@@ -44,6 +44,12 @@ function createWorkerClient(workerUrl) {
     }
   });
 
+  worker.addEventListener("error", (err) => {
+    const error = new Error(err?.message || "Web Worker falhou ao carregar");
+    for (const { reject } of pending.values()) reject(error);
+    pending.clear();
+  });
+
   return {
     post(type, payload = {}) {
       const requestId = seq++;
@@ -693,25 +699,27 @@ function buildJobCardHtml(job) {
     </article>`;
 }
 
+function syncListSentinel(totalVisible) {
+  if (!listSentinel) return;
+  const remaining = totalVisible - state.renderedCount;
+  if (remaining > 0) {
+    listSentinel.classList.remove("hidden");
+    listSentinel.innerHTML = `<button type="button" class="btn btn-secondary btn-small" id="loadMoreBtn">Carregar mais vagas (${remaining} restantes)</button>`;
+  } else {
+    listSentinel.classList.add("hidden");
+  }
+}
+
 function appendNextChunk() {
   const visibleJobs = getFilteredJobs();
   if (state.renderedCount >= visibleJobs.length) {
-    if (listSentinel) listSentinel.classList.add("hidden");
+    syncListSentinel(visibleJobs.length);
     return;
   }
   const slice = visibleJobs.slice(state.renderedCount, state.renderedCount + RENDER_CHUNK_SIZE);
   jobsGrid.insertAdjacentHTML("beforeend", slice.map(buildJobCardHtml).join(""));
   state.renderedCount += slice.length;
-
-  if (listSentinel) {
-    const remaining = visibleJobs.length - state.renderedCount;
-    if (remaining > 0) {
-      listSentinel.classList.remove("hidden");
-      listSentinel.innerHTML = `<button type="button" class="btn btn-secondary btn-small" id="loadMoreBtn">Carregar mais vagas (${remaining} restantes)</button>`;
-    } else {
-      listSentinel.classList.add("hidden");
-    }
-  }
+  syncListSentinel(visibleJobs.length);
 }
 
 function renderJobs({ resetScroll = true } = {}) {
@@ -765,6 +773,7 @@ function renderJobs({ resetScroll = true } = {}) {
     const slice = visibleJobs.slice(0, targetCount);
     jobsGrid.insertAdjacentHTML("beforeend", slice.map(buildJobCardHtml).join(""));
     state.renderedCount = slice.length;
+    syncListSentinel(visibleJobs.length);
   }
   if (state.renderedCount === 0) appendNextChunk();
 
@@ -1083,20 +1092,24 @@ chooseFileBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   pdfInput.click();
 });
-sampleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  analyzeUpload({ useSample: true });
-});
-downloadSampleBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
-  const blob = buildSamplePdfBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "curriculo_exemplo_mariana_silva.pdf";
-  a.click();
-  URL.revokeObjectURL(url);
-});
+if (sampleBtn) {
+  sampleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    analyzeUpload({ useSample: true });
+  });
+}
+if (downloadSampleBtn) {
+  downloadSampleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const blob = buildSamplePdfBlob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "curriculo_exemplo_mariana_silva.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
 dropzone.addEventListener("click", (e) => {
   if (e.target.closest("button") || e.target.closest("a") || e.target.closest("label")) return;
   pdfInput.click();

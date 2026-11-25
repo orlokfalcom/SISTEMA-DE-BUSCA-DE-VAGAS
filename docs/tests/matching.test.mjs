@@ -289,6 +289,27 @@ export async function runAllTests() {
     const quality = computeRankingQualityMetrics(ranked, feedbackMap, 10);
     assert(quality.isUserMeasured === true, 'Deveria marcar métrica como medida pelo usuário');
     assert(quality.precisionAtK === 67, `Precision@10 esperada 67%, obtida ${quality.precisionAtK}%`);
+
+    // Verifica fallback BM25 vs modo híbrido com embeddings
+    const job = makeJob({ id: 'emb-1' });
+    const idx = new InvertedIndex().build([job]);
+    const fallbackRes = matchJobsHybrid({
+      jobs: [job],
+      index: idx,
+      candidateSkills: ['JavaScript', 'React'],
+      candidateText: 'Senior Full Stack Engineer'
+    });
+    assert(fallbackRes.jobs[0].semantic_mode === 'bm25_fallback', 'Sem embeddings deve usar bm25_fallback');
+
+    const embRes = matchJobsHybrid({
+      jobs: [job],
+      index: idx,
+      candidateSkills: ['JavaScript', 'React'],
+      candidateText: 'Senior Full Stack Engineer',
+      candidateEmbedding: [1, 0, 0, 0],
+      jobEmbeddings: new Map([['emb-1', [0.9, 0.1, 0, 0]]])
+    });
+    assert(embRes.jobs[0].semantic_mode === 'minilm_bm25_hybrid', 'Com embeddings deve usar minilm_bm25_hybrid');
   });
 
   const passedCount = results.filter((r) => r.passed).length;
