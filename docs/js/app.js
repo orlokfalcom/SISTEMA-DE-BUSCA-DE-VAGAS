@@ -19,6 +19,7 @@ import {
   normalizeWeights,
 } from "./matcher.js";
 import { CANONICAL_SKILLS, resolveSkillAlias, suggestRoles } from "./nlp.js";
+import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
 
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
@@ -70,6 +71,7 @@ function createWorkerClient(workerUrl) {
 
 const nlpWorker = createWorkerClient(new URL("./workers/nlp.worker.js", import.meta.url));
 let embeddingsWorker = null;
+const securityGuard = new AutonomousSecurityAIGuard();
 
 const state = {
   profile: null,
@@ -153,6 +155,7 @@ const resultsLiveStatus = document.getElementById("resultsLiveStatus");
 const autoRefreshCheck = document.getElementById("autoRefreshCheck");
 const manualRefreshBtn = document.getElementById("manualRefreshBtn");
 const resetWeightsBtn = document.getElementById("resetWeightsBtn");
+const securityGuardBtn = document.getElementById("securityGuardBtn");
 const toastEl = document.getElementById("toast");
 
 // Job Modal
@@ -368,6 +371,11 @@ async function analyzeUpload({ file = null, useSample = false }) {
     } else if (file) {
       if (!file.name.toLowerCase().endsWith(".pdf")) {
         throw new Error("Formato inválido. Envie apenas arquivos .pdf.");
+      }
+      const headerSlice = await file.slice(0, 8).text();
+      const fileVerdict = securityGuard.inspectUploadedFile(file.name, headerSlice);
+      if (fileVerdict.blocked) {
+        throw new Error("Arquivo bloqueado pelo motor autônomo de segurança (assinatura PDF inválida ou suspeita).");
       }
       filename = file.name;
       const extracted = await extractTextFromPdfFile(file);
@@ -1192,7 +1200,15 @@ senioritySelect.addEventListener("change", () => {
 });
 
 // Filtros duros + Índice invertido sub-10ms (sem refetch desnecessário)
-queryInput.addEventListener("input", () => triggerResearch({ immediate: false, refetch: false }));
+queryInput.addEventListener("input", () => {
+  const verdict = securityGuard.inspectValue("Busca Textual", queryInput.value);
+  if (verdict.blocked) {
+    showToast("🛡️ Entrada suspeita bloqueada e registrada no documento de segurança.");
+    queryInput.value = "";
+    return;
+  }
+  triggerResearch({ immediate: false, refetch: false });
+});
 modalityFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 jobSeniorityFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 if (languageFilter) languageFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
@@ -1419,7 +1435,23 @@ if (autoRefreshCheck) {
   });
 }
 
+function updateSecurityGuardBadge(stats) {
+  if (!securityGuardBtn) return;
+  const total = stats?.total || 0;
+  securityGuardBtn.textContent = total > 0 ? `🛡️ IA Guard: ${total} alerta(s)` : "🛡️ IA Guard: Ativo (0)";
+}
+
+securityGuard.onChange(updateSecurityGuardBadge);
+if (securityGuardBtn) {
+  securityGuardBtn.addEventListener("click", () => {
+    securityGuard.downloadSecurityDocument();
+    showToast("📄 Documento de auditoria de segurança baixado!");
+  });
+}
+
 // Inicialização
 await initPersistedState();
+await securityGuard.init();
+updateSecurityGuardBadge(securityGuard.getStats());
 loadHomeLiveJobs(false);
 startAutoRefreshLoop();

@@ -22,14 +22,33 @@ from services.resume_parser import (
     parse_resume_pdf,
     suggest_roles,
 )
+from services.security_ai import AutonomousSecurityAI
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+security_ai = AutonomousSecurityAI(log_dir=os.path.join(os.path.dirname(__file__), "security_logs"))
+
+
+@app.before_request
+def autonomous_intrusion_guard():
+    verdict = security_ai.inspect_flask_request(request)
+    if verdict["blocked"]:
+        return (
+            jsonify(
+                {
+                    "error": "Acesso bloqueado pelo motor autônomo de segurança.",
+                    "risk_score": verdict["risk_score"],
+                    "categories": verdict["categories"],
+                }
+            ),
+            403,
+        )
 
 
 @app.after_request
 def add_security_headers(response):
+    security_ai.observe_flask_response(request, response.status_code)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -56,6 +75,13 @@ def index():
 @app.get("/api/health")
 def health():
     return jsonify({"status": "ok"})
+
+
+@app.get("/api/security/report")
+def security_report():
+    if not security_ai.is_authorized_for_security_api(request):
+        return jsonify({"error": "Acesso não autorizado ao relatório de segurança."}), 403
+    return jsonify(security_ai.get_summary())
 
 
 @app.get("/api/live-jobs")

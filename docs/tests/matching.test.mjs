@@ -18,6 +18,7 @@ import {
   highlightMatchedTerms,
   buildBilingualPitch
 } from '../js/matcher.js';
+import { AutonomousSecurityAIGuard } from '../js/security_ai.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -218,6 +219,8 @@ export async function runAllTests() {
     }
 
     const index = new InvertedIndex().build(manyJobs);
+    // Warmup JIT antes de medir latência em regime
+    index.search('Java SQL', { returnScores: true });
     const t0 = performance.now();
     const hits = index.search('React TypeScript Node.js', { returnScores: true });
     const elapsed = performance.now() - t0;
@@ -310,6 +313,20 @@ export async function runAllTests() {
       jobEmbeddings: new Map([['emb-1', [0.9, 0.1, 0, 0]]])
     });
     assert(embRes.jobs[0].semantic_mode === 'minilm_bm25_hybrid', 'Com embeddings deve usar minilm_bm25_hybrid');
+  });
+
+  // 8. Motor autônomo de IA de segurança (invasões + documento de auditoria)
+  test('8. IA autônoma detecta XSS/SQLi/acesso não autorizado e gera documento Markdown', () => {
+    const guard = new AutonomousSecurityAIGuard();
+    const xssCheck = guard.inspectValue('Busca', '<script>alert(1)</script> UNION SELECT * FROM users');
+    assert(xssCheck.blocked === true && xssCheck.riskScore >= 80, 'Deveria bloquear ataque combinado XSS+SQLi');
+
+    const fileCheck = guard.inspectUploadedFile('malicioso.pdf', 'MZ_NOT_A_PDF');
+    assert(fileCheck.blocked === true, 'Deveria bloquear PDF sem magic bytes %PDF-');
+
+    const doc = guard.generateMarkdownDocument();
+    assert(doc.includes('Documento Autônomo de Auditoria de Segurança'), 'Documento Markdown deve ser gerado');
+    assert(doc.includes('XSS / Script Injection'), 'Documento deve registrar tentativa XSS');
   });
 
   const passedCount = results.filter((r) => r.passed).length;

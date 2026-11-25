@@ -127,7 +127,10 @@ export class InvertedIndex {
       return new Set(candidateScores.keys());
     }
 
-    const maxScore = Math.max(...candidateScores.values(), 1);
+    let maxScore = 1;
+    for (const v of candidateScores.values()) {
+      if (v > maxScore) maxScore = v;
+    }
     return [...candidateScores.entries()]
       .map(([id, s]) => ({ id, bm25: Math.min(s / maxScore, 1) }))
       .sort((a, b) => b.bm25 - a.bm25);
