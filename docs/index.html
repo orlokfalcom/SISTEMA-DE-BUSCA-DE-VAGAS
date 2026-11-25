@@ -190,11 +190,11 @@
           <div class="meta-box">
             <span class="meta-label">Senioridade</span>
             <select id="senioritySelect" class="select-input">
-              <option value="Estágio / Trainee">Estágio / Trainee</option>
+              <option value="Estágio">Estágio</option>
               <option value="Júnior">Júnior</option>
               <option value="Pleno">Pleno</option>
               <option value="Sênior">Sênior</option>
-              <option value="Sênior / Liderança">Sênior / Liderança</option>
+              <option value="Especialista">Especialista</option>
             </select>
           </div>
           <div class="meta-box">
@@ -276,6 +276,9 @@
           <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn">
             ⬇ Exportar Vagas (CSV)
           </button>
+          <button type="button" class="btn btn-ghost btn-small" id="resetWeightsBtn" title="Restaurar pesos padrão do ranking">
+            ↺ Pesos Padrão
+          </button>
         </div>
 
         <div class="filters-bar">
@@ -293,11 +296,35 @@
           </select>
           <select id="jobSeniorityFilter" class="select-input">
             <option value="">Todas senioridades</option>
-            <option value="Estágio">Estágio / Trainee</option>
+            <option value="Estágio">Estágio</option>
             <option value="Júnior">Júnior</option>
             <option value="Pleno">Pleno</option>
             <option value="Sênior">Sênior</option>
+            <option value="Especialista">Especialista</option>
           </select>
+          <select id="languageFilter" class="select-input">
+            <option value="">Todos idiomas</option>
+            <option value="pt">Português (PT-BR)</option>
+            <option value="en">Inglês (EN)</option>
+            <option value="es">Espanhol (ES)</option>
+          </select>
+          <select id="sectorFilter" class="select-input">
+            <option value="">Todas áreas/setores</option>
+            <option value="Cibersegurança">Cibersegurança</option>
+            <option value="Dados & IA">Dados &amp; IA</option>
+            <option value="Engenharia de Software">Engenharia de Software</option>
+            <option value="DevOps & Cloud">DevOps &amp; Cloud</option>
+            <option value="QA & Qualidade">QA &amp; Qualidade</option>
+            <option value="Produto & Design">Produto &amp; Design</option>
+            <option value="Negócios & Operações">Negócios &amp; Operações</option>
+          </select>
+          <input
+            type="text"
+            id="locationFilter"
+            class="text-input"
+            style="min-width:140px;"
+            placeholder="Localização (ex: Brasil, SP)..."
+          />
           <select id="sourceFilter" class="select-input">
             <option value="all">Todas as fontes</option>
             <option value="local">Somente Base Brasil</option>
@@ -305,9 +332,8 @@
           </select>
           <select id="minScoreFilter" class="select-input">
             <option value="0">Qualquer match</option>
-            <option value="40">Match ≥ 40%</option>
-            <option value="60">Match ≥ 60%</option>
-            <option value="75">Match ≥ 75%</option>
+            <option value="60">Média + Alta (≥ 60%)</option>
+            <option value="80">Somente Alta (≥ 80%)</option>
           </select>
           <select id="sortFilter" class="select-input">
             <option value="match">Ordenar: Maior Match</option>
@@ -327,10 +353,12 @@
           </button>
         </div>
 
+        <div class="telemetry-bar" id="telemetryBar"></div>
         <div class="results-summary" id="resultsSummary"></div>
         <div class="sources-strip" id="sourcesStrip"></div>
 
         <div class="jobs-grid" id="jobsGrid"></div>
+        <div class="list-sentinel hidden" id="listSentinel"></div>
       </section>
     </main>
   </div>
@@ -459,9 +487,8 @@
 
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- PDF.js via CDN (leitura 100% client-side para GitHub Pages) -->
+  <!-- PDF.js via CDN + App Modular ES -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
-  <script src="./engine.js"></script>
-  <script src="./app.js"></script>
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>

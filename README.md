@@ -1,6 +1,16 @@
 # VagaPulse AI — Busca Profunda de Vagas & Editor de Currículo ATS
 
-Plataforma web responsiva de análise de currículos em **PDF** com **Busca Profunda em Sites de Empresas e Portais da Internet**, **Editor de Currículo ATS em Tempo Real**, **Diagnóstico ATS (0–100)**, **Análise de Skill Gap**, **Matching Semântico TF-IDF com Prioridade Geográfica**, **Comparador de Vaga Colada** e **Rastreador de Candidaturas**.
+Plataforma web responsiva com processamento **100% privado no navegador** (módulos ES, sem dependências de servidor na pasta `docs/`), análise de currículos em **PDF**, **Motor de Matching Híbrido (Skills Exatas + Grafo de Competências + Embeddings MiniLM / BM25 + Senioridade Gradativa)**, **Índice Invertido sub-10ms**, **Web Workers**, **Feedback Loop local (`IndexedDB`)**, **Editor de Currículo ATS ao Vivo** e **Rastreador de Candidaturas**.
+
+## Arquitetura Modular (`docs/`)
+- `docs/js/nlp.js` — Extração canônica de currículo e vagas, normalização léxica PT-BR/EN, aliases de skills, grafo de competências (`SKILL_GRAPH`) e parsing tolerante de senioridade e anos de experiência.
+- `docs/js/index.js` — Índice invertido em memória (`InvertedIndex`) com BM25 ponderado por campo para busca sub-10ms.
+- `docs/js/dedup.js` — Deduplicação por URL canônica e similaridade fuzzy de título + empresa (`Jaccard >= 0.85`).
+- `docs/js/matcher.js` — Score híbrido explicável (0–100, faixas Alta/Média/Baixa), decomposição e highlight de termos, adaptação de pesos por feedback (👍/👎), `Precision@10` e pitch bilíngue (PT-BR/EN).
+- `docs/js/fetcher.js` — Coleta paralela com pool de concorrência (limite 5), retry com backoff exponencial, cache TTL por fonte e telemetria de latência.
+- `docs/js/workers/nlp.worker.js` & `docs/js/workers/embeddings.worker.js` — Execução fora da thread de UI com lazy-load de `Xenova/all-MiniLM-L6-v2` (Transformers.js) e fallback elegante para BM25.
+- `docs/js/storage.js`, `docs/js/ats.js`, `docs/js/app.js` — Persistência local (`IndexedDB` / `localStorage`), editor ATS com debounce e renderização incremental (`IntersectionObserver`).
+- Documentação matemática e pesos default: [`docs/MATHEMATICS.md`](docs/MATHEMATICS.md).
 
 ## Principais Recursos
 - **Busca Profunda Multi-Fonte (Empresas + Portais):**
@@ -24,10 +34,12 @@ Ou via terminal PowerShell:
 ```
 
 - Acesso local: `http://127.0.0.1:5000`
-- Testes automatizados:
+- Testes backend Python:
   ```powershell
   .\.venv\Scripts\python.exe -m unittest discover -s tests -v
   ```
+- Testes do Motor de Matching & NLP (módulos ES no navegador):
+  Sirva a pasta `docs/` (ex.: `python -m http.server 8080 -d docs`) e abra `http://127.0.0.1:8080/tests/test-runner.html`.
 
 ---
 
