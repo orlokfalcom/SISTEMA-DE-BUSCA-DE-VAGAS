@@ -359,6 +359,12 @@
             <option value="verified_only" data-i18n="fraudVerifiedOnly">🛡️ Somente verificadas</option>
             <option value="all" data-i18n="fraudShowAll">Mostrar todas (incl. suspeitas)</option>
           </select>
+          <select id="recencyFilter" class="select-input" title="Filtrar vagas por data de publicação">
+            <option value="" data-i18n="recencyAll">Qualquer data</option>
+            <option value="48h" data-i18n="recency48h">⚡ Últimas 48h</option>
+            <option value="7d" data-i18n="recency7d">🕒 Últimos 7 dias</option>
+            <option value="30d" data-i18n="recency30d">📅 Últimos 30 dias</option>
+          </select>
           <select id="sortFilter" class="select-input">
             <option value="match" data-i18n="sortMatch">Ordenar: Maior Match</option>
             <option value="salary" data-i18n="sortSalary">Ordenar: Maior Salário</option>
@@ -378,6 +384,7 @@
         </div>
 
         <div class="telemetry-bar" id="telemetryBar"></div>
+        <div class="telemetry-bar" id="conversionFunnelBar" style="margin-top:-4px;"></div>
         <div class="results-summary" id="resultsSummary"></div>
         <div class="sources-strip" id="sourcesStrip"></div>
 
@@ -419,6 +426,8 @@
           <p id="modalPitch"></p>
           <button type="button" class="btn btn-secondary btn-small" id="copyPitchBtn" data-i18n="copyPitchBtn">Copiar Mensagem</button>
         </div>
+
+        <div id="modalConversionKit" style="margin-top:14px;display:flex;flex-direction:column;gap:12px;"></div>
       </div>
       <div class="modal-footer">
         <select id="modalStatusSelect" class="select-input">

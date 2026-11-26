@@ -334,7 +334,9 @@ export function matchJobsHybrid({
   const normLocation = filters.location ? normalizeText(filters.location) : "";
   const minScore = Number(filters.minScore || 0);
   const fraudMode = String(filters.fraudMode || "hide_scam");
+  const recencyFilter = String(filters.recency || "");
   const sortBy = String(filters.sortBy || "match").toLowerCase();
+  const nowMs = Date.now();
 
   let embeddingsUsedCount = 0;
   let filteredFakeCount = 0;
@@ -362,6 +364,18 @@ export function matchJobsHybrid({
     if (normLanguage && normalizeText(job.jobLanguage || "") !== normLanguage) continue;
     if (normSector && !normalizeText(job.sector || "").includes(normSector)) continue;
     if (normLocation && !normalizeText(`${job.location || ""} ${job.country || ""}`).includes(normLocation)) continue;
+
+    // Filtro de frescor (48h, 7d, 30d) para priorizar candidaturas rápidas
+    let ageDays = null;
+    if (/^\d{4}-\d{2}-\d{2}/.test(String(job.posted_at || ""))) {
+      const postedMs = Date.parse(String(job.posted_at).slice(0, 10));
+      if (!Number.isNaN(postedMs)) {
+        ageDays = Math.max(0, (nowMs - postedMs) / 86400000);
+      }
+    }
+    if (recencyFilter === "48h" && (ageDays === null || ageDays > 2)) continue;
+    if (recencyFilter === "7d" && (ageDays === null || ageDays > 7)) continue;
+    if (recencyFilter === "30d" && (ageDays === null || ageDays > 30)) continue;
 
     const jobSkills = job.skills || [];
     const matchedSkills = [];
@@ -495,6 +509,8 @@ export function matchJobsHybrid({
       salary_numeric: parseSalaryValue(job.salary || ""),
       pitch_suggestion: buildBilingualPitch(job, matchedSkills, relatedMatches, candidateSeniority),
       authenticity,
+      isFresh48h: ageDays !== null && ageDays <= 2,
+      isDirectAts: /greenhouse|lever|ashby|smartrecruiters|gupy|carreira direta/i.test(String(job.source || "")),
     });
   }
 

@@ -23,6 +23,12 @@ import { buildExternalLinks } from '../js/fetcher.js';
 import { getTranslatedJobView, translateStructuredField } from '../js/translator.js';
 import { SUPPORTED_LANGUAGES } from '../js/i18n.js';
 import { evaluateJobAuthenticity } from '../js/fraud.js';
+import {
+  buildRecruiterOutreach,
+  computeConversionFunnel,
+  generateInterviewPrep,
+  tailorResumeForJob
+} from '../js/conversion.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -441,6 +447,43 @@ export async function runAllTests() {
     });
     assert(filtered.jobs.length === 1 && filtered.jobs[0].id === 'legit-1', 'Filtro hide_scam deve remover vaga falsa');
     assert(filtered.metrics.filteredFakeCount === 1, 'Telemetria deve contabilizar 1 vaga falsa filtrada');
+  });
+
+  // 12. Kit de conversão vaga -> entrevista & filtro de frescor 48h
+  test('12. Tailored ATS, busca de recrutador, prep de entrevista, funil e filtro 48h', () => {
+    const freshDate = new Date().toISOString().slice(0, 10);
+    const oldDate = new Date(Date.now() - 12 * 86400000).toISOString().slice(0, 10);
+    const freshJob = makeJob({ id: 'fresh-1', posted_at: freshDate });
+    const oldJob = makeJob({ id: 'old-1', posted_at: oldDate });
+
+    const idx = new InvertedIndex().build([freshJob, oldJob]);
+    const res48h = matchJobsHybrid({
+      jobs: [freshJob, oldJob],
+      index: idx,
+      candidateSkills: ['JavaScript', 'React', 'Node.js'],
+      candidateText: 'Senior Full Stack Engineer',
+      filters: { recency: '48h' }
+    });
+    assert(res48h.jobs.length === 1 && res48h.jobs[0].id === 'fresh-1', 'Filtro 48h deve manter apenas vaga recém-publicada');
+
+    const tailored = tailorResumeForJob('Curriculo...', res48h.jobs[0], ['JavaScript', 'React'], 'Sênior');
+    assert(tailored.tailoredBlockText.includes('RESUMO DIRECIONADO'), 'Deve gerar bloco tailored');
+
+    const outreach = buildRecruiterOutreach(res48h.jobs[0], 'Sênior');
+    assert(outreach.linkedinPeopleUrl.includes('linkedin.com/search/results/people'), 'Deve gerar link de recrutador');
+    assert(outreach.connectionNote.length <= 300, 'Nota de conexão deve ter <= 300 caracteres');
+
+    const prep = generateInterviewPrep(res48h.jobs[0]);
+    assert(prep.length >= 3 && prep.length <= 5, 'Deve gerar entre 3 e 5 perguntas de entrevista');
+
+    const now = Date.now();
+    const funnel = computeConversionFunnel(
+      { j1: 'Salva', j2: 'Candidatada', j3: 'Entrevista' },
+      { j2: now - 6 * 86400000 },
+      now
+    );
+    assert(funnel.conversionRate === 50, `Esperado conversão 50%, obtido ${funnel.conversionRate}%`);
+    assert(funnel.followUpDueCount === 1, 'Deveria detectar 1 follow-up pendente (>= 5 dias)');
   });
 
   const passedCount = results.filter((r) => r.passed).length;

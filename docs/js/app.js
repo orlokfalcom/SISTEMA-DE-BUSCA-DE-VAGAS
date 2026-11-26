@@ -31,6 +31,12 @@ import {
 } from "./nlp.js";
 import { SUPPORTED_LANGUAGES, applyUiTranslations, applyUiTranslationsAsync, getUiLang, t } from "./i18n.js";
 import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
+import {
+  buildRecruiterOutreach,
+  computeConversionFunnel,
+  generateInterviewPrep,
+  tailorResumeForJob,
+} from "./conversion.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
 
@@ -202,6 +208,7 @@ const state = {
   matchMetrics: null,
   externalLinks: [],
   tracker: {},
+  trackerDates: {},
   feedbackMap: {}, // jobId -> { vote: 1|-1|0, clicked: bool }
   weights: { ...DEFAULT_WEIGHTS },
   activeJob: null,
@@ -260,12 +267,14 @@ const locationFilter = document.getElementById("locationFilter");
 const sourceFilter = document.getElementById("sourceFilter");
 const minScoreFilter = document.getElementById("minScoreFilter");
 const fraudFilter = document.getElementById("fraudFilter");
+const recencyFilter = document.getElementById("recencyFilter");
 const sortFilter = document.getElementById("sortFilter");
 const trackerFilter = document.getElementById("trackerFilter");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 const resultsSummary = document.getElementById("resultsSummary");
 const sourcesStrip = document.getElementById("sourcesStrip");
 const telemetryBar = document.getElementById("telemetryBar");
+const conversionFunnelBar = document.getElementById("conversionFunnelBar");
 const jobsGrid = document.getElementById("jobsGrid");
 const listSentinel = document.getElementById("listSentinel");
 const exportCsvBtn = document.getElementById("exportCsvBtn");
@@ -294,6 +303,7 @@ const modalMatchedSkills = document.getElementById("modalMatchedSkills");
 const modalMissingSkills = document.getElementById("modalMissingSkills");
 const modalPitch = document.getElementById("modalPitch");
 const copyPitchBtn = document.getElementById("copyPitchBtn");
+const modalConversionKit = document.getElementById("modalConversionKit");
 const modalStatusSelect = document.getElementById("modalStatusSelect");
 const modalApplyBtn = document.getElementById("modalApplyBtn");
 
@@ -362,8 +372,9 @@ function escapeHtml(str) {
 }
 
 async function initPersistedState() {
-  const [tracker, feedbackMap, weights] = await Promise.all([
+  const [tracker, trackerDates, feedbackMap, weights] = await Promise.all([
     idbGet("tracker", null),
+    idbGet("tracker_dates", {}),
     idbGet("feedback", {}),
     idbGet("weights", null),
   ]);
@@ -376,14 +387,22 @@ async function initPersistedState() {
       state.tracker = {};
     }
   }
+  state.trackerDates = trackerDates || {};
   state.feedbackMap = feedbackMap || {};
   state.weights = normalizeWeights(weights || DEFAULT_WEIGHTS);
 }
 
 function setJobStatus(jobId, status) {
-  if (!status) delete state.tracker[jobId];
-  else state.tracker[jobId] = status;
+  if (!status) {
+    delete state.tracker[jobId];
+    delete state.trackerDates[jobId];
+  } else {
+    state.tracker[jobId] = status;
+    state.trackerDates[jobId] = Date.now();
+  }
   idbSet("tracker", state.tracker);
+  idbSet("tracker_dates", state.trackerDates);
+  renderConversionFunnel();
   renderJobs({ resetScroll: false });
 }
 
@@ -397,6 +416,7 @@ function getCurrentFilters() {
     location: locationFilter ? locationFilter.value.trim() : "",
     minScore: Number((minScoreFilter && minScoreFilter.value) || 0),
     fraudMode: (fraudFilter && fraudFilter.value) || "hide_scam",
+    recency: (recencyFilter && recencyFilter.value) || "",
     sortBy: (sortFilter && sortFilter.value) || "match",
   };
 }
@@ -772,7 +792,23 @@ function renderExternalLinks() {
     .join("");
 }
 
+function renderConversionFunnel() {
+  if (!conversionFunnelBar) return;
+  const f = computeConversionFunnel(state.tracker, state.trackerDates);
+  const followUpText = f.followUpDueCount > 0 ? `${f.followUpDueCount} pendente(s) (≥5d)` : "Em dia";
+  conversionFunnelBar.innerHTML = `
+    <div class="telemetry-grid">
+      <div class="telemetry-pill"><span>☆ Salvas</span><strong>${f.saved}</strong></div>
+      <div class="telemetry-pill"><span>📨 Candidatadas</span><strong>${f.applied}</strong></div>
+      <div class="telemetry-pill"><span>💬 Entrevistas / Propostas</span><strong>${f.interview + f.offer}</strong></div>
+      <div class="telemetry-pill"><span>📈 Conversão</span><strong>${f.conversionRate}%</strong></div>
+      <div class="telemetry-pill"><span>⏰ Follow-up</span><strong style="color:${f.followUpDueCount > 0 ? "#fbbf24" : "#86efac"};">${followUpText}</strong></div>
+    </div>
+  `;
+}
+
 function renderTelemetry() {
+  renderConversionFunnel();
   if (!telemetryBar) return;
   const ft = state.fetchTelemetry;
   const mm = state.matchMetrics;
@@ -845,6 +881,8 @@ function buildJobCardHtml(rawJob) {
         </div>
       </div>
       <div class="job-meta-tags">
+        ${job.isFresh48h ? `<span style="color:#4ade80;font-weight:600;">⚡ Recém-publicada</span>` : ""}
+        ${job.isDirectAts ? `<span style="color:#38bdf8;">🏢 Canal Direto</span>` : ""}
         ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
         ${job.authenticity && job.authenticity.isSuspicious ? `<span title="${escapeHtml((job.authenticity.signals || []).map((s) => s.description || s).join(" · "))}" style="color:#fbbf24;">⚠️ ${escapeHtml(job.authenticity.status)} (Risco ${job.authenticity.riskScore}% · Conf. ${job.authenticity.confidence}%)</span>` : ""}
         ${job.authenticity?.ghostJob?.isGhost ? `<span title="${escapeHtml((job.authenticity.ghostJob.signals || []).join(" · "))}" style="color:#c084fc;">🕰️ ${escapeHtml(job.authenticity.ghostJob.status)}</span>` : ""}
@@ -1096,6 +1134,71 @@ async function openJobModal(jobId) {
   copyPitchBtn.textContent = t("copyPitchBtn");
   modalStatusSelect.value = state.tracker[rawJob.id] || "";
   modalApplyBtn.href = rawJob.url || "#";
+
+  if (modalConversionKit) {
+    const tailored = tailorResumeForJob(state.resumeTextSnippet, rawJob, state.skills, state.seniority);
+    const outreach = buildRecruiterOutreach(rawJob, state.seniority);
+    const prep = generateInterviewPrep(rawJob);
+    modalConversionKit.innerHTML = `
+      <div class="pitch-box" style="margin-top:0;">
+        <h4>✨ Adaptar Currículo para Esta Vaga (Tailored ATS)</h4>
+        <p style="font-size:0.84rem;white-space:pre-line;">${escapeHtml(tailored.tailoredBlockText)}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <button type="button" class="btn btn-secondary btn-small" id="copyTailoredBtn">📋 Copiar Bloco Tailored</button>
+          <button type="button" class="btn btn-primary btn-small" id="applyTailoredToEditorBtn">✨ Abrir no Editor ATS</button>
+        </div>
+      </div>
+      <div class="pitch-box" style="margin-top:0;">
+        <h4>🤝 Abordagem Direta ao Recrutador</h4>
+        <p style="font-size:0.84rem;">${escapeHtml(outreach.connectionNote)}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          <a href="${escapeHtml(outreach.linkedinPeopleUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-small">🔎 Buscar Recrutador no LinkedIn ↗</a>
+          <button type="button" class="btn btn-secondary btn-small" id="copyOutreachBtn">📋 Copiar Nota (300 chars)</button>
+        </div>
+      </div>
+      <div class="pitch-box" style="margin-top:0;">
+        <h4>🎤 Preparação de Entrevista (Perguntas Prováveis + STAR)</h4>
+        <ul style="margin:6px 0 0 18px;font-size:0.83rem;line-height:1.5;">
+          ${prep.map((q) => `<li><strong>[${escapeHtml(q.type)}]</strong> ${escapeHtml(q.question)}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+    const copyTailoredBtn = document.getElementById("copyTailoredBtn");
+    if (copyTailoredBtn) {
+      copyTailoredBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(tailored.tailoredBlockText);
+          copyTailoredBtn.textContent = "✓ Copiado!";
+        } catch {
+          showToast("Selecione e copie o texto acima");
+        }
+      });
+    }
+    const applyTailoredBtn = document.getElementById("applyTailoredToEditorBtn");
+    if (applyTailoredBtn) {
+      applyTailoredBtn.addEventListener("click", () => {
+        closeModal();
+        openImproveModal();
+        if (atsResumeEditor) {
+          atsResumeEditor.value = `${tailored.tailoredBlockText}\n\n---\n\n${atsResumeEditor.value}`;
+          updateEditorStats(atsResumeEditor.value);
+          refreshImprovePlan(atsResumeEditor.value, true);
+        }
+      });
+    }
+    const copyOutreachBtn = document.getElementById("copyOutreachBtn");
+    if (copyOutreachBtn) {
+      copyOutreachBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(outreach.connectionNote);
+          copyOutreachBtn.textContent = "✓ Copiado!";
+        } catch {
+          showToast("Selecione e copie a nota acima");
+        }
+      });
+    }
+  }
+
   jobModal.classList.remove("hidden");
 
   translateJobsBatch([rawJob], getUiLang(), { includeDescription: true, limit: 1 }).then((changed) => {
@@ -1366,6 +1469,7 @@ newUploadBtn.addEventListener("click", () => {
   sourceFilter.value = "all";
   minScoreFilter.value = "0";
   if (fraudFilter) fraudFilter.value = "hide_scam";
+  if (recencyFilter) recencyFilter.value = "";
   sortFilter.value = "match";
   trackerFilter.value = "";
   compareTitleInput.value = "";
@@ -1426,6 +1530,7 @@ if (sectorFilter) sectorFilter.addEventListener("change", () => triggerResearch(
 if (locationFilter) locationFilter.addEventListener("input", () => triggerResearch({ immediate: false, refetch: false }));
 minScoreFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 if (fraudFilter) fraudFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
+if (recencyFilter) recencyFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 sortFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 sourceFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: true }));
 trackerFilter.addEventListener("change", () => renderJobs({ resetScroll: true }));
