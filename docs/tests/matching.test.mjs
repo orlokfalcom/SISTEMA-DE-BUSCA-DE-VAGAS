@@ -360,6 +360,41 @@ export async function runAllTests() {
     assert(links.length >= 25, `Esperado >= 25 sistemas globais, obtido ${links.length}`);
   });
 
+  // 10. Suporte multilíngue: Inglês, Francês, Espanhol e Japonês
+  test('10. Detecção de idioma, tokenização CJK e pitch multilíngue (EN, FR, ES, JA)', () => {
+    assert(
+      detectLanguageCode("Nous recherchons un développeur avec expérience en télétravail pour notre équipe.") === 'fr',
+      'Deveria detectar Francês (fr)'
+    );
+    assert(
+      detectLanguageCode("Buscamos un desarrollador con experiencia en trabajo remoto para nuestro equipo.") === 'es',
+      'Deveria detectar Espanhol (es)'
+    );
+    assert(
+      detectLanguageCode("東京のリモートワーク可能なシニアソフトウェアエンジニアを募集しています。PythonとReactの経験が必要です。") === 'ja',
+      'Deveria detectar Japonês (ja)'
+    );
+
+    const jpJob = makeJob({
+      id: 'jp-1',
+      title: 'シニアバックエンドエンジニア',
+      location: '東京 / リモート',
+      description: '東京のリモートワーク可能なシニアソフトウェアエンジニアを募集しています。PythonとDockerの経験。',
+      skills: ['Python', 'Docker']
+    });
+    assert(jpJob.jobLanguage === 'ja', `Vaga JP deveria ter jobLanguage=ja, obtido ${jpJob.jobLanguage}`);
+    const jpIndex = new InvertedIndex().build([jpJob]);
+    const jpHits = jpIndex.search('シニアエンジニア リモート');
+    assert(jpHits.has('jp-1'), 'InvertedIndex deve encontrar vaga em Japonês');
+
+    const pitchFr = buildBilingualPitch({ ...jpJob, jobLanguage: 'fr' }, ['Python'], [], 'Sênior');
+    const pitchEs = buildBilingualPitch({ ...jpJob, jobLanguage: 'es' }, ['Python'], [], 'Sênior');
+    const pitchJa = buildBilingualPitch(jpJob, ['Python'], [], 'Sênior');
+    assert(/bonjour/i.test(pitchFr), 'Pitch FR deve estar em Francês');
+    assert(/hola/i.test(pitchEs), 'Pitch ES deve estar em Espanhol');
+    assert(/はじめまして/.test(pitchJa), 'Pitch JA deve estar em Japonês');
+  });
+
   const passedCount = results.filter((r) => r.passed).length;
   return {
     total: results.length,

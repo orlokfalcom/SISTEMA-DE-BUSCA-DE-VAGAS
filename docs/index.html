@@ -21,10 +21,17 @@
         <span class="brand-tag">Career Intelligence</span>
       </div>
       <div class="topbar-meta">
-        <a href="#featuresSection" class="topbar-link">Recursos</a>
-        <a href="#liveFeedSection" class="topbar-link">Vagas ao Vivo</a>
+        <a href="#featuresSection" class="topbar-link" data-i18n="navFeatures">Recursos</a>
+        <a href="#liveFeedSection" class="topbar-link" data-i18n="navLiveFeed">Vagas ao Vivo</a>
+        <select id="uiLanguageSelect" class="select-input" style="padding:4px 8px;font-size:0.78rem;min-width:auto;" aria-label="Idioma da interface">
+          <option value="pt">🇧🇷 PT</option>
+          <option value="en">🇺🇸 EN</option>
+          <option value="fr">🇫🇷 FR</option>
+          <option value="es">🇪🇸 ES</option>
+          <option value="ja">🇯🇵 JA</option>
+        </select>
         <button type="button" class="topbar-status" id="securityGuardBtn" title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA Guard: Ativo (0)</button>
-        <span class="topbar-status"><span class="pulse-dot"></span> 100% no Navegador</span>
+        <span class="topbar-status"><span class="pulse-dot"></span> <span data-i18n="navPrivacyBadge">100% no Navegador</span></span>
       </div>
     </div>
   </nav>
@@ -35,29 +42,29 @@
         <div class="hero-copy">
           <div class="hero-eyebrow">
             <span class="pulse-dot"></span>
-            <span>Processamento Privado no Navegador · Busca Profunda · Editor ATS</span>
+            <span data-i18n="heroEyebrow">Processamento Privado no Navegador · Busca Profunda · Editor ATS</span>
           </div>
-          <h1>Transforme seu currículo em <span class="accent-gradient">oportunidades reais</span> de alto impacto.</h1>
-          <p class="hero-subtitle">
+          <h1 data-i18n="heroTitle">Transforme seu currículo em <span class="accent-gradient">oportunidades reais</span> de alto impacto.</h1>
+          <p class="hero-subtitle" data-i18n="heroSubtitle">
             Envie seu PDF para varrer vagas em tempo real, diagnosticar e editar seu currículo para sistemas ATS e receber trilhas de cursos recomendados — tudo com privacidade local.
           </p>
 
           <div class="hero-kpis">
             <div class="kpi-item">
               <strong>100%</strong>
-              <span>Privado no Navegador</span>
+              <span data-i18n="kpiPrivacy">Privado no Navegador</span>
             </div>
             <div class="kpi-item">
-              <strong>14+</strong>
-              <span>Portais &amp; Buscas Diretas</span>
+              <strong>34+</strong>
+              <span data-i18n="kpiPortals">Portais &amp; Buscas Diretas</span>
             </div>
             <div class="kpi-item">
               <strong>0–100</strong>
-              <span>Auditoria &amp; Editor ATS</span>
+              <span data-i18n="kpiAts">Auditoria &amp; Editor ATS</span>
             </div>
             <div class="kpi-item">
               <strong>5 min</strong>
-              <span>Auto-atualização Contínua</span>
+              <span data-i18n="kpiRefresh">Auto-atualização Contínua</span>
             </div>
           </div>
         </div>
@@ -67,22 +74,22 @@
             <div class="dropzone-icon-wrap" aria-hidden="true">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
             </div>
-            <h2>Envie seu currículo em PDF</h2>
-            <p>Arraste e solte aqui ou clique para selecionar (processamento local)</p>
+            <h2 data-i18n="dropTitle">Envie seu currículo em PDF</h2>
+            <p data-i18n="dropSubtitle">Arraste e solte aqui ou clique para selecionar (processamento local)</p>
             <input type="file" id="pdfInput" accept=".pdf,application/pdf" hidden />
             <div class="upload-actions">
-              <button type="button" class="btn btn-primary btn-glow" id="chooseFileBtn">Analisar Meu Currículo PDF</button>
+              <button type="button" class="btn btn-primary btn-glow" id="chooseFileBtn" data-i18n="chooseFileBtn">Analisar Meu Currículo PDF</button>
               <button type="button" class="btn btn-secondary hidden" id="sampleBtn">Testar com Exemplo</button>
               <button type="button" class="btn btn-ghost hidden" id="downloadSampleBtn">Baixar PDF Exemplo</button>
             </div>
             <div class="upload-options">
               <label class="checkbox-label">
                 <input type="checkbox" id="includeLiveCheck" checked />
-                <span>Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
+                <span data-i18n="includeLiveLabel">Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
               </label>
               <label class="checkbox-label">
                 <input type="checkbox" id="deepSearchCheck" checked />
-                <span>Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
+                <span data-i18n="deepSearchLabel">Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
               </label>
             </div>
           </div>
@@ -265,19 +272,19 @@
               🔄 Atualizar
             </button>
           </div>
-          <button type="button" class="btn btn-primary btn-small" id="deepSearchBtn">
+          <button type="button" class="btn btn-primary btn-small" id="deepSearchBtn" data-i18n="deepSearchBtn">
             🌐 Executar Busca Profunda na Internet
           </button>
-          <button type="button" class="btn btn-primary btn-small" id="openImproveTopBtn">
+          <button type="button" class="btn btn-primary btn-small" id="openImproveTopBtn" data-i18n="openImproveTopBtn">
             ✨ Aprimorar Currículo (ATS)
           </button>
-          <button type="button" class="btn btn-secondary btn-small" id="openCompareBtn">
+          <button type="button" class="btn btn-secondary btn-small" id="openCompareBtn" data-i18n="openCompareBtn">
             ⚡ Comparar com Vaga Colada (ATS)
           </button>
-          <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn">
+          <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn" data-i18n="exportCsvBtn">
             ⬇ Exportar Vagas (CSV)
           </button>
-          <button type="button" class="btn btn-ghost btn-small" id="resetWeightsBtn" title="Restaurar pesos padrão do ranking">
+          <button type="button" class="btn btn-ghost btn-small" id="resetWeightsBtn" title="Restaurar pesos padrão do ranking" data-i18n="resetWeightsBtn">
             ↺ Pesos Padrão
           </button>
         </div>
@@ -287,16 +294,17 @@
             type="text"
             id="queryInput"
             class="text-input search-input"
+            data-i18n-placeholder="queryPlaceholder"
             placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..."
           />
           <select id="modalityFilter" class="select-input">
-            <option value="">Todas modalidades</option>
+            <option value="" data-i18n="allModalities">Todas modalidades</option>
             <option value="Remoto">Remoto</option>
             <option value="Híbrido">Híbrido</option>
             <option value="Presencial">Presencial</option>
           </select>
           <select id="jobSeniorityFilter" class="select-input">
-            <option value="">Todas senioridades</option>
+            <option value="" data-i18n="allSeniorities">Todas senioridades</option>
             <option value="Estágio">Estágio</option>
             <option value="Júnior">Júnior</option>
             <option value="Pleno">Pleno</option>
@@ -304,13 +312,15 @@
             <option value="Especialista">Especialista</option>
           </select>
           <select id="languageFilter" class="select-input">
-            <option value="">Todos idiomas</option>
+            <option value="" data-i18n="allLanguages">Todos idiomas</option>
             <option value="pt">Português (PT-BR)</option>
-            <option value="en">Inglês (EN)</option>
-            <option value="es">Espanhol (ES)</option>
+            <option value="en">English (EN)</option>
+            <option value="fr">Français (FR)</option>
+            <option value="es">Español (ES)</option>
+            <option value="ja">日本語 (JA)</option>
           </select>
           <select id="sectorFilter" class="select-input">
-            <option value="">Todas áreas/setores</option>
+            <option value="" data-i18n="allSectors">Todas áreas/setores</option>
             <option value="Cibersegurança">Cibersegurança</option>
             <option value="Dados & IA">Dados &amp; IA</option>
             <option value="Engenharia de Software">Engenharia de Software</option>

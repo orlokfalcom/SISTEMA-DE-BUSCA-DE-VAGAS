@@ -27,6 +27,14 @@ export const STOPWORDS = new Set([
   "until", "up", "very", "was", "we", "were", "what", "when", "where", "which",
   "while", "who", "whom", "why", "will", "with", "you", "your", "yours",
   "role", "team", "company", "looking", "work", "position", "job", "required",
+  // Francês
+  "avec", "pour", "dans", "sur", "sous", "chez", "par", "une", "des", "les",
+  "est", "sont", "nous", "vous", "votre", "notre", "poste", "equipe", "entreprise",
+  "recherche", "profil", "competences", "mission", "missions", "travail", "etre",
+  // Espanhol
+  "con", "para", "por", "una", "unas", "unos", "los", "las", "del", "sobre",
+  "nosotros", "nuestro", "puesto", "empresa", "equipo", "trabajo", "requisitos",
+  "experiencia", "conocimientos", "buscamos", "perfil", "funciones",
 ]);
 
 /**
@@ -496,7 +504,8 @@ export function stemToken(token) {
  * Tokeniza texto com normalização, remoção de stopwords, stemming opcional e resolução de aliases.
  */
 export function tokenize(text, { stem = true, expandAliases = true } = {}) {
-  const norm = normalizeText(text);
+  const rawStr = String(text || "");
+  const norm = normalizeText(rawStr);
   const rawTokens = norm.match(/[a-z0-9+#.]{2,}/g) || [];
   const out = [];
   for (const raw of rawTokens) {
@@ -511,6 +520,16 @@ export function tokenize(text, { stem = true, expandAliases = true } = {}) {
       }
     }
     out.push(stem ? stemToken(clean) : clean);
+  }
+  // Suporte a tokens CJK / Japonês (Hiragana, Katakana, Kanji)
+  const jpChunks = rawStr.match(/[\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]{2,}/g) || [];
+  for (const chunk of jpChunks) {
+    out.push(chunk);
+    if (chunk.length > 2) {
+      for (let i = 0; i < chunk.length - 1; i++) {
+        out.push(chunk.slice(i, i + 2));
+      }
+    }
   }
   return out;
 }
@@ -682,27 +701,38 @@ export function detectLanguages(text) {
 }
 
 /**
- * Detecta o idioma predominante de um texto (pt, en ou es).
+ * Detecta o idioma predominante de um texto (pt, en, fr, es ou ja).
  */
 export function detectLanguageCode(text) {
-  const norm = normalizeText(text);
+  const raw = String(text || "");
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(raw) || (raw.match(/[\u4e00-\u9faf]/g) || []).length >= 3) {
+    return "ja";
+  }
+  const norm = normalizeText(raw);
   const tokens = norm.match(/[a-z]{2,}/g) || [];
   if (!tokens.length) return "pt";
   const ptMarkers = new Set(["para", "com", "vaga", "empresa", "experiencia", "atuar", "conhecimento", "requisitos", "desenvolvimento", "trabalho", "equipe", "dados", "remoto", "hibrido", "presencial", "voce", "nossa"]);
   const enMarkers = new Set(["with", "for", "and", "the", "you", "your", "team", "experience", "looking", "role", "skills", "requirements", "engineering", "software", "remote", "hybrid", "company", "build"]);
-  const esMarkers = new Set(["para", "con", "empresa", "puesto", "experiencia", "conocimientos", "requisitos", "equipo", "trabajo"]);
+  const frMarkers = new Set(["avec", "pour", "dans", "entreprise", "equipe", "poste", "recherche", "competences", "developpement", "teletravail", "hybride", "nous", "votre", "profil", "missions"]);
+  const esMarkers = new Set(["para", "con", "empresa", "puesto", "experiencia", "conocimientos", "requisitos", "equipo", "trabajo", "buscamos", "desarrollo", "remoto", "hibrido"]);
 
   let pt = 0;
   let en = 0;
+  let fr = 0;
   let es = 0;
   for (const t of tokens) {
     if (ptMarkers.has(t)) pt++;
     if (enMarkers.has(t)) en++;
+    if (frMarkers.has(t)) fr++;
     if (esMarkers.has(t)) es++;
   }
-  if (en > pt && en >= es) return "en";
-  if (es > pt && es > en) return "es";
-  return "pt";
+  const scores = [
+    ["en", en],
+    ["fr", fr],
+    ["es", es],
+    ["pt", pt],
+  ].sort((a, b) => b[1] - a[1]);
+  return scores[0][1] > 0 ? scores[0][0] : "pt";
 }
 
 export function detectEducation(text) {
@@ -741,10 +771,11 @@ export function detectCountry(text) {
 }
 
 export function detectWorkModel(text) {
-  const lower = normalizeText(text);
-  if (/\b(hibrido|hybrid)\b/.test(lower)) return "Híbrido";
-  if (/\b(remoto|remote|home\s+office|teletrabalho|anywhere|work\s+from\s+home)\b/.test(lower)) return "Remoto";
-  if (/\b(presencial|on[- ]?site|onsite)\b/.test(lower)) return "Presencial";
+  const raw = String(text || "");
+  const lower = normalizeText(raw);
+  if (/\b(hibrido|hybrid|hybride)\b/.test(lower) || /ハイブリッド/.test(raw)) return "Híbrido";
+  if (/\b(remoto|remote|home\s+office|teletrabalho|teletravail|teletrabajo|anywhere|work\s+from\s+home)\b/.test(lower) || /リモート|在宅/.test(raw)) return "Remoto";
+  if (/\b(presencial|on[- ]?site|onsite|sur\s+site)\b/.test(lower) || /出社/.test(raw)) return "Presencial";
   return "Não informado";
 }
 

@@ -19,6 +19,7 @@ import {
   normalizeWeights,
 } from "./matcher.js";
 import { CANONICAL_SKILLS, resolveSkillAlias, suggestRoles } from "./nlp.js";
+import { applyUiTranslations } from "./i18n.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
 
@@ -156,6 +157,7 @@ const autoRefreshCheck = document.getElementById("autoRefreshCheck");
 const manualRefreshBtn = document.getElementById("manualRefreshBtn");
 const resetWeightsBtn = document.getElementById("resetWeightsBtn");
 const securityGuardBtn = document.getElementById("securityGuardBtn");
+const uiLanguageSelect = document.getElementById("uiLanguageSelect");
 const toastEl = document.getElementById("toast");
 
 // Job Modal
@@ -1459,8 +1461,18 @@ if (securityGuardBtn) {
   });
 }
 
+if (uiLanguageSelect) {
+  uiLanguageSelect.addEventListener("change", () => {
+    const chosen = applyUiTranslations(uiLanguageSelect.value);
+    idbSet("ui_lang", chosen);
+  });
+}
+
 // Inicialização
 await initPersistedState();
+const savedLang = await idbGet("ui_lang", "pt");
+if (uiLanguageSelect) uiLanguageSelect.value = savedLang;
+applyUiTranslations(savedLang);
 await securityGuard.init();
 updateSecurityGuardBadge(securityGuard.getStats());
 loadHomeLiveJobs(false);

@@ -156,6 +156,25 @@ export function buildBilingualPitch(job, matchedSkills, relatedMatches, candidat
     return `Hi! I noticed the ${job.title} opening at ${job.company} and believe my ${candidateSeniority} background aligns strongly, especially my hands-on experience with ${skillsTxt}.${outcomePart} I'd love to connect and discuss how I can add value to the team.`;
   }
 
+  if (lang === "fr") {
+    const outcomePart = outcome
+      ? ` L'objectif du poste autour de "${outcome}" m'intéresse particulièrement.`
+      : "";
+    return `Bonjour ! J'ai vu l'offre ${job.title} chez ${job.company} et mon profil (${candidateSeniority}) correspond fortement, notamment grâce à mon expérience pratique avec ${skillsTxt}.${outcomePart} Je serais ravi d'échanger sur la valeur que je peux apporter à votre équipe.`;
+  }
+
+  if (lang === "es") {
+    const outcomePart = outcome
+      ? ` Me entusiasma especialmente el enfoque del puesto en "${outcome}".`
+      : "";
+    return `¡Hola! Vi la vacante de ${job.title} en ${job.company} y considero que mi perfil (${candidateSeniority}) encaja muy bien, especialmente por mi experiencia práctica con ${skillsTxt}.${outcomePart} Me encantaría conversar sobre cómo aportar valor al equipo.`;
+  }
+
+  if (lang === "ja") {
+    const outcomePart = outcome ? ` 特に「${outcome}」というミッションに強く惹かれています。` : "";
+    return `はじめまして。${job.company}の「${job.title}」の求人を拝見し、${candidateSeniority}レベルとして${skillsTxt}の実務経験が貴社に貢献できると確信しております。${outcomePart}ぜひ一度お話しさせていただけますと幸いです。`;
+  }
+
   const outcomePart = outcome
     ? ` Chamou minha atenção o foco da vaga em "${outcome}".`
     : "";
