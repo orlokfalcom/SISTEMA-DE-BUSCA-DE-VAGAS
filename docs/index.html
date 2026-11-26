@@ -11,8 +11,8 @@
   <link rel="modulepreload" href="./js/app.js" />
   <link rel="modulepreload" href="./js/i18n.js" />
   <link rel="modulepreload" href="./js/storage.js" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" /></noscript>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -29,13 +29,22 @@
       <div class="topbar-meta">
         <a href="#featuresSection" class="topbar-link" data-i18n="navFeatures">Recursos</a>
         <a href="#liveFeedSection" class="topbar-link" data-i18n="navLiveFeed">Vagas ao Vivo</a>
-        <select id="uiLanguageSelect" class="select-input" style="padding:4px 8px;font-size:0.78rem;min-width:auto;" aria-label="Idioma da interface">
-          <option value="pt">🇧🇷 PT</option>
-          <option value="en">🇺🇸 EN</option>
-          <option value="fr">🇫🇷 FR</option>
-          <option value="es">🇪🇸 ES</option>
-          <option value="ja">🇯🇵 JA</option>
-        </select>
+        <div class="lang-picker-wrap" id="langPickerWrap">
+          <button type="button" class="select-input lang-picker-btn" id="langPickerBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Selecionar idioma">
+            🇧🇷 Português (PT) ▾
+          </button>
+          <div class="lang-picker-popover hidden" id="langPickerPopover" role="dialog" aria-label="Pesquisar idioma">
+            <input type="search" id="langSearchInput" class="text-input lang-search-input" placeholder="Buscar idioma ou código (ex: ja, ar, Deutsch)..." aria-label="Buscar idioma" />
+            <div class="lang-options-list" id="langOptionsList" role="listbox"></div>
+          </div>
+          <select id="uiLanguageSelect" class="sr-only" aria-label="Idioma da interface">
+            <option value="pt">🇧🇷 Português (PT)</option>
+            <option value="en">🇺🇸 English (EN)</option>
+            <option value="fr">🇫🇷 Français (FR)</option>
+            <option value="es">🇪🇸 Español (ES)</option>
+            <option value="ja">🇯🇵 日本語 (JA)</option>
+          </select>
+        </div>
         <button type="button" class="topbar-status" id="securityGuardBtn" title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA Guard: Ativo (0)</button>
         <span class="topbar-status"><span class="pulse-dot"></span> <span data-i18n="navPrivacyBadge">100% no Navegador</span></span>
       </div>

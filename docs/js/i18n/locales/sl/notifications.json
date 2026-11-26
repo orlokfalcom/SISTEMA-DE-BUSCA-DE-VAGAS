@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Dokument varnostne revizije je prenesen!",
+  "notifFiltersCleared": "Filtri počiščeni",
+  "notifWeightsRestored": "Uteži razvrščanja so ponastavljene na privzete",
+  "notifCsvStarted": "Izvoz CSV se je začel",
+  "notifDeepSearchStarted": "Izvajanje globalnega globokega iskanja ...",
+  "notifAutoFixApplied": "Uporabljeni so samodejni popravki ATS!",
+  "notifResumeApplied": "Urejen življenjepis uporabljen pri iskanju zaposlitve!",
+  "notifVoteUp": "👍 Povratne informacije shranjene! Uteži prilagojene.",
+  "notifVoteDown": "👎 Povratne informacije so shranjene! Uvrstitev ponovno umerjena.",
+  "notifVoteRemoved": "Povratne informacije odstranjene",
+  "notifSkillAdded": "✅ Spretnost \"{skill}\" dodana v vaš profil!",
+  "notifAutoRefreshOn": "🟢 Omogočeno samodejno osveževanje (vsakih 5 min)",
+  "notifAutoRefreshOff": "⏸ Samodejno osveževanje je zaustavljeno"
+}

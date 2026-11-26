@@ -29,7 +29,16 @@ import {
   resolveSkillAlias,
   suggestRoles,
 } from "./nlp.js";
-import { SUPPORTED_LANGUAGES, applyUiTranslations, applyUiTranslationsAsync, getUiLang, t } from "./i18n.js";
+import {
+  SUPPORTED_LANGUAGES,
+  applyUiTranslationsAsync,
+  detectPreferredLanguage,
+  formatNumber,
+  formatPercent,
+  getLanguageMeta,
+  getUiLang,
+  t,
+} from "./i18n.js";
 import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
 import {
   buildRecruiterOutreach,
@@ -287,6 +296,10 @@ const manualRefreshBtn = document.getElementById("manualRefreshBtn");
 const resetWeightsBtn = document.getElementById("resetWeightsBtn");
 const securityGuardBtn = document.getElementById("securityGuardBtn");
 const uiLanguageSelect = document.getElementById("uiLanguageSelect");
+const langPickerBtn = document.getElementById("langPickerBtn");
+const langPickerPopover = document.getElementById("langPickerPopover");
+const langSearchInput = document.getElementById("langSearchInput");
+const langOptionsList = document.getElementById("langOptionsList");
 const toastEl = document.getElementById("toast");
 
 // Job Modal
@@ -514,12 +527,12 @@ async function analyzeUpload({ file = null, useSample = false }) {
       rawText = SAMPLE_RESUME_LINES.join("\n");
     } else if (file) {
       if (!file.name.toLowerCase().endsWith(".pdf")) {
-        throw new Error("Formato inválido. Envie apenas arquivos .pdf.");
+        throw new Error(t("errInvalidPdf"));
       }
       const headerSlice = await file.slice(0, 8).text();
       const fileVerdict = securityGuard.inspectUploadedFile(file.name, headerSlice);
       if (fileVerdict.blocked) {
-        throw new Error("Arquivo bloqueado pelo motor autônomo de segurança (assinatura PDF inválida ou suspeita).");
+        throw new Error(t("errSecurityBlocked"));
       }
       filename = file.name;
       const extracted = await extractTextFromPdfFile(file);
@@ -576,7 +589,9 @@ async function runFetchAndMatchPipeline(forceRefresh = false, { fastFirstPaint =
       resultsLiveStatus.textContent = "🔄 Sincronizando vagas ao vivo globais...";
     }
     // Dispara busca completa ao vivo sem travar a tela de resultados
-    runFetchAndMatchPipeline(forceRefresh, { fastFirstPaint: false });
+    runFetchAndMatchPipeline(forceRefresh, { fastFirstPaint: false }).catch(() => {
+      if (resultsLiveStatus) resultsLiveStatus.textContent = "⚠️ Base local ativa (APIs externas indisponíveis)";
+    });
     return;
   }
 
@@ -794,14 +809,15 @@ function renderExternalLinks() {
 
 function renderConversionFunnel() {
   if (!conversionFunnelBar) return;
+  const lang = getUiLang();
   const f = computeConversionFunnel(state.tracker, state.trackerDates);
-  const followUpText = f.followUpDueCount > 0 ? `${f.followUpDueCount} pendente(s) (≥5d)` : "Em dia";
+  const followUpText = f.followUpDueCount > 0 ? `${formatNumber(f.followUpDueCount, lang)} pendente(s) (≥5d)` : "OK";
   conversionFunnelBar.innerHTML = `
     <div class="telemetry-grid">
-      <div class="telemetry-pill"><span>☆ Salvas</span><strong>${f.saved}</strong></div>
-      <div class="telemetry-pill"><span>📨 Candidatadas</span><strong>${f.applied}</strong></div>
-      <div class="telemetry-pill"><span>💬 Entrevistas / Propostas</span><strong>${f.interview + f.offer}</strong></div>
-      <div class="telemetry-pill"><span>📈 Conversão</span><strong>${f.conversionRate}%</strong></div>
+      <div class="telemetry-pill"><span>☆</span><strong>${formatNumber(f.saved, lang)}</strong></div>
+      <div class="telemetry-pill"><span>📨</span><strong>${formatNumber(f.applied, lang)}</strong></div>
+      <div class="telemetry-pill"><span>💬</span><strong>${formatNumber(f.interview + f.offer, lang)}</strong></div>
+      <div class="telemetry-pill"><span>📈</span><strong>${formatPercent(f.conversionRate, lang, true)}</strong></div>
       <div class="telemetry-pill"><span>⏰ Follow-up</span><strong style="color:${f.followUpDueCount > 0 ? "#fbbf24" : "#86efac"};">${followUpText}</strong></div>
     </div>
   `;
@@ -1766,30 +1782,87 @@ if (securityGuardBtn) {
   });
 }
 
+function renderLangOptions(filterText = "") {
+  if (!langOptionsList) return;
+  const q = filterText.trim().toLowerCase();
+  const active = getUiLang();
+  const filtered = SUPPORTED_LANGUAGES.filter(
+    (l) => !q || l.label.toLowerCase().includes(q) || l.code.toLowerCase().includes(q)
+  );
+  langOptionsList.innerHTML = filtered
+    .map(
+      (l) => `
+      <button type="button" role="option" aria-selected="${l.code === active}" class="lang-option-btn ${l.code === active ? "active" : ""}" data-lang-code="${escapeHtml(l.code)}">
+        <span>${escapeHtml(l.label)}</span>
+        <small style="opacity:0.65;">${escapeHtml(l.code)}</small>
+      </button>`
+    )
+    .join("");
+}
+
+async function handleSelectLanguage(code) {
+  const chosen = await applyUiTranslationsAsync(code);
+  idbSet("ui_lang", chosen);
+  if (uiLanguageSelect) uiLanguageSelect.value = chosen;
+  if (langPickerBtn) langPickerBtn.textContent = `${getLanguageMeta(chosen).label} ▾`;
+  renderLangOptions(langSearchInput ? langSearchInput.value : "");
+  updateSecurityGuardBadge(securityGuard.getStats());
+  loadHomeLiveJobs(false);
+  if (state.profile) {
+    renderTelemetry();
+    renderJobs({ resetScroll: false });
+  }
+}
+
 if (uiLanguageSelect) {
   uiLanguageSelect.innerHTML = SUPPORTED_LANGUAGES.map(
     (l) => `<option value="${escapeHtml(l.code)}">${escapeHtml(l.label)}</option>`
   ).join("");
-  uiLanguageSelect.addEventListener("change", async () => {
-    const chosen = await applyUiTranslationsAsync(uiLanguageSelect.value);
-    idbSet("ui_lang", chosen);
-    updateSecurityGuardBadge(securityGuard.getStats());
-    loadHomeLiveJobs(false);
-    if (state.profile) {
-      renderTelemetry();
-      renderJobs({ resetScroll: false });
+  uiLanguageSelect.addEventListener("change", () => handleSelectLanguage(uiLanguageSelect.value));
+}
+
+if (langPickerBtn && langPickerPopover) {
+  langPickerBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isHidden = langPickerPopover.classList.toggle("hidden");
+    langPickerBtn.setAttribute("aria-expanded", String(!isHidden));
+    if (!isHidden && langSearchInput) {
+      renderLangOptions("");
+      langSearchInput.value = "";
+      langSearchInput.focus();
+    }
+  });
+  if (langSearchInput) {
+    langSearchInput.addEventListener("input", () => renderLangOptions(langSearchInput.value));
+  }
+  if (langOptionsList) {
+    langOptionsList.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-lang-code]");
+      if (!btn) return;
+      langPickerPopover.classList.add("hidden");
+      langPickerBtn.setAttribute("aria-expanded", "false");
+      handleSelectLanguage(btn.getAttribute("data-lang-code"));
+    });
+  }
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#langPickerWrap")) {
+      langPickerPopover.classList.add("hidden");
+      langPickerBtn.setAttribute("aria-expanded", "false");
     }
   });
 }
 
-// Inicialização em paralelo para tempo de boot mínimo
-const [, savedLang] = await Promise.all([
+// Inicialização em paralelo com detecção automática (Conta -> Local -> URL -> Browser -> PT)
+const [, savedLangRaw] = await Promise.all([
   initPersistedState(),
-  idbGet("ui_lang", "pt"),
+  idbGet("ui_lang", null),
   securityGuard.init(),
 ]);
-if (uiLanguageSelect) uiLanguageSelect.value = savedLang;
-await applyUiTranslationsAsync(savedLang);
+const initialLang = detectPreferredLanguage({ savedLang: savedLangRaw });
+await applyUiTranslationsAsync(initialLang);
+if (uiLanguageSelect) uiLanguageSelect.value = initialLang;
+if (langPickerBtn) langPickerBtn.textContent = `${getLanguageMeta(initialLang).label} ▾`;
+renderLangOptions("");
 updateSecurityGuardBadge(securityGuard.getStats());
 loadHomeLiveJobs(false);
 startAutoRefreshLoop();

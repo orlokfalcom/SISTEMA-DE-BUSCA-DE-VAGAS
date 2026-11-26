@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Dokumen audit keselamatan dimuat turun!",
+  "notifFiltersCleared": "Penapis dibersihkan",
+  "notifWeightsRestored": "Pemberat kedudukan dipulihkan kepada lalai",
+  "notifCsvStarted": "Eksport CSV bermula",
+  "notifDeepSearchStarted": "Menjalankan Carian Dalam Global...",
+  "notifAutoFixApplied": "Pembetulan ATS automatik digunakan!",
+  "notifResumeApplied": "Resume yang diedit digunakan untuk carian kerja!",
+  "notifVoteUp": "👍 Maklum balas disimpan! Berat dilaraskan.",
+  "notifVoteDown": "👎 Maklum balas disimpan! Kedudukan ditentukur semula.",
+  "notifVoteRemoved": "Maklum balas dialih keluar",
+  "notifSkillAdded": "✅ Kemahiran \"{skill}\" ditambahkan pada profil anda!",
+  "notifAutoRefreshOn": "🟢 Muat semula automatik didayakan (setiap 5 minit)",
+  "notifAutoRefreshOff": "⏸ Muat semula automatik dijeda"
+}

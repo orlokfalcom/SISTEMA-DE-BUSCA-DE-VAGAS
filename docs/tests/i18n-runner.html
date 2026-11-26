@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>VagaPulse AI — Suite i18n (50 Idiomas)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+    .ok { color: #34d399; }
+    .fail { color: #f87171; }
+    pre { background: #1e293b; padding: 14px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>VagaPulse AI — Validação Global i18n (50 Idiomas)</h1>
+  <div id="status" data-status="running">Validando 50 idiomas × 5 namespaces...</div>
+  <pre id="summaryJson"></pre>
+
+  <script type="module">
+    import { runI18n50TestSuite } from './i18n.test.mjs';
+    const statusEl = document.getElementById('status');
+    const summaryEl = document.getElementById('summaryJson');
+    try {
+      const report = await runI18n50TestSuite();
+      statusEl.textContent = `PASS — ${report.totalLanguages} idiomas × ${report.namespaces} namespaces (${report.keysPerLanguage} chaves cada) = 100%`;
+      statusEl.dataset.status = 'passed';
+      statusEl.className = 'ok';
+      summaryEl.textContent = JSON.stringify(report, null, 2);
+    } catch (err) {
+      statusEl.textContent = `FAIL — ${err?.message || err}`;
+      statusEl.dataset.status = 'failed';
+      statusEl.className = 'fail';
+    }
+  </script>
+</body>
+</html>

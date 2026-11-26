@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Dokument bezpečnostního auditu stažen!",
+  "notifFiltersCleared": "Filtry vymazány",
+  "notifWeightsRestored": "Hodnotící váhy byly obnoveny na výchozí hodnoty",
+  "notifCsvStarted": "Export CSV byl zahájen",
+  "notifDeepSearchStarted": "Spuštění globálního hloubkového vyhledávání...",
+  "notifAutoFixApplied": "Byly použity automatické opravy ATS!",
+  "notifResumeApplied": "Upravený životopis byl použit při hledání práce!",
+  "notifVoteUp": "👍 Zpětná vazba uložena! Váhy upraveny.",
+  "notifVoteDown": "👎 Zpětná vazba uložena! Pořadí překalibrováno.",
+  "notifVoteRemoved": "Zpětná vazba odstraněna",
+  "notifSkillAdded": "✅ Do vašeho profilu byla přidána dovednost „{skill}“!",
+  "notifAutoRefreshOn": "🢢 Automatické obnovení povoleno (každých 5 minut)",
+  "notifAutoRefreshOff": "⏸ Automatické obnovení pozastaveno"
+}

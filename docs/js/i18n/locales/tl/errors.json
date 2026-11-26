@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Di-wastong format. Mangyaring mag-upload lamang ng mga .pdf na file.",
+  "errSecurityBlocked": "Na-block ang file ng autonomous security engine (di-wasto o kahina-hinalang PDF signature).",
+  "errAnalyzePdf": "Error sa pagsusuri sa PDF resume.",
+  "errHomeUnavailable": "⚠️ Kasalukuyang hindi available",
+  "errNoJobsFound": "Walang nakitang mga trabahong tumutugma sa kasalukuyang mga filter.",
+  "errNoJobsHint": "Subukang babaan ang pinakamababang marka ng tugma, i-clear ang mga filter, o magdagdag ng mga kasanayan.",
+  "errCompareMinChars": "Mag-paste ng paglalarawan ng trabaho na may hindi bababa sa 20 character."
+}

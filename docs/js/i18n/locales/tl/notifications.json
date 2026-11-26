@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Na-download na ang dokumento sa pag-audit ng seguridad!",
+  "notifFiltersCleared": "Na-clear ang mga filter",
+  "notifWeightsRestored": "Ibinalik sa default ang mga timbang sa pagraranggo",
+  "notifCsvStarted": "Nagsimula ang pag-export ng CSV",
+  "notifDeepSearchStarted": "Nagpapatakbo ng Global Deep Search...",
+  "notifAutoFixApplied": "Inilapat ang mga awtomatikong pag-aayos ng ATS!",
+  "notifResumeApplied": "Inilapat ang na-edit na resume sa paghahanap ng trabaho!",
+  "notifVoteUp": "👍 Naka-save ang feedback! Inayos ang mga timbang.",
+  "notifVoteDown": "👎 Na-save ang feedback! Na-recalibrate ang ranggo.",
+  "notifVoteRemoved": "Inalis ang feedback",
+  "notifSkillAdded": "✅ Naidagdag ang kasanayang \"{skill}\" sa iyong profile!",
+  "notifAutoRefreshOn": "🟢 Naka-enable ang auto-refresh (bawat 5 min)",
+  "notifAutoRefreshOff": "⏸ Naka-pause ang auto-refresh"
+}

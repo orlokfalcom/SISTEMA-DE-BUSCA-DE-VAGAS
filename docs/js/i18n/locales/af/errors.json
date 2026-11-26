@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ongeldige formaat. Laai asseblief slegs .pdf-lêers op.",
+  "errSecurityBlocked": "Lêer geblokkeer deur die outonome sekuriteitsenjin (ongeldige of verdagte PDF-handtekening).",
+  "errAnalyzePdf": "Kon nie die PDF-CV ontleed nie.",
+  "errHomeUnavailable": "⚠️ Tans nie beskikbaar nie",
+  "errNoJobsFound": "Geen poste gevind wat ooreenstem met die huidige filters nie.",
+  "errNoJobsHint": "Probeer om die minimum wedstrydtelling te verlaag, filters skoon te maak of vaardighede by te voeg.",
+  "errCompareMinChars": "Plak 'n posbeskrywing met ten minste 20 karakters."
+}

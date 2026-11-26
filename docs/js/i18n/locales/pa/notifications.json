@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 ਸੁਰੱਖਿਆ ਆਡਿਟ ਦਸਤਾਵੇਜ਼ ਡਾਊਨਲੋਡ ਕੀਤਾ ਗਿਆ!",
+  "notifFiltersCleared": "ਫਿਲਟਰ ਸਾਫ਼ ਕੀਤੇ ਗਏ",
+  "notifWeightsRestored": "ਰੈਂਕਿੰਗ ਵਜ਼ਨ ਨੂੰ ਡਿਫੌਲਟ 'ਤੇ ਬਹਾਲ ਕੀਤਾ ਗਿਆ",
+  "notifCsvStarted": "CSV ਨਿਰਯਾਤ ਸ਼ੁਰੂ ਹੋਇਆ",
+  "notifDeepSearchStarted": "ਗਲੋਬਲ ਡੂੰਘੀ ਖੋਜ ਚੱਲ ਰਹੀ ਹੈ...",
+  "notifAutoFixApplied": "ਆਟੋਮੈਟਿਕ ATS ਫਿਕਸ ਲਾਗੂ ਕੀਤੇ ਗਏ!",
+  "notifResumeApplied": "ਸੰਪਾਦਿਤ ਰੈਜ਼ਿਊਮੇ ਨੌਕਰੀ ਦੀ ਖੋਜ ਲਈ ਲਾਗੂ ਕੀਤਾ ਗਿਆ ਹੈ!",
+  "notifVoteUp": "👍 ਫੀਡਬੈਕ ਸੁਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ! ਵਜ਼ਨ ਐਡਜਸਟ ਕੀਤਾ ਗਿਆ।",
+  "notifVoteDown": "👎 ਫੀਡਬੈਕ ਸੁਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ! ਰੈਂਕਿੰਗ ਰੀਕੈਲੀਬਰੇਟ ਕੀਤੀ ਗਈ।",
+  "notifVoteRemoved": "ਫੀਡਬੈਕ ਹਟਾਇਆ ਗਿਆ",
+  "notifSkillAdded": "✅ ਹੁਨਰ \"{skill}\" ਨੂੰ ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਵਿੱਚ ਸ਼ਾਮਲ ਕੀਤਾ ਗਿਆ ਹੈ!",
+  "notifAutoRefreshOn": "🟢 ਆਟੋ-ਰਿਫ੍ਰੈਸ਼ ਸਮਰਥਿਤ (ਹਰ 5 ਮਿੰਟ)",
+  "notifAutoRefreshOff": "⏸ ਆਟੋ-ਰਿਫ੍ਰੈਸ਼ ਰੋਕਿਆ ਗਿਆ"
+}

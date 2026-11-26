@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Document de audit de securitate descărcat!",
+  "notifFiltersCleared": "Filtrele au fost șterse",
+  "notifWeightsRestored": "Ponderile de clasare au fost restaurate la valorile implicite",
+  "notifCsvStarted": "Exportul CSV a început",
+  "notifDeepSearchStarted": "Se rulează Căutarea profundă globală...",
+  "notifAutoFixApplied": "Remedieri automate ATS aplicate!",
+  "notifResumeApplied": "CV editat aplicat la căutarea unui loc de muncă!",
+  "notifVoteUp": "👍 Feedback-ul a fost salvat! Greutăți ajustate.",
+  "notifVoteDown": "👎 Feedback-ul salvat! Clasamentul a fost recalibrat.",
+  "notifVoteRemoved": "Feedback-ul a fost eliminat",
+  "notifSkillAdded": "✅ Skill „{skill}” a fost adăugat la profilul tău!",
+  "notifAutoRefreshOn": "🟢 Reîmprospătare automată activată (la fiecare 5 minute)",
+  "notifAutoRefreshOff": "⏸ Reîmprospătarea automată a fost întreruptă"
+}

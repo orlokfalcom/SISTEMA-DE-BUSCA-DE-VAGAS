@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Invalid format. Please upload .pdf files only.",
+  "errSecurityBlocked": "File blocked by the autonomous security engine (invalid or suspicious PDF signature).",
+  "errAnalyzePdf": "Error analyzing the PDF resume.",
+  "errHomeUnavailable": "⚠️ Currently unavailable",
+  "errNoJobsFound": "No jobs found matching the current filters.",
+  "errNoJobsHint": "Try lowering the minimum match score, clearing filters, or adding skills.",
+  "errCompareMinChars": "Paste a job description with at least 20 characters."
+}

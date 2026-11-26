@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Documento de auditoria de segurança baixado!",
+  "notifFiltersCleared": "Filtros limpos",
+  "notifWeightsRestored": "Pesos do ranking restaurados ao padrão",
+  "notifCsvStarted": "Exportação CSV iniciada",
+  "notifDeepSearchStarted": "Executando Busca Global na internet...",
+  "notifAutoFixApplied": "Correções automáticas aplicadas!",
+  "notifResumeApplied": "Currículo editado aplicado à busca de vagas!",
+  "notifVoteUp": "👍 Feedback registrado! Pesos ajustados.",
+  "notifVoteDown": "👎 Feedback registrado! Ranking recalibrado.",
+  "notifVoteRemoved": "Feedback removido",
+  "notifSkillAdded": "✅ Skill \"{skill}\" adicionada ao seu perfil!",
+  "notifAutoRefreshOn": "🟢 Auto-atualização ativada (a cada 5 min)",
+  "notifAutoRefreshOff": "⏸ Auto-atualização pausada"
+}

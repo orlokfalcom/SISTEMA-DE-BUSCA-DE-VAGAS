@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Formato inválido. Envíe solo archivos .pdf.",
+  "errSecurityBlocked": "Archivo bloqueado por el motor de seguridad autónomo (firma PDF inválida).",
+  "errAnalyzePdf": "Error al analizar el currículum PDF.",
+  "errHomeUnavailable": "⚠️ No disponible por el momento",
+  "errNoJobsFound": "No se encontraron vacantes con los filtros actuales.",
+  "errNoJobsHint": "Intente reducir el match mínimo, limpiar filtros o añadir habilidades.",
+  "errCompareMinChars": "Pegue una descripción de vacante con al menos 20 caracteres."
+}

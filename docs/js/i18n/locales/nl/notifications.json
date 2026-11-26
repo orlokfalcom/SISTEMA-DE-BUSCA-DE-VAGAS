@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Beveiligingsauditdocument gedownload!",
+  "notifFiltersCleared": "Filters gewist",
+  "notifWeightsRestored": "Rangschikkingsgewichten hersteld naar de standaardwaarde",
+  "notifCsvStarted": "CSV-export gestart",
+  "notifDeepSearchStarted": "Wereldwijd diepgaand zoeken uitvoeren...",
+  "notifAutoFixApplied": "Automatische ATS-fixes toegepast!",
+  "notifResumeApplied": "Bewerkt CV toegepast op zoeken naar een baan!",
+  "notifVoteUp": "👍 Feedback opgeslagen! Gewichten aangepast.",
+  "notifVoteDown": "👎 Feedback opgeslagen! Ranking opnieuw gekalibreerd.",
+  "notifVoteRemoved": "Feedback verwijderd",
+  "notifSkillAdded": "✅ Vaardigheid \"{skill}\" toegevoegd aan je profiel!",
+  "notifAutoRefreshOn": "🟢 Automatisch vernieuwen ingeschakeld (elke 5 minuten)",
+  "notifAutoRefreshOff": "⏸ Automatisch vernieuwen gepauzeerd"
+}

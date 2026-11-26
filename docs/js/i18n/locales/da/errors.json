@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ugyldigt format. Upload kun .pdf-filer.",
+  "errSecurityBlocked": "Fil blokeret af den autonome sikkerhedsmotor (ugyldig eller mistænkelig PDF-signatur).",
+  "errAnalyzePdf": "Fejl ved analyse af PDF-cv'et.",
+  "errHomeUnavailable": "⚠️ Ikke tilgængelig i øjeblikket",
+  "errNoJobsFound": "Der blev ikke fundet nogen job, der matcher de aktuelle filtre.",
+  "errNoJobsHint": "Prøv at sænke minimumsmatchresultatet, rydde filtre eller tilføje færdigheder.",
+  "errCompareMinChars": "Indsæt en jobbeskrivelse med mindst 20 tegn."
+}

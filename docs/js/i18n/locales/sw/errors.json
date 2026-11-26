@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Umbizo batili. Tafadhali pakia faili za .pdf pekee.",
+  "errSecurityBlocked": "Faili imezuiwa na injini ya usalama inayojitegemea (saini ya PDF isiyo sahihi au inayotiliwa shaka).",
+  "errAnalyzePdf": "Hitilafu katika kuchanganua wasifu wa PDF.",
+  "errHomeUnavailable": "⚠️ Haipatikani kwa sasa",
+  "errNoJobsFound": "Hakuna kazi zilizopatikana zinazolingana na vichujio vya sasa.",
+  "errNoJobsHint": "Jaribu kupunguza alama ya chini kabisa ya mechi, kufuta vichujio au kuongeza ujuzi.",
+  "errCompareMinChars": "Bandika maelezo ya kazi yenye angalau vibambo 20."
+}

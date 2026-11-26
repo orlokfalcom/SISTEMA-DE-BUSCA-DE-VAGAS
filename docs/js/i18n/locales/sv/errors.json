@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ogiltigt format. Ladda endast upp pdf-filer.",
+  "errSecurityBlocked": "Fil blockerad av den autonoma säkerhetsmotorn (ogiltig eller misstänkt PDF-signatur).",
+  "errAnalyzePdf": "Det gick inte att analysera PDF-CV.",
+  "errHomeUnavailable": "⚠️ För närvarande ej tillgänglig",
+  "errNoJobsFound": "Inga jobb hittades som matchar de aktuella filtren.",
+  "errNoJobsHint": "Försök att sänka det lägsta matchresultatet, rensa filter eller lägga till färdigheter.",
+  "errCompareMinChars": "Klistra in en arbetsbeskrivning med minst 20 tecken."
+}

@@ -81,7 +81,13 @@ export async function ensureStructuredLabelsTranslated(targetLang) {
       });
     }
   }
-  await Promise.all(tasks.map((fn) => fn()));
+  let taskIdx = 0;
+  async function labelWorker() {
+    while (taskIdx < tasks.length) {
+      await tasks[taskIdx++]();
+    }
+  }
+  await Promise.all(Array.from({ length: 5 }, () => labelWorker()));
   if (Object.values(pack).some((g) => Object.keys(g).length > 0)) {
     translatedLabelLangs.add(targetLang);
     idbSet(cacheKey, pack);
@@ -132,9 +138,11 @@ export async function translateTextRemote(text, targetLang, sourceLang = "auto")
   }
 
   if (snippet.length <= 500 && sourceLang && sourceLang !== "auto") {
+    const mmCtrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const mmTimer = mmCtrl ? setTimeout(() => mmCtrl.abort(), 3000) : null;
     try {
       const mmUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(snippet)}&langpair=${encodeURIComponent(sourceLang)}|${encodeURIComponent(targetLang)}`;
-      const resp = await fetch(mmUrl);
+      const resp = await fetch(mmUrl, mmCtrl ? { signal: mmCtrl.signal } : undefined);
       if (resp.ok) {
         const mm = await resp.json();
         const tr = mm?.responseData?.translatedText;
@@ -142,6 +150,8 @@ export async function translateTextRemote(text, targetLang, sourceLang = "auto")
       }
     } catch {
       // mantém texto original em caso offline
+    } finally {
+      if (mmTimer) clearTimeout(mmTimer);
     }
   }
   return clean;

@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 הורד מסמך ביקורת אבטחה!",
+  "notifFiltersCleared": "מסננים נוקו",
+  "notifWeightsRestored": "משקלי הדירוג שוחזרו לברירת המחדל",
+  "notifCsvStarted": "ייצוא CSV התחיל",
+  "notifDeepSearchStarted": "מפעיל חיפוש עמוק גלובלי...",
+  "notifAutoFixApplied": "תיקוני ATS אוטומטיים הוחלו!",
+  "notifResumeApplied": "קורות חיים ערוכים הוחלו לחיפוש עבודה!",
+  "notifVoteUp": "👍 המשוב נשמר! משקלים מותאמים.",
+  "notifVoteDown": "👎 המשוב נשמר! הדירוג מכויל מחדש.",
+  "notifVoteRemoved": "משוב הוסר",
+  "notifSkillAdded": "✅ מיומנות \"{skill}\" נוספה לפרופיל שלך!",
+  "notifAutoRefreshOn": "🟢 רענון אוטומטי מופעל (כל 5 דקות)",
+  "notifAutoRefreshOff": "⏸ הרענון האוטומטי מושהה"
+}

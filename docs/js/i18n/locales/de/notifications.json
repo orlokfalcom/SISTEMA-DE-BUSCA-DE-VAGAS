@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Sicherheitsaudit-Dokument heruntergeladen!",
+  "notifFiltersCleared": "Filter gelöscht",
+  "notifWeightsRestored": "Die Rangfolgegewichte wurden auf die Standardwerte zurückgesetzt",
+  "notifCsvStarted": "CSV-Export gestartet",
+  "notifDeepSearchStarted": "Globale Tiefensuche ausführen...",
+  "notifAutoFixApplied": "Automatische ATS-Korrekturen angewendet!",
+  "notifResumeApplied": "Bearbeiteter Lebenslauf für Jobsuche angewendet!",
+  "notifVoteUp": "👍 Feedback gespeichert! Gewichte angepasst.",
+  "notifVoteDown": "👎 Feedback gespeichert! Ranking neu kalibriert.",
+  "notifVoteRemoved": "Feedback entfernt",
+  "notifSkillAdded": "✅ Fähigkeit „{skill}“ zu Ihrem Profil hinzugefügt!",
+  "notifAutoRefreshOn": "🟢 Automatische Aktualisierung aktiviert (alle 5 Minuten)",
+  "notifAutoRefreshOff": "⏸ Automatische Aktualisierung angehalten"
+}

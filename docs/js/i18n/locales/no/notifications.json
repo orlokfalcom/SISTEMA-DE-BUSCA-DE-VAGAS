@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Sikkerhetsrevisjonsdokument lastet ned!",
+  "notifFiltersCleared": "Filtrene er tømt",
+  "notifWeightsRestored": "Rangeringsvekter gjenopprettet til standard",
+  "notifCsvStarted": "CSV-eksport startet",
+  "notifDeepSearchStarted": "Kjører globalt dypsøk...",
+  "notifAutoFixApplied": "Automatiske ATS-reparasjoner er tatt i bruk!",
+  "notifResumeApplied": "Redigert CV brukt på jobbsøking!",
+  "notifVoteUp": "👍 Tilbakemelding lagret! Vekter justert.",
+  "notifVoteDown": "👎 Tilbakemelding lagret! Rangering rekalibrert.",
+  "notifVoteRemoved": "Tilbakemelding fjernet",
+  "notifSkillAdded": "✅ Ferdigheten \"{skill}\" lagt til profilen din!",
+  "notifAutoRefreshOn": "Automatisk oppdatering aktivert (hvert 5. minutt)",
+  "notifAutoRefreshOff": "⏸ Auto-oppdatering satt på pause"
+}

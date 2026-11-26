@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Format invalide. Veuillez envoyer uniquement des fichiers .pdf.",
+  "errSecurityBlocked": "Fichier bloqué par le moteur de sécurité autonome (signature PDF invalide).",
+  "errAnalyzePdf": "Erreur lors de l'analyse du CV PDF.",
+  "errHomeUnavailable": "⚠️ Indisponible pour le moment",
+  "errNoJobsFound": "Aucune offre trouvée avec les filtres actuels.",
+  "errNoJobsHint": "Essayez de réduire le score minimum, d'effacer les filtres ou d'ajouter des compétences.",
+  "errCompareMinChars": "Collez une description de poste d'au moins 20 caractères."
+}

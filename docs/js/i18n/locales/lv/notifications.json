@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Drošības audita dokuments lejupielādēts!",
+  "notifFiltersCleared": "Filtri notīrīti",
+  "notifWeightsRestored": "Reitinga svari ir atjaunoti pēc noklusējuma",
+  "notifCsvStarted": "CSV eksportēšana ir sākta",
+  "notifDeepSearchStarted": "Notiek globālās dziļās meklēšanas palaišana...",
+  "notifAutoFixApplied": "Lietoti automātiskie ATS labojumi!",
+  "notifResumeApplied": "Labots CV piemērots darba meklēšanai!",
+  "notifVoteUp": "👍 Atsauksmes saglabātas! Svari pielāgoti.",
+  "notifVoteDown": "👎 Atsauksmes saglabātas! Reitings ir atkārtoti kalibrēts.",
+  "notifVoteRemoved": "Atsauksmes noņemtas",
+  "notifSkillAdded": "✅ Prasme \"{skill}\" ir pievienota jūsu profilam!",
+  "notifAutoRefreshOn": "🟢 Automātiskā atsvaidzināšana iespējota (ik pēc 5 minūtēm)",
+  "notifAutoRefreshOff": "⏸ Automātiskā atsvaidzināšana ir apturēta"
+}

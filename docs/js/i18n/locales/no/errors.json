@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ugyldig format. Last opp kun .pdf-filer.",
+  "errSecurityBlocked": "Fil blokkert av den autonome sikkerhetsmotoren (ugyldig eller mistenkelig PDF-signatur).",
+  "errAnalyzePdf": "Feil ved analyse av PDF-CV.",
+  "errHomeUnavailable": "⚠️ Ikke tilgjengelig for øyeblikket",
+  "errNoJobsFound": "Ingen jobber funnet som samsvarer med gjeldende filtre.",
+  "errNoJobsHint": "Prøv å senke minimumsresultatet, tømme filtre eller legge til ferdigheter.",
+  "errCompareMinChars": "Lim inn en stillingsbeskrivelse med minst 20 tegn."
+}

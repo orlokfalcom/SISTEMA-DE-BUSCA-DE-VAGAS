@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Neveljavna oblika. Naložite samo datoteke .pdf.",
+  "errSecurityBlocked": "Datoteko blokira avtonomni varnostni mehanizem (neveljaven ali sumljiv podpis PDF).",
+  "errAnalyzePdf": "Napaka pri analizi življenjepisa PDF.",
+  "errHomeUnavailable": "⚠️ Trenutno ni na voljo",
+  "errNoJobsFound": "Ni najdenih delovnih mest, ki bi ustrezala trenutnim filtrom.",
+  "errNoJobsHint": "Poskusite znižati najmanjši rezultat ujemanja, počistiti filtre ali dodati veščine.",
+  "errCompareMinChars": "Prilepite opis delovnega mesta z vsaj 20 znaki."
+}

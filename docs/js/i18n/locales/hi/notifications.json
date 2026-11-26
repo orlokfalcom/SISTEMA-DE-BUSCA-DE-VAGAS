@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Security audit document downloaded!",
+  "notifFiltersCleared": "Filters cleared",
+  "notifWeightsRestored": "Ranking weights restored to default",
+  "notifCsvStarted": "CSV export started",
+  "notifDeepSearchStarted": "Running Global Deep Search...",
+  "notifAutoFixApplied": "Automatic ATS fixes applied!",
+  "notifResumeApplied": "Edited resume applied to job search!",
+  "notifVoteUp": "👍 Feedback saved! Weights adjusted.",
+  "notifVoteDown": "👎 Feedback saved! Ranking recalibrated.",
+  "notifVoteRemoved": "Feedback removed",
+  "notifSkillAdded": "✅ Skill \"{skill}\" added to your profile!",
+  "notifAutoRefreshOn": "🟢 Auto-refresh enabled (every 5 min)",
+  "notifAutoRefreshOff": "⏸ Auto-refresh paused"
+}

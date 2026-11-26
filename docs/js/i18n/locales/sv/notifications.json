@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Säkerhetsrevisionsdokument har laddats ner!",
+  "notifFiltersCleared": "Filter rensade",
+  "notifWeightsRestored": "Rangordningsvikter återställd till standard",
+  "notifCsvStarted": "CSV-exporten startade",
+  "notifDeepSearchStarted": "Kör Global Deep Search...",
+  "notifAutoFixApplied": "Automatiska ATS-fixar tillämpas!",
+  "notifResumeApplied": "Redigerat CV tillämpas för jobbsökning!",
+  "notifVoteUp": "👍 Feedback sparad! Vikter justerade.",
+  "notifVoteDown": "👎 Feedback sparad! Ranking omkalibrerad.",
+  "notifVoteRemoved": "Feedback har tagits bort",
+  "notifSkillAdded": "✅ Färdigheten \"{skill}\" har lagts till i din profil!",
+  "notifAutoRefreshOn": "Automatisk uppdatering aktiverad (var 5:e minut)",
+  "notifAutoRefreshOff": "⏸ Automatisk uppdatering pausad"
+}

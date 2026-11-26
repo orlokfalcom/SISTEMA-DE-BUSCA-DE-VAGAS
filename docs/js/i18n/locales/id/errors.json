@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Formatnya tidak valid. Harap unggah file .pdf saja.",
+  "errSecurityBlocked": "File diblokir oleh mesin keamanan otonom (tanda tangan PDF tidak valid atau mencurigakan).",
+  "errAnalyzePdf": "Kesalahan menganalisis resume PDF.",
+  "errHomeUnavailable": "⚠️ Saat ini tidak tersedia",
+  "errNoJobsFound": "Tidak ditemukan pekerjaan yang cocok dengan filter saat ini.",
+  "errNoJobsHint": "Coba turunkan skor pertandingan minimum, hapus filter, atau tambahkan keterampilan.",
+  "errCompareMinChars": "Tempelkan deskripsi pekerjaan dengan setidaknya 20 karakter."
+}

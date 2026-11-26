@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "無効な形式です。.pdfファイルのみアップロードしてください。",
+  "errSecurityBlocked": "自律型セキュリティエンジンによりファイルがブロックされました（無効なPDF署名）。",
+  "errAnalyzePdf": "PDF履歴書の解析中にエラーが発生しました。",
+  "errHomeUnavailable": "⚠️ 現在利用できません",
+  "errNoJobsFound": "現在のフィルターに一致する求人が見つかりませんでした。",
+  "errNoJobsHint": "最低マッチ度を下げるか、フィルターをクリア、またはスキルを追加してください。",
+  "errCompareMinChars": "20文字以上の求人内容を貼り付けてください。"
+}

@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Document d'audit de sécurité téléchargé !",
+  "notifFiltersCleared": "Filtres effacés",
+  "notifWeightsRestored": "Poids du classement restaurés par défaut",
+  "notifCsvStarted": "Exportation CSV lancée",
+  "notifDeepSearchStarted": "Recherche mondiale en cours...",
+  "notifAutoFixApplied": "Corrections automatiques appliquées !",
+  "notifResumeApplied": "CV modifié appliqué à la recherche !",
+  "notifVoteUp": "👍 Avis enregistré ! Poids ajustés.",
+  "notifVoteDown": "👎 Avis enregistré ! Classement recalibré.",
+  "notifVoteRemoved": "Avis supprimé",
+  "notifSkillAdded": "✅ Compétence \"{skill}\" ajoutée à votre profil !",
+  "notifAutoRefreshOn": "🟢 Actualisation auto activée (5 min)",
+  "notifAutoRefreshOff": "⏸ Actualisation auto en pause"
+}

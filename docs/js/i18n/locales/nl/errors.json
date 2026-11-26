@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ongeldig formaat. Upload alleen .pdf-bestanden.",
+  "errSecurityBlocked": "Bestand geblokkeerd door de autonome beveiligingsengine (ongeldige of verdachte PDF-handtekening).",
+  "errAnalyzePdf": "Fout bij het analyseren van het pdf-cv.",
+  "errHomeUnavailable": "⚠️ Momenteel niet beschikbaar",
+  "errNoJobsFound": "Er zijn geen vacatures gevonden die voldoen aan de huidige filters.",
+  "errNoJobsHint": "Probeer de minimale wedstrijdscore te verlagen, filters te wissen of vaardigheden toe te voegen.",
+  "errCompareMinChars": "Plak een functiebeschrijving van minimaal 20 tekens."
+}

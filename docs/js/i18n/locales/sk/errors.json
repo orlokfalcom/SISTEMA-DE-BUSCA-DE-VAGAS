@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Neplatný formát. Nahrávajte iba súbory .pdf.",
+  "errSecurityBlocked": "Súbor zablokovaný autonómnym bezpečnostným jadrom (neplatný alebo podozrivý podpis PDF).",
+  "errAnalyzePdf": "Chyba pri analýze životopisu PDF.",
+  "errHomeUnavailable": "⚠️ Momentálne nedostupné",
+  "errNoJobsFound": "Nenašli sa žiadne úlohy zodpovedajúce aktuálnym filtrom.",
+  "errNoJobsHint": "Skúste znížiť minimálne skóre zhody, vymazať filtre alebo pridať zručnosti.",
+  "errCompareMinChars": "Prilepte popis úlohy s aspoň 20 znakmi."
+}

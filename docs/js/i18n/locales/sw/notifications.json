@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Hati ya ukaguzi wa usalama imepakuliwa!",
+  "notifFiltersCleared": "Vichujio vimefutwa",
+  "notifWeightsRestored": "Uzani wa nafasi umerejeshwa kwa chaguomsingi",
+  "notifCsvStarted": "Uhamishaji wa CSV umeanza",
+  "notifDeepSearchStarted": "Inaendesha Utafutaji wa Kina Ulimwenguni...",
+  "notifAutoFixApplied": "Marekebisho ya kiotomatiki ya ATS yametekelezwa!",
+  "notifResumeApplied": "Wasifu uliohaririwa umetumika kwa utafutaji wa kazi!",
+  "notifVoteUp": "👍 Maoni yamehifadhiwa! Uzito kurekebishwa.",
+  "notifVoteDown": "👎 Maoni yamehifadhiwa! Nafasi imesawazishwa upya.",
+  "notifVoteRemoved": "Maoni yameondolewa",
+  "notifSkillAdded": "✅ Ujuzi wa \"{skill}\" umeongezwa kwenye wasifu wako!",
+  "notifAutoRefreshOn": "Usasishaji kiotomatiki umewashwa (kila baada ya dakika 5)",
+  "notifAutoRefreshOff": "d Uonyeshaji upya kiotomatiki umesitishwa"
+}

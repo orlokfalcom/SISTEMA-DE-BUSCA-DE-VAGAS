@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 セキュリティ監査ドキュメントをダウンロードしました！",
+  "notifFiltersCleared": "フィルターをクリアしました",
+  "notifWeightsRestored": "ランキング重みをデフォルトに復元しました",
+  "notifCsvStarted": "CSVエクスポートを開始しました",
+  "notifDeepSearchStarted": "グローバル検索を実行中...",
+  "notifAutoFixApplied": "自動修正を適用しました！",
+  "notifResumeApplied": "編集した履歴書を求人検索に反映しました！",
+  "notifVoteUp": "👍 フィードバックを保存し、重みを調整しました。",
+  "notifVoteDown": "👎 フィードバックを保存し、ランキングを再調整しました。",
+  "notifVoteRemoved": "フィードバックを削除しました",
+  "notifSkillAdded": "✅ スキル「{skill}」をプロフィールに追加しました！",
+  "notifAutoRefreshOn": "🟢 自動更新を有効にしました（5分ごと）",
+  "notifAutoRefreshOff": "⏸ 自動更新を一時停止しました"
+}

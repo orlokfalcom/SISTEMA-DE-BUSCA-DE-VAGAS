@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Dokumen audit keamanan diunduh!",
+  "notifFiltersCleared": "Filter dibersihkan",
+  "notifWeightsRestored": "Bobot peringkat dikembalikan ke default",
+  "notifCsvStarted": "Ekspor CSV dimulai",
+  "notifDeepSearchStarted": "Menjalankan Pencarian Mendalam Global...",
+  "notifAutoFixApplied": "Perbaikan ATS otomatis diterapkan!",
+  "notifResumeApplied": "Resume yang diedit diterapkan untuk pencarian kerja!",
+  "notifVoteUp": "👍 Masukan disimpan! Bobot disesuaikan.",
+  "notifVoteDown": "👎 Masukan disimpan! Peringkat dikalibrasi ulang.",
+  "notifVoteRemoved": "Masukan dihapus",
+  "notifSkillAdded": "✅ Keterampilan \"{skill}\" ditambahkan ke profil Anda!",
+  "notifAutoRefreshOn": "🟢 Penyegaran otomatis diaktifkan (setiap 5 menit)",
+  "notifAutoRefreshOff": "⏸ Penyegaran otomatis dijeda"
+}

@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Nederīgs formāts. Lūdzu, augšupielādējiet tikai .pdf failus.",
+  "errSecurityBlocked": "Failu bloķē autonomā drošības programma (nederīgs vai aizdomīgs PDF paraksts).",
+  "errAnalyzePdf": "Analizējot PDF CV, radās kļūda.",
+  "errHomeUnavailable": "⚠️ Pašlaik nav pieejams",
+  "errNoJobsFound": "Nav atrasts neviens darbs, kas atbilstu pašreizējiem filtriem.",
+  "errNoJobsHint": "Mēģiniet samazināt minimālo atbilstības rezultātu, notīrīt filtrus vai pievienot prasmes.",
+  "errCompareMinChars": "Ielīmējiet darba aprakstu, kurā ir vismaz 20 rakstzīmes."
+}

@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Format nevalid. Vă rugăm să încărcați numai fișiere .pdf.",
+  "errSecurityBlocked": "Fișier blocat de motorul de securitate autonom (semnătură PDF nevalidă sau suspectă).",
+  "errAnalyzePdf": "Eroare la analizarea CV-ului PDF.",
+  "errHomeUnavailable": "⚠️ Momentan indisponibil",
+  "errNoJobsFound": "Nu s-au găsit locuri de muncă care să se potrivească cu filtrele actuale.",
+  "errNoJobsHint": "Încercați să reduceți scorul minim de potrivire, să ștergeți filtrele sau să adăugați abilități.",
+  "errCompareMinChars": "Lipiți o descriere a postului cu cel puțin 20 de caractere."
+}

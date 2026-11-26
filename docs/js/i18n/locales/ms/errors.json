@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Format tidak sah. Sila muat naik fail .pdf sahaja.",
+  "errSecurityBlocked": "Fail disekat oleh enjin keselamatan autonomi (tandatangan PDF tidak sah atau mencurigakan).",
+  "errAnalyzePdf": "Ralat menganalisis resume PDF.",
+  "errHomeUnavailable": "⚠️ Tidak tersedia buat masa ini",
+  "errNoJobsFound": "Tiada kerja ditemui sepadan dengan penapis semasa.",
+  "errNoJobsHint": "Cuba kurangkan markah padanan minimum, kosongkan penapis atau tambah kemahiran.",
+  "errCompareMinChars": "Tampalkan huraian kerja dengan sekurang-kurangnya 20 aksara."
+}

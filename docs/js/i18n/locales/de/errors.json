@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Ungültiges Format. Bitte laden Sie nur PDF-Dateien hoch.",
+  "errSecurityBlocked": "Von der autonomen Sicherheits-Engine blockierte Datei (ungültige oder verdächtige PDF-Signatur).",
+  "errAnalyzePdf": "Fehler beim Analysieren des PDF-Lebenslaufs.",
+  "errHomeUnavailable": "⚠️ Derzeit nicht verfügbar",
+  "errNoJobsFound": "Es wurden keine Jobs gefunden, die den aktuellen Filtern entsprechen.",
+  "errNoJobsHint": "Versuchen Sie, den Mindest-Match-Score zu senken, Filter zu löschen oder Fähigkeiten hinzuzufügen.",
+  "errCompareMinChars": "Fügen Sie eine Stellenbeschreibung mit mindestens 20 Zeichen ein."
+}

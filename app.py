@@ -84,6 +84,41 @@ def security_report():
     return jsonify(security_ai.get_summary())
 
 
+PREFS_FILE = os.path.join(os.path.dirname(__file__), "security_logs", "user_preferences.json")
+
+
+def _load_user_prefs() -> dict:
+    try:
+        if os.path.exists(PREFS_FILE):
+            import json as _json
+            with open(PREFS_FILE, "r", encoding="utf-8") as fh:
+                return _json.load(fh)
+    except Exception:
+        pass
+    return {"preferred_language": "pt"}
+
+
+@app.get("/api/preferences/language")
+def get_language_preference():
+    prefs = _load_user_prefs()
+    return jsonify({"preferred_language": prefs.get("preferred_language", "pt")})
+
+
+@app.post("/api/preferences/language")
+def set_language_preference():
+    import json as _json
+    data = request.get_json(silent=True) or {}
+    lang = str(data.get("preferred_language") or "").strip()
+    if not lang or len(lang) > 12:
+        return jsonify({"error": "Código de idioma inválido."}), 400
+    os.makedirs(os.path.dirname(PREFS_FILE), exist_ok=True)
+    prefs = _load_user_prefs()
+    prefs["preferred_language"] = lang
+    with open(PREFS_FILE, "w", encoding="utf-8") as fh:
+        _json.dump(prefs, fh, ensure_ascii=False, indent=2)
+    return jsonify({"preferred_language": lang, "saved": True})
+
+
 @app.get("/api/live-jobs")
 def live_jobs_feed():
     """Carrega automaticamente vagas recentes (empresas + portais) para exibição inicial e pré-aquecimento."""

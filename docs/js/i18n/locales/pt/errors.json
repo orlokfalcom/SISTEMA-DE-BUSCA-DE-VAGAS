@@ -1,0 +1,9 @@
+{
+  "errInvalidPdf": "Formato inválido. Envie apenas arquivos .pdf.",
+  "errSecurityBlocked": "Arquivo bloqueado pelo motor autônomo de segurança (assinatura PDF inválida ou suspeita).",
+  "errAnalyzePdf": "Erro ao analisar o currículo PDF.",
+  "errHomeUnavailable": "⚠️ Indisponível no momento",
+  "errNoJobsFound": "Nenhuma vaga encontrada com os filtros atuais.",
+  "errNoJobsHint": "Tente reduzir o match mínimo, limpar filtros ou adicionar habilidades.",
+  "errCompareMinChars": "Cole uma descrição de vaga com pelo menos 20 caracteres."
+}

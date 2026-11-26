@@ -1,0 +1,15 @@
+{
+  "notifSecurityDownloaded": "📄 Sekuriteitsouditdokument afgelaai!",
+  "notifFiltersCleared": "Filters is skoongemaak",
+  "notifWeightsRestored": "Rangordegewigte is na verstek herstel",
+  "notifCsvStarted": "CSV-uitvoer het begin",
+  "notifDeepSearchStarted": "Hardloop tans Global Deep Search …",
+  "notifAutoFixApplied": "Outomatiese ATS regstellings toegepas!",
+  "notifResumeApplied": "Geredigeerde CV toegepas op werksoek!",
+  "notifVoteUp": "👍 Terugvoer gestoor! Gewigte aangepas.",
+  "notifVoteDown": "👎 Terugvoer gestoor! Rangorde herkalibreer.",
+  "notifVoteRemoved": "Terugvoer is verwyder",
+  "notifSkillAdded": "✅ Vaardigheid \"{vaardigheid}\" is by jou profiel gevoeg! {skill}",
+  "notifAutoRefreshOn": "Outo-verfris geaktiveer (elke 5 min)",
+  "notifAutoRefreshOff": "⏸ Outo-herlaai is onderbreek"
+}
