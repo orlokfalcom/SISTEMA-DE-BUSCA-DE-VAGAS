@@ -361,7 +361,12 @@ export function matchJobsHybrid({
     }
     if (normModality && !normalizeText(job.modality || "").includes(normModality)) continue;
     if (normSeniority && !normalizeText(job.seniority || "").includes(normSeniority)) continue;
-    if (normLanguage && normalizeText(job.jobLanguage || "") !== normLanguage) continue;
+    if (normLanguage) {
+      const jobLang = normalizeText(job.jobLanguage || "");
+      const filterBase = normLanguage.split(/[-\s]/)[0];
+      const jobBase = jobLang.split(/[-\s]/)[0];
+      if (jobLang !== normLanguage && !(normLanguage.includes("-") && jobBase === filterBase)) continue;
+    }
     if (normSector && !normalizeText(job.sector || "").includes(normSector)) continue;
     if (normLocation && !normalizeText(`${job.location || ""} ${job.country || ""}`).includes(normLocation)) continue;
 

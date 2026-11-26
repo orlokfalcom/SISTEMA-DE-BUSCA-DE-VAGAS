@@ -1892,6 +1892,18 @@ if (uiLanguageSelect) {
   uiLanguageSelect.addEventListener("change", () => handleSelectLanguage(uiLanguageSelect.value));
 }
 
+if (languageFilter) {
+  const allOpt = languageFilter.querySelector('option[value=""]');
+  const allHtml = allOpt
+    ? allOpt.outerHTML
+    : `<option value="" data-i18n="allLanguages">${escapeHtml(t("allLanguages"))}</option>`;
+  languageFilter.innerHTML =
+    allHtml +
+    SUPPORTED_LANGUAGES.map(
+      (l) => `<option value="${escapeHtml(l.code)}">${escapeHtml(l.label)}</option>`
+    ).join("");
+}
+
 if (langPickerBtn && langPickerPopover) {
   langPickerBtn.addEventListener("click", (e) => {
     e.stopPropagation();

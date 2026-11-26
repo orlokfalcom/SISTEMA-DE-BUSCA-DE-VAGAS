@@ -1,27 +1,38 @@
 # Relatório Autônomo de Segurança — VagaPulse AI
 
-- **Última atualização (UTC):** `2026-11-26T12:22:53.819982+00:00`
-- **Total de tentativas registradas:** `106`
-- **Bloqueios autônomos (403):** `76`
-- **Severidade:** Crítica `76` | Alta `0` | Média `30` | Baixa `0`
+- **Última atualização (UTC):** `2026-11-26T12:53:04.365849+00:00`
+- **Total de tentativas registradas:** `117`
+- **Bloqueios autônomos (403):** `82`
+- **Severidade:** Crítica `82` | Alta `0` | Média `35` | Baixa `0`
 
 ## Origens Mais Frequentes
 
 | IP / Origem | Tentativas |
 | :--- | :---: |
-| `203.0.113.42` | 42 |
-| `198.51.100.99` | 23 |
+| `203.0.113.42` | 43 |
+| `198.51.100.99` | 24 |
 | `127.0.0.1` | 18 |
-| `198.51.100.10` | 6 |
-| `198.51.100.11` | 6 |
-| `198.51.100.12` | 4 |
-| `198.51.100.200` | 4 |
-| `198.51.100.13` | 3 |
+| `198.51.100.10` | 8 |
+| `198.51.100.11` | 8 |
+| `198.51.100.12` | 6 |
+| `198.51.100.13` | 5 |
+| `198.51.100.200` | 5 |
 
 ## Registro Detalhado (Últimos 50 Incidentes)
 
 | Timestamp (UTC) | IP | Método / Rota | Risco | Severidade | Categorias | Ação |
 | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
+| `2026-11-26T12:53:04.364591+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
+| `2026-11-26T12:53:04.358434+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
+| `2026-11-26T12:53:04.265142+00:00` | `198.51.100.200` | `POST /api/search` | **90/100** | CRÍTICA | Server-Side Template Injection (SSTI), Credential / API Key Leakage | BLOQUEADO (403) |
+| `2026-11-26T12:52:35.038115+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
+| `2026-11-26T12:51:39.475244+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
+| `2026-11-26T12:51:39.467811+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
+| `2026-11-26T12:51:39.458741+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
+| `2026-11-26T12:49:59.295393+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
+| `2026-11-26T12:48:27.955624+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
+| `2026-11-26T12:48:27.950153+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
+| `2026-11-26T12:48:27.940670+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
 | `2026-11-26T12:22:53.818075+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-26T12:22:53.806807+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
 | `2026-11-26T12:22:53.590980+00:00` | `198.51.100.200` | `POST /api/search` | **90/100** | CRÍTICA | Server-Side Template Injection (SSTI), Credential / API Key Leakage | BLOQUEADO (403) |
@@ -61,14 +72,3 @@
 | `2026-11-26T12:22:29.941026+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-26T12:22:29.930303+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
 | `2026-11-26T12:22:29.925118+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
-| `2026-11-26T13:12:36.268111+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
-| `2026-11-26T13:12:36.260436+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
-| `2026-11-26T13:12:36.252394+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
-| `2026-11-26T12:50:12.162488+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
-| `2026-11-26T12:50:12.152842+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
-| `2026-11-26T12:50:12.146908+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
-| `2026-11-26T12:33:02.342036+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
-| `2026-11-26T12:33:02.330954+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
-| `2026-11-26T12:33:02.323489+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
-| `2026-11-26T12:23:50.065540+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
-| `2026-11-26T12:23:50.058624+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
