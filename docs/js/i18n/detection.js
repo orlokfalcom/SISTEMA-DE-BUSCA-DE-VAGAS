@@ -8,9 +8,9 @@ export function normalizeLanguageTag(rawTag) {
   if (!tag) return null;
   if (SUPPORTED_CODE_SET.has(tag)) return tag;
 
-  const lower = tag.toLowerCase().replace("_", "-");
-  if (lower === "zh-cn" || lower === "zh-hans" || lower === "zh-sg") return "zh-CN";
-  if (lower === "zh-tw" || lower === "zh-hant" || lower === "zh-hk" || lower === "zh-mo") return "zh-TW";
+  const lower = tag.toLowerCase().replaceAll("_", "-");
+  if (lower === "zh-cn" || lower.includes("hans") || lower.endsWith("-cn") || lower.endsWith("-sg")) return "zh-CN";
+  if (lower === "zh-tw" || lower.includes("hant") || lower.endsWith("-tw") || lower.endsWith("-hk") || lower.endsWith("-mo")) return "zh-TW";
   if (lower === "zh") return "zh-CN";
 
   const base = lower.split("-")[0];

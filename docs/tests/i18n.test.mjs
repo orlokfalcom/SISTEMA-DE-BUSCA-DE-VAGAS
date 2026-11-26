@@ -25,9 +25,9 @@ export async function runI18n50TestSuite() {
   const requiredKeys = Object.keys(ptPack);
   assert(requiredKeys.length >= 100, `Esperado >= 100 chaves obrigatórias, obtido ${requiredKeys.length}`);
 
+  const packs = await Promise.all(SUPPORTED_LANGUAGES.map(async ({ code }) => [code, await loadLanguagePack(code)]));
   const coverageReport = {};
-  for (const { code } of SUPPORTED_LANGUAGES) {
-    const pack = await loadLanguagePack(code);
+  for (const [code, pack] of packs) {
     const missing = requiredKeys.filter((k) => pack[k] === undefined || String(pack[k]).trim() === '');
     assert(missing.length === 0, `Idioma ${code} possui ${missing.length} chaves ausentes/vazias: ${missing.slice(0, 5).join(', ')}`);
     coverageReport[code] = '100%';

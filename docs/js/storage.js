@@ -7,8 +7,11 @@ const DB_NAME = "vagapulse_ai_db";
 const DB_VERSION = 1;
 const STORE_KV = "kv_store";
 
+let dbPromise = null;
+
 function openDb() {
-  return new Promise((resolve, reject) => {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
       reject(new Error("IndexedDB unavailable"));
       return;
@@ -21,18 +24,32 @@ function openDb() {
       }
     };
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error);
+    };
   });
+  return dbPromise;
 }
 
 export async function idbGet(key, fallback = null) {
   try {
-    const db = await openDb();
+    const db = await Promise.race([
+      openDb(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("idb timeout")), 300)),
+    ]);
     return await new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(fallback), 300);
       const tx = db.transaction(STORE_KV, "readonly");
       const req = tx.objectStore(STORE_KV).get(key);
-      req.onsuccess = () => resolve(req.result !== undefined ? req.result : fallback);
-      req.onerror = () => resolve(fallback);
+      req.onsuccess = () => {
+        clearTimeout(timer);
+        resolve(req.result !== undefined ? req.result : fallback);
+      };
+      req.onerror = () => {
+        clearTimeout(timer);
+        resolve(fallback);
+      };
     });
   } catch {
     try {

@@ -5,7 +5,7 @@
  */
 
 import { idbGet, idbSet } from "./storage.js";
-import { getUiLang } from "./i18n.js";
+import { getUiLang } from "./i18n/config.js";
 
 const LABEL_MAP = {
   modality: {
