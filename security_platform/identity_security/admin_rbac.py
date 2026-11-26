@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import os
 import struct
+import threading
 import time
 from collections import defaultdict, deque
 
@@ -15,26 +16,29 @@ class AdminAccessControl:
     """
 
     def __init__(self) -> None:
+        self._lock = threading.Lock()
         self._failed_attempts: dict[str, deque[float]] = defaultdict(deque)
 
     def record_auth_failure(self, ip: str) -> int:
         now = time.time()
-        dq = self._failed_attempts[ip]
-        dq.append(now)
-        cutoff = now - 300
-        while dq and dq[0] < cutoff:
-            dq.popleft()
-        return len(dq)
+        with self._lock:
+            dq = self._failed_attempts[ip]
+            dq.append(now)
+            cutoff = now - 300
+            while dq and dq[0] < cutoff:
+                dq.popleft()
+            return len(dq)
 
     def is_brute_force_locked(self, ip: str, limit: int = 8) -> bool:
         now = time.time()
-        dq = self._failed_attempts.get(ip)
-        if not dq:
-            return False
-        cutoff = now - 300
-        while dq and dq[0] < cutoff:
-            dq.popleft()
-        return len(dq) >= limit
+        with self._lock:
+            dq = self._failed_attempts.get(ip)
+            if not dq:
+                return False
+            cutoff = now - 300
+            while dq and dq[0] < cutoff:
+                dq.popleft()
+            return len(dq) >= limit
 
     def verify_totp(self, secret_bytes: bytes, code: str, window: int = 1) -> bool:
         if not code or not code.isdigit() or len(code) != 6:

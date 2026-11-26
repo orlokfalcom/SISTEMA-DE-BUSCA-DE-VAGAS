@@ -43,6 +43,99 @@ export function tailorResumeForJob(resumeText, job, candidateSkills = [], candid
   };
 }
 
+const SECTION_HEADER_RE = /^(RESUMO(?:\s+PROFISSIONAL|\s+DIRECIONADO)?|OBJETIVO|SUMMARY|PROFESSIONAL\s+SUMMARY|EXPERI[ÊE]NCIA(?:\s+PROFISSIONAL)?|EXPERIENCE|COMPET[ÊE]NCIAS(?:\s+PRIORIT[ÁA]RIAS)?|HABILIDADES|SKILLS|FORMA[ÇC][ÃA]O(?:\s+ACAD[ÊE]MICA)?|EDUCATION|IDIOMAS|LANGUAGES|CERTIFICA[ÇC][ÕO]ES|DESTAQUES\s+(?:SUGERIDOS|RELEVANTES))(?:\s*\(.*\))?\s*:?\s*$/i;
+
+export function autoEditResumeForJob(resumeText, job, candidateSkills = [], candidateSeniority = "Pleno") {
+  const tailored = tailorResumeForJob(resumeText, job, candidateSkills, candidateSeniority);
+  const raw = String(resumeText || "").trim();
+  const lang = job.jobLanguage || "pt";
+
+  const summaryHeader = lang === "en" ? "PROFESSIONAL SUMMARY" : "RESUMO PROFISSIONAL";
+  const skillsHeader = lang === "en" ? "CORE COMPETENCIES" : "COMPETÊNCIAS PRIORITÁRIAS";
+  const highlightsHeader = lang === "en" ? "TARGETED HIGHLIGHTS FOR THIS ROLE" : "DESTAQUES RELEVANTES PARA A VAGA";
+
+  if (!raw) {
+    const editedResumeText = [
+      `CANDIDATO (${candidateSeniority})`,
+      "",
+      summaryHeader,
+      tailored.tailoredSummary,
+      "",
+      skillsHeader,
+      tailored.prioritizedSkills.join(" · "),
+      "",
+      highlightsHeader,
+      ...tailored.suggestedBullets,
+    ].join("\n");
+    return { ...tailored, editedResumeText };
+  }
+
+  // Remove blocos anteriores gerados por ajuste automático para evitar duplicação
+  const cleanedRaw = raw
+    .replace(/RESUMO DIRECIONADO[\s\S]*?(?=\n(?:EXPERI[ÊE]NCIA|FORMA[ÇC][ÃA]O|IDIOMAS|---|\n[A-ZÁÉÍÓÚÂÊÔÃÕÇ ]{5,}\n)|$)/gi, "")
+    .replace(/DESTAQUES (?:SUGERIDOS|RELEVANTES)[^\n]*\n(?:•[^\n]*\n?)*/gi, "")
+    .replace(/^\s*---\s*$/gm, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  const lines = cleanedRaw.split(/\r?\n/);
+  const headerLines = [];
+  const restSections = [];
+  let inHeader = true;
+  let currentSection = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (SECTION_HEADER_RE.test(trimmed)) {
+      inHeader = false;
+      currentSection = { title: trimmed, lines: [] };
+      restSections.push(currentSection);
+      continue;
+    }
+    if (inHeader) {
+      headerLines.push(line);
+    } else if (currentSection) {
+      currentSection.lines.push(line);
+    }
+  }
+
+  const out = [];
+  if (headerLines.some((l) => l.trim())) {
+    out.push(headerLines.join("\n").trim(), "");
+  }
+
+  // Substitui/insere Resumo Profissional direcionado à vaga
+  out.push(summaryHeader, tailored.tailoredSummary, "");
+
+  // Atualiza/insere Competências Prioritárias
+  out.push(skillsHeader, tailored.prioritizedSkills.join(" · "), "");
+
+  // Preserva Experiência (com destaques relevantes no topo), Formação, Idiomas etc.
+  let insertedHighlights = false;
+  for (const sec of restSections) {
+    if (/^(RESUMO|OBJETIVO|SUMMARY|PROFESSIONAL\s+SUMMARY|COMPET[ÊE]NCIAS|HABILIDADES|SKILLS|DESTAQUES)/i.test(sec.title)) {
+      continue;
+    }
+    out.push(sec.title);
+    if (!insertedHighlights && /^(EXPERI[ÊE]NCIA|EXPERIENCE)/i.test(sec.title)) {
+      out.push(...tailored.suggestedBullets);
+      insertedHighlights = true;
+    }
+    const body = sec.lines.join("\n").trim();
+    if (body) out.push(body);
+    out.push("");
+  }
+
+  if (!insertedHighlights) {
+    out.push(highlightsHeader, ...tailored.suggestedBullets, "");
+  }
+
+  return {
+    ...tailored,
+    editedResumeText: out.join("\n").replace(/\n{3,}/g, "\n\n").trim(),
+  };
+}
+
 export function buildRecruiterOutreach(job, candidateSeniority = "Pleno") {
   const company = String(job.company || "").trim();
   const title = String(job.title || "").trim();

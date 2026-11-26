@@ -4,7 +4,7 @@ import io
 import os
 from datetime import datetime
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, g, jsonify, render_template, request, send_file
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from services.job_matcher import (
@@ -34,6 +34,7 @@ security_ai = AutonomousSecurityAI(log_dir=os.path.join(os.path.dirname(__file__
 def autonomous_intrusion_guard():
     verdict = security_ai.inspect_flask_request(request)
     if verdict["blocked"]:
+        g._already_blocked_by_guard = True
         return (
             jsonify(
                 {
@@ -48,7 +49,8 @@ def autonomous_intrusion_guard():
 
 @app.after_request
 def add_security_headers(response):
-    security_ai.observe_flask_response(request, response.status_code)
+    if not getattr(g, "_already_blocked_by_guard", False):
+        security_ai.observe_flask_response(request, response.status_code)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")

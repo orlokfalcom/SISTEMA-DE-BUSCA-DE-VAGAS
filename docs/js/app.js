@@ -5,8 +5,10 @@
  */
 
 import {
+  SAMPLE_RESUME_LINES,
   buildAtsImprovementPlan,
   buildSamplePdfBlob,
+  buildTextPdfBlob,
   evaluateAtsReadiness,
   extractTextFromPdfFile,
   recommendCourses,
@@ -41,6 +43,7 @@ import {
 } from "./i18n.js";
 import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
 import {
+  autoEditResumeForJob,
   buildRecruiterOutreach,
   computeConversionFunnel,
   generateInterviewPrep,
@@ -343,6 +346,7 @@ const editorAutoFixBtn = document.getElementById("editorAutoFixBtn");
 const editorLoadTemplateBtn = document.getElementById("editorLoadTemplateBtn");
 const editorCopyBtn = document.getElementById("editorCopyBtn");
 const editorPrintPdfBtn = document.getElementById("editorPrintPdfBtn");
+const editorDownloadPdfBtn = document.getElementById("editorDownloadPdfBtn");
 const editorDownloadTxtBtn = document.getElementById("editorDownloadTxtBtn");
 const applyEditedResumeBtn = document.getElementById("applyEditedResumeBtn");
 
@@ -1152,16 +1156,26 @@ async function openJobModal(jobId) {
   modalApplyBtn.href = rawJob.url || "#";
 
   if (modalConversionKit) {
-    const tailored = tailorResumeForJob(state.resumeTextSnippet, rawJob, state.skills, state.seniority);
+    const baseResume = (state.resumeTextSnippet || "").trim() || SAMPLE_RESUME_LINES.join("\n");
+    const autoTailored = autoEditResumeForJob(baseResume, rawJob, state.skills, state.seniority);
     const outreach = buildRecruiterOutreach(rawJob, state.seniority);
     const prep = generateInterviewPrep(rawJob);
+    const safeSlug = `${rawJob.company || "empresa"}_${rawJob.title || "vaga"}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 48) || "vaga";
     modalConversionKit.innerHTML = `
       <div class="pitch-box" style="margin-top:0;">
-        <h4>✨ Adaptar Currículo para Esta Vaga (Tailored ATS)</h4>
-        <p style="font-size:0.84rem;white-space:pre-line;">${escapeHtml(tailored.tailoredBlockText)}</p>
+        <h4>✨ Ajuste Automático do Currículo para Esta Vaga</h4>
+        <p class="hint" style="margin:2px 0 8px;">O currículo foi editado automaticamente priorizando as competências de <strong>${escapeHtml(rawJob.title)}</strong> (${escapeHtml(rawJob.company)}). Você pode revisar abaixo, aplicar ou baixar em PDF/TXT.</p>
+        <textarea id="modalAutoResumePreview" class="resume-editor-textarea" style="min-height:175px;font-size:0.8rem;" spellcheck="true">${escapeHtml(autoTailored.editedResumeText)}</textarea>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
-          <button type="button" class="btn btn-secondary btn-small" id="copyTailoredBtn">📋 Copiar Bloco Tailored</button>
-          <button type="button" class="btn btn-primary btn-small" id="applyTailoredToEditorBtn">✨ Abrir no Editor ATS</button>
+          <button type="button" class="btn btn-primary btn-small" id="applyAutoTailoredBtn">✨ Aplicar no Meu Currículo</button>
+          <button type="button" class="btn btn-secondary btn-small" id="downloadTailoredPdfBtn">⬇ Baixar Currículo (.PDF)</button>
+          <button type="button" class="btn btn-secondary btn-small" id="downloadTailoredTxtBtn">⬇ Baixar (.TXT)</button>
+          <button type="button" class="btn btn-secondary btn-small" id="copyTailoredBtn">📋 Copiar</button>
+          <button type="button" class="btn btn-secondary btn-small" id="applyTailoredToEditorBtn">📝 Editar no Editor ATS</button>
         </div>
       </div>
       <div class="pitch-box" style="margin-top:0;">
@@ -1179,24 +1193,69 @@ async function openJobModal(jobId) {
         </ul>
       </div>
     `;
+    const previewEl = document.getElementById("modalAutoResumePreview");
+    const getEditedText = () => (previewEl ? previewEl.value : autoTailored.editedResumeText);
+    const triggerDownload = (blob, filename) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
     const copyTailoredBtn = document.getElementById("copyTailoredBtn");
     if (copyTailoredBtn) {
       copyTailoredBtn.addEventListener("click", async () => {
         try {
-          await navigator.clipboard.writeText(tailored.tailoredBlockText);
+          await navigator.clipboard.writeText(getEditedText());
           copyTailoredBtn.textContent = "✓ Copiado!";
         } catch {
           showToast("Selecione e copie o texto acima");
         }
       });
     }
+    const downloadTailoredPdfBtn = document.getElementById("downloadTailoredPdfBtn");
+    if (downloadTailoredPdfBtn) {
+      downloadTailoredPdfBtn.addEventListener("click", () => {
+        const blob = buildTextPdfBlob(getEditedText());
+        triggerDownload(blob, `curriculo_${safeSlug}.pdf`);
+        showToast("📄 Currículo ajustado baixado em PDF!");
+      });
+    }
+    const downloadTailoredTxtBtn = document.getElementById("downloadTailoredTxtBtn");
+    if (downloadTailoredTxtBtn) {
+      downloadTailoredTxtBtn.addEventListener("click", () => {
+        const blob = new Blob([getEditedText()], { type: "text/plain;charset=utf-8;" });
+        triggerDownload(blob, `curriculo_${safeSlug}.txt`);
+        showToast("📄 Currículo ajustado baixado em TXT!");
+      });
+    }
+    const applyAutoTailoredBtn = document.getElementById("applyAutoTailoredBtn");
+    if (applyAutoTailoredBtn) {
+      applyAutoTailoredBtn.addEventListener("click", async () => {
+        const edited = getEditedText().trim();
+        if (!edited) return;
+        state.resumeTextSnippet = edited;
+        if (atsResumeEditor) {
+          atsResumeEditor.value = edited;
+          updateEditorStats(edited);
+        }
+        if (state.profile) {
+          state.profile.raw_text_snippet = edited;
+        }
+        applyAutoTailoredBtn.textContent = "✓ Aplicado!";
+        showToast("✅ Currículo ajustado automaticamente para esta vaga!");
+      });
+    }
     const applyTailoredBtn = document.getElementById("applyTailoredToEditorBtn");
     if (applyTailoredBtn) {
       applyTailoredBtn.addEventListener("click", () => {
+        const edited = getEditedText();
         closeModal();
         openImproveModal();
         if (atsResumeEditor) {
-          atsResumeEditor.value = `${tailored.tailoredBlockText}\n\n---\n\n${atsResumeEditor.value}`;
+          atsResumeEditor.value = edited;
           updateEditorStats(atsResumeEditor.value);
           refreshImprovePlan(atsResumeEditor.value, true);
         }
@@ -1716,6 +1775,18 @@ if (editorCopyBtn) {
   });
 }
 if (editorPrintPdfBtn) editorPrintPdfBtn.addEventListener("click", printResumeAsPdf);
+if (editorDownloadPdfBtn) {
+  editorDownloadPdfBtn.addEventListener("click", () => {
+    if (!atsResumeEditor) return;
+    const blob = buildTextPdfBlob(atsResumeEditor.value);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "curriculo_otimizado_ats.pdf";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+}
 if (editorDownloadTxtBtn) {
   editorDownloadTxtBtn.addEventListener("click", () => {
     if (!atsResumeEditor) return;

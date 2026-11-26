@@ -19,64 +19,6 @@ from security_platform.soar.playbook_engine import SoarPlaybookEngine
 from security_platform.vulnerability_management.sca_scanner import scan_dependencies_osv
 
 
-THREAT_RULES: list[tuple[str, int, re.Pattern[str], str]] = [
-    (
-        "SQL Injection",
-        45,
-        re.compile(
-            r"(\bunion\b\s+\bselect\b|\bor\b\s+1\s*=\s*1|\band\b\s+1\s*=\s*1|;\s*drop\s+table|\bsleep\s*\(|\bbenchmark\s*\(|\bwaitfor\s+delay\b|'\s*or\s*'1'\s*=\s*'1)",
-            re.IGNORECASE,
-        ),
-        "Padrão típico de injeção SQL detectado na requisição.",
-    ),
-    (
-        "XSS / Script Injection",
-        40,
-        re.compile(
-            r"(<\s*script\b|javascript\s*:|\bon(?:error|load|mouseover|focus)\s*=|<\s*iframe\b|<\s*svg\b[^>]*on\w+=)",
-            re.IGNORECASE,
-        ),
-        "Tentativa de injeção de script/XSS detectada.",
-    ),
-    (
-        "Path Traversal / LFI",
-        45,
-        re.compile(
-            r"(\.\./|\.\.\\|%2e%2e%2f|%2e%2e\\|/etc/passwd|/etc/shadow|c:\\windows\\win\.ini|boot\.ini)",
-            re.IGNORECASE,
-        ),
-        "Tentativa de travessia de diretórios ou leitura de arquivo local.",
-    ),
-    (
-        "Command Injection / RCE",
-        50,
-        re.compile(
-            r"(;\s*(?:cat|ls|id|whoami|uname|wget|curl|nc|bash|sh)\b|&&\s*(?:whoami|id|cat|cmd|powershell)|`[^`]{2,}`|\$\([^)]+\)|powershell\s+-enc)",
-            re.IGNORECASE,
-        ),
-        "Tentativa de execução remota de comandos.",
-    ),
-    (
-        "SSRF / Metadata Probing",
-        45,
-        re.compile(
-            r"(169\.254\.169\.254|metadata\.google\.internal|100\.100\.100\.200|file://|gopher://)",
-            re.IGNORECASE,
-        ),
-        "Tentativa de acesso a metadados internos ou SSRF.",
-    ),
-    (
-        "Sensitive File / Admin Probing",
-        38,
-        re.compile(
-            r"(^|/)(?:\.env|\.git(?:/|$)|\.htaccess|wp-admin|wp-login\.php|phpmyadmin|actuator|server-status|config\.php|backup\.sql|admin(?:/|$))",
-            re.IGNORECASE,
-        ),
-        "Varredura de rota administrativa ou arquivo sensível.",
-    ),
-]
-
-
 def _sanitize_excerpt(raw: str, max_len: int = 240) -> str:
     cleaned = re.sub(r"[\r\n\t]+", " ", str(raw or "")).strip()
     if len(cleaned) > max_len:
@@ -116,7 +58,7 @@ class AutonomousSecurityAI:
         self.burst_limit_30s = burst_limit_30s
         self.quarantine_seconds = quarantine_seconds
 
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._ip_requests: dict[str, deque[float]] = defaultdict(deque)
         self._ip_risk_memory: dict[str, float] = defaultdict(float)
         self._ip_quarantine_until: dict[str, float] = {}
@@ -169,78 +111,79 @@ class AutonomousSecurityAI:
     ) -> dict[str, Any]:
         now = time.time()
         headers = headers or {}
-        req_count_30s = self._prune_and_track_velocity(ip, now)
+        with self._lock:
+            req_count_30s = self._prune_and_track_velocity(ip, now)
 
-        risk_score = 0
-        categories: list[str] = []
-        signals: list[str] = []
+            risk_score = 0
+            categories: list[str] = []
+            signals: list[str] = []
 
-        # Decaimento adaptativo da memória de risco do IP
-        prev_mem = self._ip_risk_memory.get(ip, 0.0)
-        self._ip_risk_memory[ip] = max(0.0, prev_mem * 0.92)
+            # Decaimento adaptativo da memória de risco do IP
+            prev_mem = self._ip_risk_memory.get(ip, 0.0)
+            self._ip_risk_memory[ip] = max(0.0, prev_mem * 0.92)
 
-        # 1. Verifica se IP está em quarentena autônoma
-        q_until = self._ip_quarantine_until.get(ip, 0.0)
-        if q_until > now:
-            risk_score += 55
-            categories.append("IP em Quarentena Autônoma")
-            signals.append(f"IP bloqueado temporariamente ({int(q_until - now)}s restantes)")
+            # 1. Verifica se IP está em quarentena autônoma
+            q_until = self._ip_quarantine_until.get(ip, 0.0)
+            if q_until > now:
+                risk_score += 55
+                categories.append("IP em Quarentena Autônoma")
+                signals.append(f"IP bloqueado temporariamente ({int(q_until - now)}s restantes)")
 
-        # 2. Análise lexical / vetores de ataque OWASP, MITRE ATT&CK e LLM Top 10
-        ua = headers.get("User-Agent", "")
-        combined_surface = f"{path}?{query_string}\n{body_text}\n{ua}"
-        mitre_hits: list[str] = []
-        owasp_hits: list[str] = []
-        cwe_hits: list[str] = []
-        countermeasures: list[str] = []
+            # 2. Análise lexical / vetores de ataque OWASP, MITRE ATT&CK e LLM Top 10
+            ua = headers.get("User-Agent", "")
+            combined_surface = f"{path}?{query_string}\n{body_text}\n{ua}"
+            mitre_hits: list[str] = []
+            owasp_hits: list[str] = []
+            cwe_hits: list[str] = []
+            countermeasures: list[str] = []
 
-        for rule in DETECTION_RULES:
-            if rule["regex"].search(combined_surface):
-                risk_score += rule["weight"]
-                categories.append(rule["type"])
-                signals.append(f"[{rule['mitre']} / {rule['cwe']}] {rule['type']} detectado.")
-                mitre_hits.append(rule["mitre"])
-                owasp_hits.append(rule["owasp"])
-                cwe_hits.append(rule["cwe"])
-                countermeasures.append(rule["countermeasure"])
+            for rule in DETECTION_RULES:
+                if rule["regex"].search(combined_surface):
+                    risk_score += rule["weight"]
+                    categories.append(rule["type"])
+                    signals.append(f"[{rule['mitre']} / {rule['cwe']}] {rule['type']} detectado.")
+                    mitre_hits.append(rule["mitre"])
+                    owasp_hits.append(rule["owasp"])
+                    cwe_hits.append(rule["cwe"])
+                    countermeasures.append(rule["countermeasure"])
 
-        # 3. Ferramentas automatizadas de ataque / scanners conhecidos
-        if re.search(r"\b(sqlmap|nikto|nessus|acunetix|masscan|hydra|dirbuster|gobuster|nuclei)\b", ua, re.IGNORECASE):
-            risk_score += 45
-            categories.append("Scanner / Ferramenta Ofensiva")
-            signals.append(f"User-Agent suspeito detectado: {_sanitize_excerpt(ua, 80)}")
+            # 3. Ferramentas automatizadas de ataque / scanners conhecidos
+            if re.search(r"\b(sqlmap|nikto|nessus|acunetix|masscan|hydra|dirbuster|gobuster|nuclei)\b", ua, re.IGNORECASE):
+                risk_score += 45
+                categories.append("Scanner / Ferramenta Ofensiva")
+                signals.append(f"User-Agent suspeito detectado: {_sanitize_excerpt(ua, 80)}")
 
-        # 4. Anomalia comportamental por velocidade (burst)
-        if req_count_30s > self.burst_limit_30s:
-            risk_score += 35
-            categories.append("Anomalia de Taxa (Burst)")
-            signals.append(f"{req_count_30s} requisições em 30s (limite {self.burst_limit_30s})")
+            # 4. Anomalia comportamental por velocidade (burst)
+            if req_count_30s > self.burst_limit_30s:
+                risk_score += 35
+                categories.append("Anomalia de Taxa (Burst)")
+                signals.append(f"{req_count_30s} requisições em 30s (limite {self.burst_limit_30s})")
 
-        # 5. Acesso não autorizado explícito (401/403) ou spoofing de cabeçalho
-        if status_override in (401, 403):
-            risk_score += 40
-            categories.append("Acesso Não Autorizado")
-            signals.append(explicit_reason or f"Tentativa bloqueada com HTTP {status_override} em {path}")
+            # 5. Acesso não autorizado explícito (401/403) ou spoofing de cabeçalho
+            if status_override in (401, 403):
+                risk_score += 40
+                categories.append("Acesso Não Autorizado")
+                signals.append(explicit_reason or f"Tentativa bloqueada com HTTP {status_override} em {path}")
 
-        if status_override == 404 and re.search(r"(\.php|\.asp|\.env|\.git|admin|login|backup)", path, re.IGNORECASE):
-            risk_score += 32
-            categories.append("Enumeração de Rotas (404)")
-            signals.append(f"Sondagem de recurso inexistente: {path}")
+            if status_override == 404 and re.search(r"(\.php|\.asp|\.env|\.git|admin|login|backup)", path, re.IGNORECASE):
+                risk_score += 32
+                categories.append("Enumeração de Rotas (404)")
+                signals.append(f"Sondagem de recurso inexistente: {path}")
 
-        # Soma memória adaptativa de reincidência do IP
-        if risk_score > 0:
-            risk_score = min(100, int(round(risk_score + min(25.0, self._ip_risk_memory[ip]))))
-            self._ip_risk_memory[ip] = min(40.0, self._ip_risk_memory[ip] + risk_score * 0.25)
+            # Soma memória adaptativa de reincidência do IP
+            if risk_score > 0:
+                risk_score = min(100, int(round(risk_score + min(25.0, self._ip_risk_memory[ip]))))
+                self._ip_risk_memory[ip] = min(40.0, self._ip_risk_memory[ip] + risk_score * 0.25)
 
-        blocked = risk_score >= self.block_threshold
-        soar_action = None
-        if blocked and not self._is_local_ip(ip):
-            self._ip_quarantine_until[ip] = now + self.quarantine_seconds
-            soar_action = self.soar.execute_action(
-                action="block_ip",
-                target=ip,
-                reason=f"Bloqueio autônomo: {', '.join(dict.fromkeys(categories)) or 'risco elevado'}",
-            )
+            blocked = risk_score >= self.block_threshold
+            soar_action = None
+            if blocked and not self._is_local_ip(ip):
+                self._ip_quarantine_until[ip] = now + self.quarantine_seconds
+                soar_action = self.soar.execute_action(
+                    action="block_ip",
+                    target=ip,
+                    reason=f"Bloqueio autônomo: {', '.join(dict.fromkeys(categories)) or 'risco elevado'}",
+                )
 
         severity = _severity_from_score(risk_score)
         should_log = risk_score >= 30 or status_override in (401, 403)

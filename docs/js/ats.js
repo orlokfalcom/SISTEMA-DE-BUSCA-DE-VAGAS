@@ -388,21 +388,86 @@ export const SAMPLE_RESUME_LINES = [
   "Portugues (Nativo) | Ingles (Avancado)",
 ];
 
-export function buildSamplePdfBlob() {
+function normalizePdfText(line) {
+  return String(line || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[•▪◦]/g, "-")
+    .replace(/[—–]/g, "-")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/[^\x20-\x7E]/g, " ");
+}
+
+function wrapPdfLines(text, maxChars = 88) {
+  const out = [];
+  for (const rawLine of String(text || "").split(/\r?\n/)) {
+    const clean = normalizePdfText(rawLine).trimEnd();
+    if (!clean.trim()) {
+      out.push(" ");
+      continue;
+    }
+    if (clean.length <= maxChars) {
+      out.push(clean);
+      continue;
+    }
+    const words = clean.split(/\s+/);
+    let current = "";
+    for (const word of words) {
+      if (!current) {
+        current = word;
+      } else if (current.length + 1 + word.length <= maxChars) {
+        current += ` ${word}`;
+      } else {
+        out.push(current);
+        current = word;
+      }
+    }
+    if (current) out.push(current);
+  }
+  return out.length ? out : [" "];
+}
+
+export function buildTextPdfBlob(text) {
   const esc = (s) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const cmds = ["BT", "/F1 10.5 Tf", "45 770 Td", "15 TL"];
-  SAMPLE_RESUME_LINES.forEach((line, idx) => {
-    cmds.push(idx === 0 ? `(${esc(line)}) Tj` : `T* (${esc(line)}) Tj`);
+  const allLines = wrapPdfLines(text, 88);
+  const linesPerPage = 48;
+  const pages = [];
+  for (let i = 0; i < allLines.length; i += linesPerPage) {
+    pages.push(allLines.slice(i, i + linesPerPage));
+  }
+  if (!pages.length) pages.push([" "]);
+
+  const objects = [];
+  const pageObjIds = [];
+  const fontObjId = 3 + pages.length * 2;
+
+  objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  objects.push(""); // placeholder for Pages object (2 0 obj)
+
+  pages.forEach((pageLines, pIdx) => {
+    const pageId = 3 + pIdx * 2;
+    const contentId = pageId + 1;
+    pageObjIds.push(pageId);
+
+    const cmds = ["BT", "/F1 10 Tf", "45 785 Td", "14 TL"];
+    pageLines.forEach((line, idx) => {
+      cmds.push(idx === 0 ? `(${esc(line)}) Tj` : `T* (${esc(line)}) Tj`);
+    });
+    cmds.push("ET");
+    const stream = cmds.join("\n");
+
+    objects.push(
+      `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontObjId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`
+    );
+    objects.push(
+      `${contentId} 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`
+    );
   });
-  cmds.push("ET");
-  const stream = cmds.join("\n");
-  const objects = [
-    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
-    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
-    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-    `5 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`,
-  ];
+
+  objects[1] = `2 0 obj\n<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjIds.length} >>\nendobj\n`;
+  objects.push(`${fontObjId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`);
+
   let pdf = "%PDF-1.4\n";
   const offsets = [0];
   for (const obj of objects) {
@@ -416,4 +481,8 @@ export function buildSamplePdfBlob() {
   }
   pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
   return new Blob([pdf], { type: "application/pdf" });
+}
+
+export function buildSamplePdfBlob() {
+  return buildTextPdfBlob(SAMPLE_RESUME_LINES.join("\n"));
 }

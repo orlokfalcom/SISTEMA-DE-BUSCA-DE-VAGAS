@@ -24,11 +24,13 @@ import { getTranslatedJobView, translateStructuredField } from '../js/translator
 import { SUPPORTED_LANGUAGES } from '../js/i18n.js';
 import { evaluateJobAuthenticity } from '../js/fraud.js';
 import {
+  autoEditResumeForJob,
   buildRecruiterOutreach,
   computeConversionFunnel,
   generateInterviewPrep,
   tailorResumeForJob
 } from '../js/conversion.js';
+import { buildTextPdfBlob } from '../js/ats.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -468,6 +470,17 @@ export async function runAllTests() {
 
     const tailored = tailorResumeForJob('Curriculo...', res48h.jobs[0], ['JavaScript', 'React'], 'Sênior');
     assert(tailored.tailoredBlockText.includes('RESUMO DIRECIONADO'), 'Deve gerar bloco tailored');
+
+    const autoEdited = autoEditResumeForJob(
+      'MARIANA SILVA\n\nRESUMO PROFISSIONAL\nDev Full Stack\n\nEXPERIENCIA PROFISSIONAL\n- Criou APIs',
+      res48h.jobs[0],
+      ['JavaScript', 'React'],
+      'Sênior'
+    );
+    assert(autoEdited.editedResumeText.includes('MARIANA SILVA'), 'Deve preservar cabeçalho do candidato');
+    assert(autoEdited.editedResumeText.includes('EXPERIENCIA PROFISSIONAL'), 'Deve preservar experiência');
+    const pdfBlob = buildTextPdfBlob(autoEdited.editedResumeText);
+    assert(pdfBlob.type === 'application/pdf' && pdfBlob.size > 200, 'Deve gerar Blob PDF válido para download');
 
     const outreach = buildRecruiterOutreach(res48h.jobs[0], 'Sênior');
     assert(outreach.linkedinPeopleUrl.includes('linkedin.com/search/results/people'), 'Deve gerar link de recrutador');
