@@ -46,7 +46,46 @@ export function translateStructuredField(group, value, lang = getUiLang()) {
   if (!table || !value) return value;
   const entry = table[value];
   if (!entry) return value;
-  return entry[lang] || entry.pt || value;
+  return entry[lang] || entry.en || entry.pt || value;
+}
+
+const translatedLabelLangs = new Set(["pt", "en", "fr", "es", "ja"]);
+
+export async function ensureStructuredLabelsTranslated(targetLang) {
+  if (!targetLang || translatedLabelLangs.has(targetLang)) return;
+  const cacheKey = `labels_pack_${targetLang}`;
+  const cached = await idbGet(cacheKey, null);
+  if (cached && typeof cached === "object") {
+    for (const [group, map] of Object.entries(cached)) {
+      if (!LABEL_MAP[group]) continue;
+      for (const [val, tr] of Object.entries(map)) {
+        if (LABEL_MAP[group][val]) LABEL_MAP[group][val][targetLang] = tr;
+      }
+    }
+    translatedLabelLangs.add(targetLang);
+    return;
+  }
+
+  const pack = {};
+  const tasks = [];
+  for (const [group, table] of Object.entries(LABEL_MAP)) {
+    pack[group] = {};
+    for (const [val, entry] of Object.entries(table)) {
+      tasks.push(async () => {
+        const enText = entry.en || val;
+        const tr = await translateTextRemote(enText, targetLang, "en");
+        if (tr && tr !== enText) {
+          entry[targetLang] = tr;
+          pack[group][val] = tr;
+        }
+      });
+    }
+  }
+  await Promise.all(tasks.map((fn) => fn()));
+  if (Object.values(pack).some((g) => Object.keys(g).length > 0)) {
+    translatedLabelLangs.add(targetLang);
+    idbSet(cacheKey, pack);
+  }
 }
 
 const memoryTranslationCache = new Map(); // `${lang}:${jobId}` -> { title, description, location }
@@ -79,18 +118,33 @@ export async function translateTextRemote(text, targetLang, sourceLang = "auto")
       sourceLang || "auto"
     )}&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(snippet)}`;
     const resp = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
-    if (!resp.ok) return clean;
-    const data = await resp.json();
-    if (Array.isArray(data) && Array.isArray(data[0])) {
-      const translated = data[0].map((seg) => (Array.isArray(seg) ? seg[0] || "" : "")).join("");
-      return translated.trim() || clean;
+    if (resp.ok) {
+      const data = await resp.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translated = data[0].map((seg) => (Array.isArray(seg) ? seg[0] || "" : "")).join("").trim();
+        if (translated) return translated;
+      }
     }
-    return clean;
   } catch {
-    return clean;
+    // tenta fallback MyMemory abaixo
   } finally {
     if (timer) clearTimeout(timer);
   }
+
+  if (snippet.length <= 500 && sourceLang && sourceLang !== "auto") {
+    try {
+      const mmUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(snippet)}&langpair=${encodeURIComponent(sourceLang)}|${encodeURIComponent(targetLang)}`;
+      const resp = await fetch(mmUrl);
+      if (resp.ok) {
+        const mm = await resp.json();
+        const tr = mm?.responseData?.translatedText;
+        if (tr && typeof tr === "string") return tr.trim();
+      }
+    } catch {
+      // mantém texto original em caso offline
+    }
+  }
+  return clean;
 }
 
 export function getTranslatedJobView(job, lang = getUiLang()) {
@@ -119,7 +173,7 @@ export function getTranslatedJobView(job, lang = getUiLang()) {
  */
 export async function translateJobsBatch(jobs, targetLang = getUiLang(), { includeDescription = false, limit = 12 } = {}) {
   if (!Array.isArray(jobs) || !jobs.length || !targetLang) return 0;
-  await ensurePersistedCache();
+  await Promise.all([ensurePersistedCache(), ensureStructuredLabelsTranslated(targetLang)]);
 
   const candidates = jobs
     .filter((j) => {

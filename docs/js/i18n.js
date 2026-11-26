@@ -5,7 +5,7 @@
  */
 
 import { idbGet, idbSet } from "./storage.js";
-import { translateTextRemote } from "./translator.js";
+import { ensureStructuredLabelsTranslated, translateTextRemote } from "./translator.js";
 
 export const SUPPORTED_LANGUAGES = [
   { code: "pt", label: "🇧🇷 Português (PT)" },
@@ -762,21 +762,27 @@ export async function applyUiTranslationsAsync(lang = "pt") {
   const entries = Object.entries(UI_TRANSLATIONS.en);
   const translatedDict = { ...UI_TRANSLATIONS.en };
   let idx = 0;
+  let translatedCount = 0;
 
   async function worker() {
     while (idx < entries.length) {
       const [key, enVal] = entries[idx++];
-      if (key === "heroTitle") {
-        const plain = await translateTextRemote("Turn your resume into high-impact career opportunities.", code, "en");
-        translatedDict[key] = plain;
-      } else {
-        translatedDict[key] = await translateTextRemote(enVal, code, "en");
+      const src = key === "heroTitle" ? "Turn your resume into high-impact career opportunities." : enVal;
+      const tr = await translateTextRemote(src, code, "en");
+      if (tr && tr !== src) {
+        translatedDict[key] = tr;
+        translatedCount++;
       }
     }
   }
 
-  await Promise.all(Array.from({ length: 6 }, () => worker()));
-  UI_TRANSLATIONS[code] = translatedDict;
-  idbSet(cacheKey, translatedDict);
+  await Promise.all([
+    ensureStructuredLabelsTranslated(code),
+    ...Array.from({ length: 6 }, () => worker()),
+  ]);
+  if (translatedCount > 0) {
+    UI_TRANSLATIONS[code] = translatedDict;
+    idbSet(cacheKey, translatedDict);
+  }
   return applyUiTranslations(code);
 }
