@@ -185,6 +185,7 @@ export const UI_TRANSLATIONS = {
     cardDetailsBtn: "Ver Detalhes",
     cardApplyBtn: "Candidatar ↗",
     cardTrackDefault: "Rastrear...",
+    bandMid: "Média",
   },
   en: {
     pageTitle: "VagaPulse AI — Career Intelligence, Global Search & ATS Editor",
@@ -308,6 +309,7 @@ export const UI_TRANSLATIONS = {
     cardDetailsBtn: "View Details",
     cardApplyBtn: "Apply ↗",
     cardTrackDefault: "Track...",
+    bandMid: "Medium",
   },
   fr: {
     pageTitle: "VagaPulse AI — Intelligence Carrière, Recherche Mondiale & Éditeur ATS",
@@ -431,6 +433,7 @@ export const UI_TRANSLATIONS = {
     cardDetailsBtn: "Voir Détails",
     cardApplyBtn: "Postuler ↗",
     cardTrackDefault: "Suivre...",
+    bandMid: "Moyen",
   },
   es: {
     pageTitle: "VagaPulse AI — Inteligencia Profesional, Búsqueda Global y Editor ATS",
@@ -554,6 +557,7 @@ export const UI_TRANSLATIONS = {
     cardDetailsBtn: "Ver Detalles",
     cardApplyBtn: "Postularse ↗",
     cardTrackDefault: "Seguir...",
+    bandMid: "Media",
   },
   ja: {
     pageTitle: "VagaPulse AI — キャリアAI・グローバル求人検索・ATS履歴書エディタ",
@@ -677,6 +681,7 @@ export const UI_TRANSLATIONS = {
     cardDetailsBtn: "詳細を見る",
     cardApplyBtn: "応募 ↗",
     cardTrackDefault: "管理...",
+    bandMid: "中",
   },
 };
 

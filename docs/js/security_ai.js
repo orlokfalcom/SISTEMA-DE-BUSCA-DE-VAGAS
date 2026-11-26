@@ -126,7 +126,7 @@ export class AutonomousSecurityAIGuard {
 
   inspectUploadedFile(fileName, headerText = "") {
     const nameCheck = this.inspectValue("Upload Filename", fileName);
-    if (headerText && !String(headerText).startsWith("%PDF-")) {
+    if (headerText && !String(headerText).trimStart().startsWith("%PDF-")) {
       this._recordIncident({
         source: "Upload PDF",
         riskScore: 70,

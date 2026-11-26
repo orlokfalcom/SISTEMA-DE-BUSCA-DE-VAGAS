@@ -94,7 +94,7 @@ function createWorkerClient(workerUrl, localFallbackHandler = null) {
               } catch (e) {
                 reject(e);
               }
-            }, 3500)
+            }, 1500)
           : null;
         pending.set(requestId, { resolve, reject, timer });
         worker.postMessage({ type, requestId, payload });
@@ -1365,6 +1365,7 @@ newUploadBtn.addEventListener("click", () => {
   if (locationFilter) locationFilter.value = "";
   sourceFilter.value = "all";
   minScoreFilter.value = "0";
+  if (fraudFilter) fraudFilter.value = "hide_scam";
   sortFilter.value = "match";
   trackerFilter.value = "";
   compareTitleInput.value = "";
@@ -1439,6 +1440,7 @@ if (clearFiltersBtn) {
     if (locationFilter) locationFilter.value = "";
     sourceFilter.value = "all";
     minScoreFilter.value = "0";
+    if (fraudFilter) fraudFilter.value = "hide_scam";
     sortFilter.value = "match";
     trackerFilter.value = "";
     triggerResearch({ immediate: true, refetch: false });
