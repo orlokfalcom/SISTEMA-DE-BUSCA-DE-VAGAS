@@ -19,7 +19,7 @@ import {
   normalizeWeights,
 } from "./matcher.js";
 import { CANONICAL_SKILLS, resolveSkillAlias, suggestRoles } from "./nlp.js";
-import { applyUiTranslations } from "./i18n.js";
+import { applyUiTranslations, t } from "./i18n.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
 
@@ -717,16 +717,16 @@ function buildJobCardHtml(job) {
           <button type="button" class="btn-fb ${fb.vote === 1 ? "active-up" : ""}" data-fb-vote="1" data-fb-id="${escapeHtml(job.id)}" title="Boa recomendação (aumenta peso similar)">👍</button>
           <button type="button" class="btn-fb ${fb.vote === -1 ? "active-down" : ""}" data-fb-vote="-1" data-fb-id="${escapeHtml(job.id)}" title="Não relevante (ajusta pesos)">👎</button>
           <select class="select-input status-mini-select" data-status-id="${escapeHtml(job.id)}">
-            <option value="" ${currentStatus === "" ? "selected" : ""}>Rastrear...</option>
-            <option value="Salva" ${currentStatus === "Salva" ? "selected" : ""}>☆ Salva</option>
-            <option value="Candidatada" ${currentStatus === "Candidatada" ? "selected" : ""}>📨 Candidatada</option>
-            <option value="Entrevista" ${currentStatus === "Entrevista" ? "selected" : ""}>💬 Entrevista</option>
-            <option value="Proposta" ${currentStatus === "Proposta" ? "selected" : ""}>🎉 Proposta</option>
+            <option value="" ${currentStatus === "" ? "selected" : ""}>${escapeHtml(t("cardTrackDefault"))}</option>
+            <option value="Salva" ${currentStatus === "Salva" ? "selected" : ""}>${escapeHtml(t("trackerSaved"))}</option>
+            <option value="Candidatada" ${currentStatus === "Candidatada" ? "selected" : ""}>${escapeHtml(t("trackerApplied"))}</option>
+            <option value="Entrevista" ${currentStatus === "Entrevista" ? "selected" : ""}>${escapeHtml(t("trackerInterview"))}</option>
+            <option value="Proposta" ${currentStatus === "Proposta" ? "selected" : ""}>${escapeHtml(t("trackerOffer"))}</option>
           </select>
         </div>
         <div class="card-actions-right">
-          <button type="button" class="btn btn-secondary btn-small" data-detail-id="${escapeHtml(job.id)}">Ver Detalhes</button>
-          <a class="btn btn-primary btn-small" data-apply-id="${escapeHtml(job.id)}" href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">Candidatar ↗</a>
+          <button type="button" class="btn btn-secondary btn-small" data-detail-id="${escapeHtml(job.id)}">${escapeHtml(t("cardDetailsBtn"))}</button>
+          <a class="btn btn-primary btn-small" data-apply-id="${escapeHtml(job.id)}" href="${escapeHtml(job.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(t("cardApplyBtn"))}</a>
         </div>
       </div>
     </article>`;
@@ -1472,7 +1472,7 @@ if (autoRefreshCheck) {
 function updateSecurityGuardBadge(stats) {
   if (!securityGuardBtn) return;
   const total = stats?.total || 0;
-  securityGuardBtn.textContent = total > 0 ? `🛡️ IA Guard: ${total} alerta(s)` : "🛡️ IA Guard: Ativo (0)";
+  securityGuardBtn.textContent = total > 0 ? t("guardAlerts", { n: total }) : t("guardActiveZero");
 }
 
 securityGuard.onChange(updateSecurityGuardBadge);
@@ -1487,6 +1487,11 @@ if (uiLanguageSelect) {
   uiLanguageSelect.addEventListener("change", () => {
     const chosen = applyUiTranslations(uiLanguageSelect.value);
     idbSet("ui_lang", chosen);
+    updateSecurityGuardBadge(securityGuard.getStats());
+    if (state.profile) {
+      renderTelemetry();
+      renderJobs({ resetScroll: false });
+    }
   });
 }
 
