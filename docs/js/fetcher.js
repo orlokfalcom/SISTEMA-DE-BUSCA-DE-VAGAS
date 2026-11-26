@@ -123,10 +123,14 @@ async function fetchLocalJobs() {
   const cached = getCachedSource("local", 30 * 60 * 1000);
   if (cached) return { source: "Base Brasil", jobs: cached, latencyMs: 0, cached: true, ok: true };
   const t0 = performance.now();
-  const data = await fetchJsonWithRetry("./data/local_jobs.json", { timeoutMs: 4000, retries: 1 });
-  const canonical = (Array.isArray(data) ? data : []).map(extractCanonicalJob);
-  setCachedSource("local", canonical, 30 * 60 * 1000);
-  return { source: "Base Brasil", jobs: canonical, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  try {
+    const data = await fetchJsonWithRetry("./data/local_jobs.json", { timeoutMs: 4000, retries: 1 });
+    const canonical = (Array.isArray(data) ? data : []).map(extractCanonicalJob);
+    setCachedSource("local", canonical, 30 * 60 * 1000);
+    return { source: "Base Brasil", jobs: canonical, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Base Brasil", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
 }
 
 async function fetchRemotive(term = "") {

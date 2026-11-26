@@ -7,18 +7,28 @@
 import {
   buildAtsImprovementPlan,
   buildSamplePdfBlob,
+  evaluateAtsReadiness,
   extractTextFromPdfFile,
   recommendCourses,
 } from "./ats.js";
 import { buildExternalLinks, collectJobsWithTelemetry } from "./fetcher.js";
+import { InvertedIndex } from "./index.js";
 import {
   DEFAULT_WEIGHTS,
   adaptWeightsFromFeedback,
   compareCustomJob,
+  computeSkillGaps,
   highlightMatchedTerms,
+  matchJobsHybrid,
   normalizeWeights,
 } from "./matcher.js";
-import { CANONICAL_SKILLS, resolveSkillAlias, suggestRoles } from "./nlp.js";
+import {
+  CANONICAL_SKILLS,
+  extractCanonicalJob,
+  extractCanonicalProfile,
+  resolveSkillAlias,
+  suggestRoles,
+} from "./nlp.js";
 import { applyUiTranslations, getUiLang, t } from "./i18n.js";
 import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
@@ -27,42 +37,75 @@ import { idbGet, idbSet } from "./storage.js";
 const AUTO_REFRESH_MS = 5 * 60 * 1000;
 const RENDER_CHUNK_SIZE = 24;
 
-// Cliente RPC simples para Web Workers
-function createWorkerClient(workerUrl) {
-  const worker = new Worker(workerUrl, { type: "module" });
+// Cliente RPC para Web Workers com fallback automático na thread principal
+function createWorkerClient(workerUrl, localFallbackHandler = null) {
+  let worker = null;
+  let workerBroken = false;
+  try {
+    worker = new Worker(workerUrl, { type: "module" });
+  } catch {
+    workerBroken = true;
+  }
+
   const pending = new Map();
   let seq = 1;
   const listeners = new Set();
 
-  worker.addEventListener("message", (event) => {
-    const msg = event.data || {};
-    for (const fn of listeners) fn(msg);
-    if (msg.requestId && pending.has(msg.requestId)) {
-      const { resolve, reject } = pending.get(msg.requestId);
-      // Eventos intermediários de progresso/status não resolvem a Promise final
-      if (msg.type === "EMBEDDINGS_STATUS" || msg.type === "EMBEDDINGS_PROGRESS") return;
-      pending.delete(msg.requestId);
-      if (msg.type === "WORKER_ERROR") reject(new Error(msg.error || "Worker error"));
-      else resolve(msg);
-    }
-  });
+  if (worker) {
+    worker.addEventListener("message", (event) => {
+      const msg = event.data || {};
+      for (const fn of listeners) fn(msg);
+      if (msg.requestId && pending.has(msg.requestId)) {
+        const { resolve, reject, timer } = pending.get(msg.requestId);
+        if (msg.type === "EMBEDDINGS_STATUS" || msg.type === "EMBEDDINGS_PROGRESS") return;
+        clearTimeout(timer);
+        pending.delete(msg.requestId);
+        if (msg.type === "WORKER_ERROR") reject(new Error(msg.error || "Worker error"));
+        else resolve(msg);
+      }
+    });
 
-  worker.addEventListener("error", (err) => {
-    const error = new Error(err?.message || "Web Worker falhou ao carregar");
-    for (const { reject } of pending.values()) reject(error);
-    pending.clear();
-  });
+    worker.addEventListener("error", (err) => {
+      workerBroken = true;
+      const error = new Error(err?.message || "Web Worker falhou ao carregar");
+      for (const { reject, timer } of pending.values()) {
+        clearTimeout(timer);
+        reject(error);
+      }
+      pending.clear();
+    });
+  }
 
   return {
     post(type, payload = {}) {
+      if (workerBroken || !worker) {
+        if (localFallbackHandler) return Promise.resolve(localFallbackHandler(type, payload));
+        return Promise.reject(new Error("Worker indisponível"));
+      }
       const requestId = seq++;
       return new Promise((resolve, reject) => {
-        pending.set(requestId, { resolve, reject });
+        const timer = localFallbackHandler
+          ? setTimeout(() => {
+              if (!pending.has(requestId)) return;
+              pending.delete(requestId);
+              workerBroken = true;
+              try {
+                resolve(localFallbackHandler(type, payload));
+              } catch (e) {
+                reject(e);
+              }
+            }, 3500)
+          : null;
+        pending.set(requestId, { resolve, reject, timer });
         worker.postMessage({ type, requestId, payload });
       });
     },
     fire(type, payload = {}) {
-      worker.postMessage({ type, payload });
+      if (localFallbackHandler && (workerBroken || !worker)) {
+        localFallbackHandler(type, payload);
+        return;
+      }
+      if (worker) worker.postMessage({ type, payload });
     },
     onMessage(fn) {
       listeners.add(fn);
@@ -71,7 +114,76 @@ function createWorkerClient(workerUrl) {
   };
 }
 
-const nlpWorker = createWorkerClient(new URL("./workers/nlp.worker.js", import.meta.url));
+const fallbackIndex = new InvertedIndex();
+let fallbackIndexedJobs = [];
+const fallbackJobEmbeddings = new Map();
+let fallbackCandidateEmbedding = null;
+
+function runNlpFallback(type, payload = {}) {
+  if (type === "PARSE_RESUME") {
+    const profile = extractCanonicalProfile(payload.rawText, payload.filename, payload.pages);
+    profile.ats_audit = evaluateAtsReadiness({
+      rawText: payload.rawText,
+      pages: profile.pages,
+      wordCount: profile.word_count,
+      skills: profile.skills,
+      email: profile.email,
+      phone: profile.phone,
+      linkedin: profile.linkedin,
+      github: profile.github,
+    });
+    return { type: "RESUME_PARSED", payload: { profile } };
+  }
+  if (type === "INDEX_JOBS") {
+    fallbackIndexedJobs = (payload.jobs || []).map((j) => (j.canonical ? j : extractCanonicalJob(j)));
+    fallbackIndex.build(fallbackIndexedJobs);
+    return { type: "JOBS_INDEXED", payload: { indexedCount: fallbackIndex.size, indexTimeMs: 0 } };
+  }
+  if (type === "SET_EMBEDDINGS") {
+    if (payload.candidateEmbedding) fallbackCandidateEmbedding = payload.candidateEmbedding;
+    if (Array.isArray(payload.jobVectors)) {
+      for (const item of payload.jobVectors) {
+        if (item?.id && item?.vector) fallbackJobEmbeddings.set(String(item.id), item.vector);
+      }
+    }
+    return { type: "EMBEDDINGS_STORED", payload: { count: fallbackJobEmbeddings.size } };
+  }
+  if (type === "CLEAR_CANDIDATE_EMBEDDING") {
+    fallbackCandidateEmbedding = null;
+    return { type: "CLEARED" };
+  }
+  if (type === "MATCH_JOBS") {
+    const jobsSource = payload.jobs ? payload.jobs.map((j) => (j.canonical ? j : extractCanonicalJob(j))) : fallbackIndexedJobs;
+    const useIndex = !payload.jobs && fallbackIndexedJobs.length > 0 ? fallbackIndex : null;
+    const result = matchJobsHybrid({
+      jobs: jobsSource,
+      index: useIndex,
+      candidateSkills: payload.candidateSkills || [],
+      candidateText: payload.candidateText || "",
+      candidateSeniority: payload.candidateSeniority || "Pleno",
+      candidateYears: payload.candidateYears ?? null,
+      candidateSector: payload.candidateSector || "",
+      suggestedRoles: payload.suggestedRoles || [],
+      userCountry: payload.userCountry || "Brasil",
+      candidateEmbedding: fallbackCandidateEmbedding,
+      jobEmbeddings: fallbackJobEmbeddings,
+      weights: payload.weights,
+      feedbackMap: payload.feedbackMap || {},
+      filters: payload.filters || {},
+    });
+    return {
+      type: "MATCH_RESULT",
+      payload: {
+        jobs: result.jobs,
+        metrics: result.metrics,
+        skillGaps: computeSkillGaps(result.jobs),
+      },
+    };
+  }
+  return { type: "NOOP" };
+}
+
+const nlpWorker = createWorkerClient(new URL("./workers/nlp.worker.js", import.meta.url), runNlpFallback);
 let embeddingsWorker = null;
 const securityGuard = new AutonomousSecurityAIGuard();
 
@@ -405,7 +517,7 @@ async function analyzeUpload({ file = null, useSample = false }) {
     state.seniority = profile.seniority;
     nlpWorker.fire("CLEAR_CANDIDATE_EMBEDDING");
 
-    await runFetchAndMatchPipeline(false);
+    await runFetchAndMatchPipeline(false, { fastFirstPaint: true });
     renderProfile();
 
     uploadSection.classList.add("hidden");
@@ -420,13 +532,33 @@ async function analyzeUpload({ file = null, useSample = false }) {
   }
 }
 
-async function runFetchAndMatchPipeline(forceRefresh = false) {
+async function runFetchAndMatchPipeline(forceRefresh = false, { fastFirstPaint = false } = {}) {
   const prevIds = new Set(state.jobs.map((j) => j.id));
   if (forceRefresh && resultsLiveStatus) {
     resultsLiveStatus.textContent = "🔄 Atualizando vagas ao vivo...";
   }
   const roles = suggestRoles(state.skills, state.resumeTextSnippet);
   const forceLive = sourceFilter.value === "live" || includeLiveCheck.checked;
+
+  // Se fastFirstPaint=true e inclui vagas ao vivo, carrega a base local imediatamente e sincroniza APIs ao vivo em seguida
+  if (fastFirstPaint && forceLive && sourceFilter.value !== "live") {
+    const localRes = await collectJobsWithTelemetry({
+      sourceFilter: "local",
+      includeLive: false,
+      deepSearch: false,
+    });
+    state.rawJobs = localRes.jobs;
+    state.sources = localRes.sources;
+    state.fetchTelemetry = localRes.telemetry;
+    await nlpWorker.post("INDEX_JOBS", { jobs: localRes.jobs });
+    await runMatchInWorker();
+    if (resultsLiveStatus) {
+      resultsLiveStatus.textContent = "🔄 Sincronizando vagas ao vivo globais...";
+    }
+    // Dispara busca completa ao vivo sem travar a tela de resultados
+    runFetchAndMatchPipeline(forceRefresh, { fastFirstPaint: false });
+    return;
+  }
 
   const { jobs, sources, telemetry } = await collectJobsWithTelemetry({
     sourceFilter: sourceFilter.value,
