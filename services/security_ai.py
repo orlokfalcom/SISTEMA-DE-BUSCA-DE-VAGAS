@@ -10,6 +10,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from security_platform.behavioral_analysis.correlator import ThreatCorrelator
+from security_platform.core.events import SecurityEvent
+from security_platform.detection_engine.detectors import DETECTION_RULES, inspect_file_static
+from security_platform.forensic.custody_log import ForensicCustodyLog
+from security_platform.identity_security.admin_rbac import AdminAccessControl
+from security_platform.soar.playbook_engine import SoarPlaybookEngine
+from security_platform.vulnerability_management.sca_scanner import scan_dependencies_osv
+
 
 THREAT_RULES: list[tuple[str, int, re.Pattern[str], str]] = [
     (
@@ -113,6 +121,10 @@ class AutonomousSecurityAI:
         self._ip_risk_memory: dict[str, float] = defaultdict(float)
         self._ip_quarantine_until: dict[str, float] = {}
         self._incidents: list[dict[str, Any]] = self._load_existing_incidents()
+        self.forensics = ForensicCustodyLog(self.log_dir)
+        self.correlator = ThreatCorrelator(window_seconds=300)
+        self.soar = SoarPlaybookEngine()
+        self.rbac = AdminAccessControl()
 
     def _load_existing_incidents(self) -> list[dict[str, Any]]:
         if not self.jsonl_path.exists():
@@ -174,14 +186,23 @@ class AutonomousSecurityAI:
             categories.append("IP em Quarentena Autônoma")
             signals.append(f"IP bloqueado temporariamente ({int(q_until - now)}s restantes)")
 
-        # 2. Análise lexical / vetores de ataque em path, query, body e User-Agent
+        # 2. Análise lexical / vetores de ataque OWASP, MITRE ATT&CK e LLM Top 10
         ua = headers.get("User-Agent", "")
         combined_surface = f"{path}?{query_string}\n{body_text}\n{ua}"
-        for cat, weight, pattern, desc in THREAT_RULES:
-            if pattern.search(combined_surface):
-                risk_score += weight
-                categories.append(cat)
-                signals.append(desc)
+        mitre_hits: list[str] = []
+        owasp_hits: list[str] = []
+        cwe_hits: list[str] = []
+        countermeasures: list[str] = []
+
+        for rule in DETECTION_RULES:
+            if rule["regex"].search(combined_surface):
+                risk_score += rule["weight"]
+                categories.append(rule["type"])
+                signals.append(f"[{rule['mitre']} / {rule['cwe']}] {rule['type']} detectado.")
+                mitre_hits.append(rule["mitre"])
+                owasp_hits.append(rule["owasp"])
+                cwe_hits.append(rule["cwe"])
+                countermeasures.append(rule["countermeasure"])
 
         # 3. Ferramentas automatizadas de ataque / scanners conhecidos
         if re.search(r"\b(sqlmap|nikto|nessus|acunetix|masscan|hydra|dirbuster|gobuster|nuclei)\b", ua, re.IGNORECASE):
@@ -212,35 +233,69 @@ class AutonomousSecurityAI:
             self._ip_risk_memory[ip] = min(40.0, self._ip_risk_memory[ip] + risk_score * 0.25)
 
         blocked = risk_score >= self.block_threshold
+        soar_action = None
         if blocked and not self._is_local_ip(ip):
             self._ip_quarantine_until[ip] = now + self.quarantine_seconds
+            soar_action = self.soar.execute_action(
+                action="block_ip",
+                target=ip,
+                reason=f"Bloqueio autônomo: {', '.join(dict.fromkeys(categories)) or 'risco elevado'}",
+            )
 
         severity = _severity_from_score(risk_score)
         should_log = risk_score >= 30 or status_override in (401, 403)
 
         incident = None
+        correlated_incident = None
         if should_log:
+            sec_event = SecurityEvent(
+                source=ip or "unknown",
+                event_type=(categories[0] if categories else "Anomalia"),
+                asset=path,
+                indicators=list(dict.fromkeys(categories)),
+                mitre_attack=list(dict.fromkeys(mitre_hits)),
+                owasp_category=list(dict.fromkeys(owasp_hits)),
+                cwe=list(dict.fromkeys(cwe_hits)),
+                evidence=_sanitize_excerpt(f"{query_string} {body_text}".strip() or path, 180),
+                confidence=min(99, 55 + len(signals) * 12),
+                severity=severity,
+                risk_score=risk_score,
+                recommended_countermeasure=countermeasures[0] if countermeasures else "Monitorar origem e revisar logs.",
+                status="blocked" if blocked else "monitored",
+            )
+            corr = self.correlator.ingest(sec_event)
+            if corr:
+                correlated_incident = corr.to_dict()
+
             incident = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event_id": sec_event.event_id,
+                "timestamp": sec_event.timestamp,
                 "ip": ip or "unknown",
                 "method": method,
                 "path": path,
                 "risk_score": risk_score,
                 "severity": severity,
                 "categories": list(dict.fromkeys(categories)),
+                "mitre_attack": sec_event.mitre_attack,
+                "owasp_category": sec_event.owasp_category,
+                "cwe": sec_event.cwe,
                 "signals": signals,
                 "action_taken": "BLOQUEADO (403)" if blocked else ("NEGADO" if status_override in (401, 403) else "MONITORADO"),
-                "payload_excerpt": _sanitize_excerpt(f"{query_string} {body_text}".strip() or path, 180),
+                "payload_excerpt": sec_event.evidence,
+                "soar_action_id": soar_action["action_id"] if soar_action else None,
             }
             self._persist_incident(incident)
+            self.forensics.append_record(incident)
 
         return {
             "risk_score": risk_score,
             "severity": severity,
             "categories": list(dict.fromkeys(categories)),
+            "mitre_attack": list(dict.fromkeys(mitre_hits)),
             "signals": signals,
             "blocked": blocked,
             "incident": incident,
+            "correlated_incident": correlated_incident,
         }
 
     def _persist_incident(self, incident: dict[str, Any]) -> None:
@@ -342,17 +397,32 @@ class AutonomousSecurityAI:
         with self._lock:
             total = len(self._incidents)
             blocked = sum(1 for i in self._incidents if "BLOQUEADO" in str(i.get("action_taken", "")))
+            mitre_all = sorted({m for i in self._incidents for m in i.get("mitre_attack", [])})
             return {
                 "total_incidents": total,
                 "blocked_count": blocked,
                 "jsonl_path": str(self.jsonl_path),
                 "report_path": str(self.report_path),
                 "recent_incidents": list(reversed(self._incidents[-20:])),
+                "mitre_techniques": mitre_all,
+                "correlated_incidents": self.correlator.get_incidents(15),
+                "soar_blocked_ips": self.soar.blocked_ips,
+                "soar_history": self.soar.execution_history[-20:],
+                "forensic_chain": self.forensics.verify_chain_integrity(),
             }
 
+    def scan_and_quarantine_file(self, content: bytes, filename: str) -> dict[str, Any]:
+        scan = inspect_file_static(content, filename)
+        if scan["malicious"]:
+            q_meta = self.forensics.quarantine_bytes(content, filename, "Malware/Exploit estático detectado")
+            scan["quarantined"] = True
+            scan["quarantine"] = q_meta
+        else:
+            scan["quarantined"] = False
+        return scan
+
+    def run_sca_scan(self) -> dict[str, Any]:
+        return scan_dependencies_osv()
+
     def is_authorized_for_security_api(self, req: Any) -> bool:
-        expected_token = os.environ.get("SECURITY_API_TOKEN", "").strip()
-        provided_token = (req.headers.get("X-Security-Token") or "").strip()
-        if expected_token:
-            return provided_token == expected_token
-        return self._is_local_ip((req.remote_addr or "").strip())
+        return self.rbac.is_authorized(req)

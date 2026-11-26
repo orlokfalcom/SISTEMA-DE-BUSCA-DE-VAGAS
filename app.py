@@ -52,6 +52,11 @@ def add_security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:;",
+    )
     return response
 
 
@@ -82,6 +87,43 @@ def security_report():
     if not security_ai.is_authorized_for_security_api(request):
         return jsonify({"error": "Acesso não autorizado ao relatório de segurança."}), 403
     return jsonify(security_ai.get_summary())
+
+
+@app.get("/api/security/dashboard")
+def security_dashboard():
+    if not security_ai.is_authorized_for_security_api(request):
+        return jsonify({"error": "Acesso não autorizado ao painel de defesa cibernética."}), 403
+    return jsonify(security_ai.get_summary())
+
+
+@app.get("/api/security/sca")
+def security_sca():
+    if not security_ai.is_authorized_for_security_api(request):
+        return jsonify({"error": "Acesso não autorizado ao scanner SCA/SBOM."}), 403
+    return jsonify(security_ai.run_sca_scan())
+
+
+@app.post("/api/security/soar/rollback")
+def security_soar_rollback():
+    if not security_ai.is_authorized_for_security_api(request):
+        return jsonify({"error": "Acesso não autorizado ao SOAR."}), 403
+    data = request.get_json(silent=True) or {}
+    action_id = str(data.get("action_id") or "").strip()
+    if not action_id:
+        return jsonify({"error": "Informe 'action_id'."}), 400
+    res = security_ai.soar.rollback(action_id)
+    return jsonify(res), (200 if res.get("ok") else 404)
+
+
+@app.post("/api/security/scan-file")
+def security_scan_file():
+    if not security_ai.is_authorized_for_security_api(request):
+        return jsonify({"error": "Acesso não autorizado ao scanner de arquivos."}), 403
+    if "file" not in request.files:
+        return jsonify({"error": "Envie o arquivo no campo 'file'."}), 400
+    up = request.files["file"]
+    raw = up.read()
+    return jsonify(security_ai.scan_and_quarantine_file(raw, up.filename or "upload.bin"))
 
 
 PREFS_FILE = os.path.join(os.path.dirname(__file__), "security_logs", "user_preferences.json")

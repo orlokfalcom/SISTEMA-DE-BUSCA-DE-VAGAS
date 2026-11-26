@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,17 +12,29 @@
   <link rel="modulepreload" href="./js/app.js" />
   <link rel="modulepreload" href="./js/i18n.js" />
   <link rel="modulepreload" href="./js/storage.js" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600&family=Noto+Sans+Arabic:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600&family=Noto+Sans+Arabic:wght@400;600&display=swap"
+    rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Noto+Sans:wght@400;600;700&display=swap"
+      rel="stylesheet" />
+  </noscript>
   <link rel="stylesheet" href="./styles.css" />
 </head>
+
 <body>
   <div class="ambient-bg" aria-hidden="true"></div>
   <nav class="topbar">
     <div class="topbar-inner">
       <div class="brand-lockup">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
         </span>
         <strong>VagaPulse <span class="accent">AI</span></strong>
         <span class="brand-tag">Career Intelligence</span>
@@ -30,11 +43,12 @@
         <a href="#featuresSection" class="topbar-link" data-i18n="navFeatures">Recursos</a>
         <a href="#liveFeedSection" class="topbar-link" data-i18n="navLiveFeed">Vagas ao Vivo</a>
         <div class="lang-picker-wrap" id="langPickerWrap">
-          <button type="button" class="select-input lang-picker-btn" id="langPickerBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Selecionar idioma">
+          <!-- <button type="button" class="select-input lang-picker-btn" id="langPickerBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Selecionar idioma">
             🇧🇷 Português (PT) ▾
-          </button>
+          </button>-->
           <div class="lang-picker-popover hidden" id="langPickerPopover" role="dialog" aria-label="Pesquisar idioma">
-            <input type="search" id="langSearchInput" class="text-input lang-search-input" placeholder="Buscar idioma ou código (ex: ja, ar, Deutsch)..." aria-label="Buscar idioma" />
+            <input type="search" id="langSearchInput" class="text-input lang-search-input"
+              placeholder="Buscar idioma ou código (ex: ja, ar, Deutsch)..." aria-label="Buscar idioma" />
             <div class="lang-options-list" id="langOptionsList" role="listbox"></div>
           </div>
           <select id="uiLanguageSelect" class="sr-only" aria-label="Idioma da interface">
@@ -45,8 +59,11 @@
             <option value="ja">🇯🇵 日本語 (JA)</option>
           </select>
         </div>
-        <button type="button" class="topbar-status" id="securityGuardBtn" title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA Guard: Ativo (0)</button>
-        <span class="topbar-status"><span class="pulse-dot"></span> <span data-i18n="navPrivacyBadge">100% no Navegador</span></span>
+        <button type="button" class="topbar-status" id="securityGuardBtn"
+          title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA
+          Guard: Ativo (0)</button>
+        <span class="topbar-status"><span class="pulse-dot"></span> <span data-i18n="navPrivacyBadge">100% no
+            Navegador</span></span>
       </div>
     </div>
   </nav>
@@ -59,9 +76,11 @@
             <span class="pulse-dot"></span>
             <span data-i18n="heroEyebrow">Processamento Privado no Navegador · Busca Profunda · Editor ATS</span>
           </div>
-          <h1 data-i18n="heroTitle">Transforme seu currículo em <span class="accent-gradient">oportunidades reais</span> de alto impacto.</h1>
+          <h1 data-i18n="heroTitle">Transforme seu currículo em <span class="accent-gradient">oportunidades reais</span>
+            de alto impacto.</h1>
           <p class="hero-subtitle" data-i18n="heroSubtitle">
-            Envie seu PDF para varrer vagas em tempo real, diagnosticar e editar seu currículo para sistemas ATS e receber trilhas de cursos recomendados — tudo com privacidade local.
+            Envie seu PDF para varrer vagas em tempo real, diagnosticar e editar seu currículo para sistemas ATS e
+            receber trilhas de cursos recomendados — tudo com privacidade local.
           </p>
 
           <div class="hero-kpis">
@@ -85,26 +104,36 @@
         </div>
 
         <div class="upload-panel">
-          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Selecionar ou arrastar arquivo PDF">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button"
+            aria-label="Selecionar ou arrastar arquivo PDF">
             <div class="dropzone-icon-wrap" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <polyline points="9 15 12 12 15 15" />
+              </svg>
             </div>
             <h2 data-i18n="dropTitle">Envie seu currículo em PDF</h2>
             <p data-i18n="dropSubtitle">Arraste e solte aqui ou clique para selecionar (processamento local)</p>
             <input type="file" id="pdfInput" accept=".pdf,application/pdf" hidden />
             <div class="upload-actions">
-              <button type="button" class="btn btn-primary btn-glow" id="chooseFileBtn" data-i18n="chooseFileBtn">Analisar Meu Currículo PDF</button>
+              <button type="button" class="btn btn-primary btn-glow" id="chooseFileBtn"
+                data-i18n="chooseFileBtn">Analisar Meu Currículo PDF</button>
               <button type="button" class="btn btn-secondary hidden" id="sampleBtn">Testar com Exemplo</button>
               <button type="button" class="btn btn-ghost hidden" id="downloadSampleBtn">Baixar PDF Exemplo</button>
             </div>
             <div class="upload-options">
               <label class="checkbox-label">
                 <input type="checkbox" id="includeLiveCheck" checked />
-                <span data-i18n="includeLiveLabel">Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy, RemoteOK e GitHub BR)</span>
+                <span data-i18n="includeLiveLabel">Incluir vagas ao vivo da internet (Remotive, Arbeitnow, Jobicy,
+                  RemoteOK e GitHub BR)</span>
               </label>
               <label class="checkbox-label">
                 <input type="checkbox" id="deepSearchCheck" checked />
-                <span data-i18n="deepSearchLabel">Ativar Busca Profunda (varredura multi-termo em todas as APIs abertas)</span>
+                <span data-i18n="deepSearchLabel">Ativar Busca Profunda (varredura multi-termo em todas as APIs
+                  abertas)</span>
               </label>
             </div>
           </div>
@@ -112,7 +141,8 @@
           <div class="status-banner hidden" id="statusBanner"></div>
           <div class="loader hidden" id="loader">
             <div class="spinner"></div>
-            <span data-i18n="loaderText">Lendo seu PDF, auditando qualidade ATS e executando busca profunda na internet...</span>
+            <span data-i18n="loaderText">Lendo seu PDF, auditando qualidade ATS e executando busca profunda na
+              internet...</span>
           </div>
         </div>
       </div>
@@ -121,7 +151,8 @@
       <div class="trust-strip">
         <span class="trust-label" data-i18n="trustLabel">Portais integrados &amp; busca direta em carreiras</span>
         <div class="trust-logos">
-          <span>Remotive</span><span>Jobicy</span><span>Arbeitnow</span><span>RemoteOK</span><span>GitHub BR</span><span>LinkedIn</span><span>Gupy</span><span>Catho</span><span>Glassdoor</span><span>Indeed</span><span>Wellfound</span>
+          <span>Remotive</span><span>Jobicy</span><span>Arbeitnow</span><span>RemoteOK</span><span>GitHub
+            BR</span><span>LinkedIn</span><span>Gupy</span><span>Catho</span><span>Glassdoor</span><span>Indeed</span><span>Wellfound</span>
         </div>
       </div>
 
@@ -129,38 +160,54 @@
       <div class="feature-strip bento-grid" id="featuresSection">
         <div class="feature-item">
           <div class="feature-icon-box" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
           </div>
           <div>
             <strong data-i18n="feat1Title">Busca Profunda Multi-Fonte</strong>
-            <p data-i18n="feat1Desc">Varredura paralela em APIs abertas com prioridade geográfica para o seu país e links diretos para 14 portais.</p>
+            <p data-i18n="feat1Desc">Varredura paralela em APIs abertas com prioridade geográfica para o seu país e
+              links diretos para 14 portais.</p>
           </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon-box" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
           </div>
           <div>
             <strong data-i18n="feat2Title">Editor de Currículo ATS ao Vivo</strong>
-            <p data-i18n="feat2Desc">Corrija placeholders, métricas e formatação em tela dividida com score recalculado em tempo real e exportação PDF.</p>
+            <p data-i18n="feat2Desc">Corrija placeholders, métricas e formatação em tela dividida com score recalculado
+              em tempo real e exportação PDF.</p>
           </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon-box" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+            </svg>
           </div>
           <div>
             <strong data-i18n="feat3Title">Matching Explicável TF-IDF</strong>
-            <p data-i18n="feat3Desc">Pontuação transparente por habilidades exatas, ecossistema relacionado, semântica textual e aderência de senioridade.</p>
+            <p data-i18n="feat3Desc">Pontuação transparente por habilidades exatas, ecossistema relacionado, semântica
+              textual e aderência de senioridade.</p>
           </div>
         </div>
         <div class="feature-item">
           <div class="feature-icon-box" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+              <path d="M6 12v5c3 3 9 3 12 0v-5" />
+            </svg>
           </div>
           <div>
             <strong data-i18n="feat4Title">Skill Gap &amp; Trilhas de Cursos</strong>
-            <p data-i18n="feat4Desc">Identifica automaticamente competências mais pedidas pelo mercado e recomenda cursos gratuitos para elevar seu perfil.</p>
+            <p data-i18n="feat4Desc">Identifica automaticamente competências mais pedidas pelo mercado e recomenda
+              cursos gratuitos para elevar seu perfil.</p>
           </div>
         </div>
       </div>
@@ -174,7 +221,8 @@
           </div>
           <div class="live-feed-controls">
             <span class="live-status-pill" id="homeLiveStatus" data-i18n="homeLiveLoading">Carregando vagas...</span>
-            <button type="button" class="btn btn-secondary btn-small" id="homeRefreshBtn" data-i18n="homeRefreshBtn">Atualizar Agora</button>
+            <button type="button" class="btn btn-secondary btn-small" id="homeRefreshBtn"
+              data-i18n="homeRefreshBtn">Atualizar Agora</button>
           </div>
         </div>
         <div class="live-feed-grid" id="homeLiveGrid"></div>
@@ -204,7 +252,8 @@
             <div class="ats-bar-fill" id="atsBarFill" style="width: 0%"></div>
           </div>
           <ul class="ats-checks" id="atsChecks"></ul>
-          <button type="button" class="btn btn-primary btn-small" id="openImproveBtn" data-i18n="openImproveBtn" style="width:100%;margin-top:10px;">
+          <button type="button" class="btn btn-primary btn-small" id="openImproveBtn" data-i18n="openImproveBtn"
+            style="width:100%;margin-top:10px;">
             ✨ Aprimorar Currículo (ATS)
           </button>
         </div>
@@ -233,18 +282,13 @@
 
         <div class="profile-block">
           <div class="block-title-row">
-            <span class="meta-label"><span data-i18n="skillsDetectedPrefix">Habilidades Detectadas</span> (<span id="skillsCount">0</span>)</span>
+            <span class="meta-label"><span data-i18n="skillsDetectedPrefix">Habilidades Detectadas</span> (<span
+                id="skillsCount">0</span>)</span>
           </div>
           <div class="pill-list editable" id="skillsList"></div>
           <div class="add-skill-row">
-            <input
-              type="text"
-              id="newSkillInput"
-              list="skillSuggestions"
-              data-i18n-placeholder="newSkillPlaceholder"
-              placeholder="Adicionar habilidade (ex: Python)"
-              class="text-input"
-            />
+            <input type="text" id="newSkillInput" list="skillSuggestions" data-i18n-placeholder="newSkillPlaceholder"
+              placeholder="Adicionar habilidade (ex: Python)" class="text-input" />
             <datalist id="skillSuggestions"></datalist>
             <button type="button" class="btn btn-small btn-primary" id="addSkillBtn">+</button>
           </div>
@@ -253,14 +297,16 @@
         <!-- Skill Gap de Mercado -->
         <div class="profile-block" id="skillGapBlock">
           <span class="meta-label" data-i18n="skillGapLabel">Skill Gap (Mais Pedidas nas Top Vagas)</span>
-          <p class="helper-text" data-i18n="skillGapHelper">Clique em uma skill para adicioná-la se você já a domina:</p>
+          <p class="helper-text" data-i18n="skillGapHelper">Clique em uma skill para adicioná-la se você já a domina:
+          </p>
           <div class="gap-list" id="skillGapList"></div>
         </div>
 
         <!-- Cursos Recomendados -->
         <div class="profile-block" id="coursesBlock">
           <span class="meta-label" data-i18n="coursesLabel">🎓 Cursos Recomendados para Aprimorar o Currículo</span>
-          <p class="helper-text" data-i18n="coursesHelper">Sugestões práticas para fechar lacunas e elevar seu match:</p>
+          <p class="helper-text" data-i18n="coursesHelper">Sugestões práticas para fechar lacunas e elevar seu match:
+          </p>
           <div class="course-list" id="coursesList"></div>
         </div>
 
@@ -284,7 +330,8 @@
               <input type="checkbox" id="autoRefreshCheck" checked />
               <span data-i18n="autoRefreshLabel">Auto-atualizar (5 min)</span>
             </label>
-            <button type="button" class="btn btn-ghost btn-small" id="manualRefreshBtn" data-i18n="manualRefreshBtn" title="Buscar novas vagas agora ignorando cache">
+            <button type="button" class="btn btn-ghost btn-small" id="manualRefreshBtn" data-i18n="manualRefreshBtn"
+              title="Buscar novas vagas agora ignorando cache">
               🔄 Atualizar
             </button>
           </div>
@@ -300,19 +347,15 @@
           <button type="button" class="btn btn-secondary btn-small" id="exportCsvBtn" data-i18n="exportCsvBtn">
             ⬇ Exportar Vagas (CSV)
           </button>
-          <button type="button" class="btn btn-ghost btn-small" id="resetWeightsBtn" title="Restaurar pesos padrão do ranking" data-i18n="resetWeightsBtn">
+          <button type="button" class="btn btn-ghost btn-small" id="resetWeightsBtn"
+            title="Restaurar pesos padrão do ranking" data-i18n="resetWeightsBtn">
             ↺ Pesos Padrão
           </button>
         </div>
 
         <div class="filters-bar">
-          <input
-            type="text"
-            id="queryInput"
-            class="text-input search-input"
-            data-i18n-placeholder="queryPlaceholder"
-            placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..."
-          />
+          <input type="text" id="queryInput" class="text-input search-input" data-i18n-placeholder="queryPlaceholder"
+            placeholder="Filtrar por cargo, empresa, cidade ou tecnologia..." />
           <select id="modalityFilter" class="select-input">
             <option value="" data-i18n="allModalities">Todas modalidades</option>
             <option value="Remoto" data-i18n="modRemote">Remoto</option>
@@ -345,14 +388,8 @@
             <option value="Produto & Design" data-i18n="secProd">Produto &amp; Design</option>
             <option value="Negócios & Operações" data-i18n="secBiz">Negócios &amp; Operações</option>
           </select>
-          <input
-            type="text"
-            id="locationFilter"
-            class="text-input"
-            style="min-width:140px;"
-            data-i18n-placeholder="locationPlaceholder"
-            placeholder="Localização (ex: Brasil, SP)..."
-          />
+          <input type="text" id="locationFilter" class="text-input" style="min-width:140px;"
+            data-i18n-placeholder="locationPlaceholder" placeholder="Localização (ex: Brasil, SP)..." />
           <select id="sourceFilter" class="select-input">
             <option value="all" data-i18n="allSources">Todas as fontes</option>
             <option value="local" data-i18n="srcLocal">Somente Base Brasil</option>
@@ -387,7 +424,8 @@
             <option value="Entrevista" data-i18n="trackerInterview">💬 Entrevista</option>
             <option value="Proposta" data-i18n="trackerOffer">🎉 Proposta</option>
           </select>
-          <button type="button" class="btn btn-ghost btn-small" id="clearFiltersBtn" data-i18n="clearFiltersBtn" title="Limpar todos os filtros">
+          <button type="button" class="btn btn-ghost btn-small" id="clearFiltersBtn" data-i18n="clearFiltersBtn"
+            title="Limpar todos os filtros">
             ✕ Limpar
           </button>
         </div>
@@ -433,7 +471,8 @@
         <h4 data-i18n="modalPitchTitle">Sugestão de Mensagem / Pitch para o Recrutador</h4>
         <div class="pitch-box">
           <p id="modalPitch"></p>
-          <button type="button" class="btn btn-secondary btn-small" id="copyPitchBtn" data-i18n="copyPitchBtn">Copiar Mensagem</button>
+          <button type="button" class="btn btn-secondary btn-small" id="copyPitchBtn" data-i18n="copyPitchBtn">Copiar
+            Mensagem</button>
         </div>
 
         <div id="modalConversionKit" style="margin-top:14px;display:flex;flex-direction:column;gap:12px;"></div>
@@ -446,7 +485,8 @@
           <option value="Entrevista" data-i18n="trackerInterview">💬 Entrevista</option>
           <option value="Proposta" data-i18n="trackerOffer">🎉 Proposta</option>
         </select>
-        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modalApplyBtn" data-i18n="modalApplyBtn">
+        <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="modalApplyBtn"
+          data-i18n="modalApplyBtn">
           Candidatar-se na Vaga ↗
         </a>
       </div>
@@ -464,9 +504,12 @@
         <button type="button" class="modal-close" id="closeCompareBtn" aria-label="Fechar">✕</button>
       </div>
       <div class="modal-body">
-        <input type="text" id="compareTitleInput" class="text-input" data-i18n-placeholder="compareTitlePlaceholder" placeholder="Título da vaga (ex: Desenvolvedor Python Sênior)" />
-        <textarea id="compareDescInput" class="textarea-input" rows="6" data-i18n-placeholder="compareDescPlaceholder" placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
-        <button type="button" class="btn btn-primary" id="runCompareBtn" data-i18n="runCompareBtn">Calcular Compatibilidade ATS</button>
+        <input type="text" id="compareTitleInput" class="text-input" data-i18n-placeholder="compareTitlePlaceholder"
+          placeholder="Título da vaga (ex: Desenvolvedor Python Sênior)" />
+        <textarea id="compareDescInput" class="textarea-input" rows="6" data-i18n-placeholder="compareDescPlaceholder"
+          placeholder="Cole aqui a descrição completa da vaga (requisitos, tecnologias, responsabilidades)..."></textarea>
+        <button type="button" class="btn btn-primary" id="runCompareBtn" data-i18n="runCompareBtn">Calcular
+          Compatibilidade ATS</button>
         <div id="compareResult" class="compare-result hidden"></div>
       </div>
     </div>
@@ -487,30 +530,30 @@
           <div class="editor-toolbar">
             <div class="editor-score-pill" id="editorLiveScore">ATS: —/100</div>
             <div class="editor-toolbar-actions">
-              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn" data-i18n="editorAutoFixBtn" title="Corrige formatação, telefone e marcadores duplicados automaticamente">
+              <button type="button" class="btn btn-primary btn-small" id="editorAutoFixBtn" data-i18n="editorAutoFixBtn"
+                title="Corrige formatação, telefone e marcadores duplicados automaticamente">
                 ⚡ Auto-Corrigir
               </button>
-              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn" data-i18n="editorLoadTemplateBtn" title="Substitui pelo modelo estruturado ATS pré-preenchido">
+              <button type="button" class="btn btn-secondary btn-small" id="editorLoadTemplateBtn"
+                data-i18n="editorLoadTemplateBtn" title="Substitui pelo modelo estruturado ATS pré-preenchido">
                 📄 Modelo ATS
               </button>
               <button type="button" class="btn btn-secondary btn-small" id="editorCopyBtn" data-i18n="editorCopyBtn">
                 📋 Copiar
               </button>
-              <button type="button" class="btn btn-secondary btn-small" id="editorPrintPdfBtn" data-i18n="editorPrintPdfBtn">
+              <button type="button" class="btn btn-secondary btn-small" id="editorPrintPdfBtn"
+                data-i18n="editorPrintPdfBtn">
                 🖨️ Salvar PDF
               </button>
             </div>
           </div>
-          <textarea
-            id="atsResumeEditor"
-            class="resume-editor-textarea"
-            spellcheck="true"
+          <textarea id="atsResumeEditor" class="resume-editor-textarea" spellcheck="true"
             data-i18n-placeholder="editorPlaceholder"
-            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."
-          ></textarea>
+            placeholder="O texto do seu currículo aparecerá aqui para edição em tempo real..."></textarea>
           <div class="editor-statusbar">
             <span id="editorWordCount">0 palavras</span>
-            <span id="editorSyncStatus" data-i18n="editorSyncStatus">Edite o currículo acima — o score e as melhorias atualizam ao vivo</span>
+            <span id="editorSyncStatus" data-i18n="editorSyncStatus">Edite o currículo acima — o score e as melhorias
+              atualizam ao vivo</span>
           </div>
         </div>
         <div class="improvements-pane">
@@ -520,8 +563,10 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-small" id="editorDownloadTxtBtn" data-i18n="editorDownloadTxtBtn">⬇ Baixar .TXT</button>
-        <button type="button" class="btn btn-primary btn-small" id="applyEditedResumeBtn" data-i18n="applyEditedResumeBtn">
+        <button type="button" class="btn btn-secondary btn-small" id="editorDownloadTxtBtn"
+          data-i18n="editorDownloadTxtBtn">⬇ Baixar .TXT</button>
+        <button type="button" class="btn btn-primary btn-small" id="applyEditedResumeBtn"
+          data-i18n="applyEditedResumeBtn">
           ✅ Aplicar Currículo Editado na Busca de Vagas
         </button>
       </div>
@@ -533,4 +578,5 @@
   <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
 </body>
+
 </html>

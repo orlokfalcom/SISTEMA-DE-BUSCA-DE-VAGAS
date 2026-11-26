@@ -31,10 +31,22 @@ const THREAT_PATTERNS = [
     detail: "Padrão de injeção de comando detectado.",
   },
   {
-    category: "Acesso Não Autorizado / Rota Sensível",
+    category: "Acesso Não Autorizado / Rota Sensível [T1595]",
     weight: 40,
     regex: /(\/\.env|\/\.git|\/wp-admin|\/phpmyadmin|\/admin\b|token=|bypass_auth|escalate)/i,
     detail: "Tentativa de acesso a rota administrativa ou parâmetro não autorizado.",
+  },
+  {
+    category: "SSTI / NoSQLi / Prototype Pollution [T1190]",
+    weight: 45,
+    regex: /(\{\{\s*(?:7\*7|config|self|__class__)\b|\$(?:ne|gt|where)\b\s*:|__proto__|constructor\.prototype)/i,
+    detail: "Padrão de injeção de template (SSTI), NoSQL ou Prototype Pollution.",
+  },
+  {
+    category: "AI Prompt Injection [AML.T0051 / LLM01]",
+    weight: 38,
+    regex: /(ignore\s+(?:all\s+)?previous\s+instructions|system\s+prompt|jailbreak|<\|im_start\|>)/i,
+    detail: "Tentativa de Prompt Injection ou Jailbreak detectada.",
   },
 ];
 
