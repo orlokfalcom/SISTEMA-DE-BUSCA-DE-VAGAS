@@ -97,8 +97,14 @@ const state = {
 
 // Elementos DOM
 const skillSuggestions = document.getElementById("skillSuggestions");
-if (skillSuggestions) {
+function populateSkillSuggestionsIdle() {
+  if (!skillSuggestions || skillSuggestions.childElementCount > 0) return;
   skillSuggestions.innerHTML = CANONICAL_SKILLS.map((s) => `<option value="${s.replaceAll('"', "&quot;")}"></option>`).join("");
+}
+if (typeof requestIdleCallback === "function") {
+  requestIdleCallback(populateSkillSuggestionsIdle, { timeout: 1500 });
+} else {
+  setTimeout(populateSkillSuggestionsIdle, 250);
 }
 
 const dropzone = document.getElementById("dropzone");
@@ -462,16 +468,8 @@ function triggerResearch({ immediate = false, refetch = false, forceRefresh = fa
 async function loadHomeLiveJobs(forceRefresh = false) {
   if (!homeLiveGrid) return;
   if (homeLiveStatus) homeLiveStatus.textContent = "🔄 Carregando vagas ao vivo...";
-  try {
-    const { jobs } = await collectJobsWithTelemetry({
-      sourceFilter: "all",
-      primarySkill: "",
-      includeLive: true,
-      deepSearch: false,
-      forceRefresh,
-    });
-    const ts = new Date().toLocaleTimeString("pt-BR");
-    if (homeLiveStatus) homeLiveStatus.textContent = `🟢 ${jobs.length} vagas · Atualizado às ${ts}`;
+
+  const renderHomeCards = (jobs) => {
     homeLiveGrid.innerHTML = jobs
       .slice(0, 6)
       .map(
@@ -483,9 +481,33 @@ async function loadHomeLiveJobs(forceRefresh = false) {
         </a>`
       )
       .join("");
+  };
+
+  try {
+    // Primeiro exibe base local instantaneamente (First Paint rápido)
+    if (!forceRefresh && !homeLiveGrid.childElementCount) {
+      const localOnly = await collectJobsWithTelemetry({ sourceFilter: "local", includeLive: false, deepSearch: false });
+      if (localOnly.jobs.length) {
+        renderHomeCards(localOnly.jobs);
+        if (homeLiveStatus) homeLiveStatus.textContent = `⚡ ${localOnly.jobs.length} vagas locais · Sincronizando ao vivo...`;
+      }
+    }
+
+    const { jobs } = await collectJobsWithTelemetry({
+      sourceFilter: "all",
+      primarySkill: "",
+      includeLive: true,
+      deepSearch: false,
+      forceRefresh,
+    });
+    const ts = new Date().toLocaleTimeString("pt-BR");
+    if (homeLiveStatus) homeLiveStatus.textContent = `🟢 ${jobs.length} vagas · Atualizado às ${ts}`;
+    renderHomeCards(jobs);
     if (forceRefresh) showToast("🟢 Vagas recentes atualizadas!");
   } catch {
-    if (homeLiveStatus) homeLiveStatus.textContent = "⚠️ Indisponível no momento";
+    if (homeLiveStatus && !homeLiveGrid.childElementCount) {
+      homeLiveStatus.textContent = "⚠️ Indisponível no momento";
+    }
   }
 }
 
@@ -1468,12 +1490,14 @@ if (uiLanguageSelect) {
   });
 }
 
-// Inicialização
-await initPersistedState();
-const savedLang = await idbGet("ui_lang", "pt");
+// Inicialização em paralelo para tempo de boot mínimo
+const [, savedLang] = await Promise.all([
+  initPersistedState(),
+  idbGet("ui_lang", "pt"),
+  securityGuard.init(),
+]);
 if (uiLanguageSelect) uiLanguageSelect.value = savedLang;
 applyUiTranslations(savedLang);
-await securityGuard.init();
 updateSecurityGuardBadge(securityGuard.getStats());
 loadHomeLiveJobs(false);
 startAutoRefreshLoop();

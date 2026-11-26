@@ -2106,3 +2106,10 @@ mark.match-hl {
   justify-content: center;
   padding: 20px 0 8px;
 }
+
+.job-card,
+.mini-job-card,
+.bento-grid .feature-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 240px;
+}

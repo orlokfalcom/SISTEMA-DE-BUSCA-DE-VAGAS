@@ -321,18 +321,34 @@ export function recommendCourses(skillGaps = [], candidateSkills = [], suggested
   return recs;
 }
 
+let pdfJsPromise = null;
+
+async function ensurePdfJsLoaded() {
+  if (typeof window === "undefined") throw new Error("Ambiente de navegador indisponível.");
+  if (window.pdfjsLib) return window.pdfjsLib;
+  if (!pdfJsPromise) {
+    pdfJsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js";
+      script.async = true;
+      script.onload = () => (window.pdfjsLib ? resolve(window.pdfjsLib) : reject(new Error("PDF.js indisponível.")));
+      script.onerror = () => reject(new Error("Biblioteca PDF.js não carregou. Verifique sua conexão com a internet."));
+      document.head.appendChild(script);
+    });
+  }
+  return pdfJsPromise;
+}
+
 export async function extractTextFromPdfFile(file) {
   const buffer = await file.arrayBuffer();
   const header = new TextDecoder("ascii").decode(new Uint8Array(buffer.slice(0, 8)));
   if (!header.trimStart().startsWith("%PDF-")) {
     throw new Error("O arquivo enviado não é um PDF válido (assinatura %PDF ausente).");
   }
-  if (typeof window === "undefined" || typeof window.pdfjsLib === "undefined") {
-    throw new Error("Biblioteca PDF.js não carregou. Verifique sua conexão com a internet.");
-  }
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+  const pdfjsLib = await ensurePdfJsLoaded();
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
-  const pdf = await window.pdfjsLib.getDocument({ data: buffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const pagesText = [];
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);

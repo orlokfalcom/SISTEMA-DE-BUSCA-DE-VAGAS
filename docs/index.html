@@ -4,9 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VagaPulse AI — Inteligência de Carreira, Busca Profunda &amp; Editor ATS</title>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preload" href="./styles.css" as="style" />
+  <link rel="modulepreload" href="./js/app.js" />
+  <link rel="modulepreload" href="./js/i18n.js" />
+  <link rel="modulepreload" href="./js/storage.js" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -498,8 +504,7 @@
 
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
-  <!-- PDF.js via CDN + App Modular ES -->
-  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>
