@@ -29,7 +29,7 @@ import {
   resolveSkillAlias,
   suggestRoles,
 } from "./nlp.js";
-import { applyUiTranslations, getUiLang, t } from "./i18n.js";
+import { SUPPORTED_LANGUAGES, applyUiTranslations, applyUiTranslationsAsync, getUiLang, t } from "./i18n.js";
 import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
@@ -1660,8 +1660,11 @@ if (securityGuardBtn) {
 }
 
 if (uiLanguageSelect) {
-  uiLanguageSelect.addEventListener("change", () => {
-    const chosen = applyUiTranslations(uiLanguageSelect.value);
+  uiLanguageSelect.innerHTML = SUPPORTED_LANGUAGES.map(
+    (l) => `<option value="${escapeHtml(l.code)}">${escapeHtml(l.label)}</option>`
+  ).join("");
+  uiLanguageSelect.addEventListener("change", async () => {
+    const chosen = await applyUiTranslationsAsync(uiLanguageSelect.value);
     idbSet("ui_lang", chosen);
     updateSecurityGuardBadge(securityGuard.getStats());
     loadHomeLiveJobs(false);
@@ -1679,7 +1682,7 @@ const [, savedLang] = await Promise.all([
   securityGuard.init(),
 ]);
 if (uiLanguageSelect) uiLanguageSelect.value = savedLang;
-applyUiTranslations(savedLang);
+await applyUiTranslationsAsync(savedLang);
 updateSecurityGuardBadge(securityGuard.getStats());
 loadHomeLiveJobs(false);
 startAutoRefreshLoop();

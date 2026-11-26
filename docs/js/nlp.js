@@ -705,9 +705,11 @@ export function detectLanguages(text) {
  */
 export function detectLanguageCode(text) {
   const raw = String(text || "");
-  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(raw) || (raw.match(/[\u4e00-\u9faf]/g) || []).length >= 3) {
-    return "ja";
-  }
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(raw)) return "ja";
+  if (/[\uac00-\ud7af]/.test(raw)) return "ko";
+  if (/[\u0600-\u06ff]/.test(raw)) return "ar";
+  if (/[\u0400-\u04ff]/.test(raw)) return "ru";
+  if ((raw.match(/[\u4e00-\u9faf]/g) || []).length >= 3) return "zh";
   const norm = normalizeText(raw);
   const tokens = norm.match(/[a-z]{2,}/g) || [];
   if (!tokens.length) return "pt";
@@ -715,21 +717,29 @@ export function detectLanguageCode(text) {
   const enMarkers = new Set(["with", "for", "and", "the", "you", "your", "team", "experience", "looking", "role", "skills", "requirements", "engineering", "software", "remote", "hybrid", "company", "build"]);
   const frMarkers = new Set(["avec", "pour", "dans", "entreprise", "equipe", "poste", "recherche", "competences", "developpement", "teletravail", "hybride", "nous", "votre", "profil", "missions"]);
   const esMarkers = new Set(["para", "con", "empresa", "puesto", "experiencia", "conocimientos", "requisitos", "equipo", "trabajo", "buscamos", "desarrollo", "remoto", "hibrido"]);
+  const deMarkers = new Set(["und", "fur", "mit", "wir", "suchen", "erfahrung", "team", "entwicklung", "unternehmen", "kenntnisse", "remote", "arbeiten"]);
+  const itMarkers = new Set(["per", "con", "azienda", "esperienza", "lavoro", "sviluppo", "competenze", "squadra", "requisiti", "remoto"]);
 
   let pt = 0;
   let en = 0;
   let fr = 0;
   let es = 0;
+  let de = 0;
+  let it = 0;
   for (const t of tokens) {
     if (ptMarkers.has(t)) pt++;
     if (enMarkers.has(t)) en++;
     if (frMarkers.has(t)) fr++;
     if (esMarkers.has(t)) es++;
+    if (deMarkers.has(t)) de++;
+    if (itMarkers.has(t)) it++;
   }
   const scores = [
     ["en", en],
     ["fr", fr],
     ["es", es],
+    ["de", de],
+    ["it", it],
     ["pt", pt],
   ].sort((a, b) => b[1] - a[1]);
   return scores[0][1] > 0 ? scores[0][0] : "pt";
@@ -766,6 +776,9 @@ export function detectCountry(text) {
   if (/\b(united\s+states|estados\s+unidos|usa|new\s+york|san\s+francisco|california)\b/.test(lower)) return "Estados Unidos";
   if (/\b(united\s+kingdom|london|reino\s+unido)\b/.test(lower)) return "Reino Unido";
   if (/\b(germany|deutschland|berlin|munich|alemanha)\b/.test(lower)) return "Alemanha";
+  if (/\b(france|paris|lyon|marseille|franca)\b/.test(lower)) return "França";
+  if (/\b(spain|espana|madrid|barcelona|valencia|espanha)\b/.test(lower)) return "Espanha";
+  if (/\b(japan|tokyo|osaka|japao)\b/.test(lower) || /日本|東京|大阪/.test(String(text || ""))) return "Japão";
   if (/\b(canada|toronto|vancouver|montreal)\b/.test(lower)) return "Canadá";
   return "Brasil";
 }

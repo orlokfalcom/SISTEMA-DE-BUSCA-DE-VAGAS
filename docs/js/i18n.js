@@ -1,6 +1,66 @@
 /**
- * VagaPulse AI — Internacionalização Completa (i18n): Português, English, Français, Español, 日本語
+ * VagaPulse AI — Internacionalização Completa (i18n):
+ * 5 dicionários nativos instantâneos (PT, EN, FR, ES, JA) + tradução automática em cache (IndexedDB)
+ * para 50+ idiomas conhecidos (incluindo suporte RTL para Árabe, Hebraico, Persa e Urdu).
  */
+
+import { idbGet, idbSet } from "./storage.js";
+import { translateTextRemote } from "./translator.js";
+
+export const SUPPORTED_LANGUAGES = [
+  { code: "pt", label: "🇧🇷 Português (PT)" },
+  { code: "en", label: "🇺🇸 English (EN)" },
+  { code: "fr", label: "🇫🇷 Français (FR)" },
+  { code: "es", label: "🇪🇸 Español (ES)" },
+  { code: "ja", label: "🇯🇵 日本語 (JA)" },
+  { code: "de", label: "🇩🇪 Deutsch (DE)" },
+  { code: "it", label: "🇮🇹 Italiano (IT)" },
+  { code: "zh-CN", label: "🇨🇳 中文简体 (ZH)" },
+  { code: "zh-TW", label: "🇹🇼 中文繁體 (ZH-TW)" },
+  { code: "ko", label: "🇰🇷 한국어 (KO)" },
+  { code: "ru", label: "🇷🇺 Русский (RU)" },
+  { code: "ar", label: "🇸🇦 العربية (AR)" },
+  { code: "hi", label: "🇮🇳 हिन्दी (HI)" },
+  { code: "nl", label: "🇳🇱 Nederlands (NL)" },
+  { code: "pl", label: "🇵🇱 Polski (PL)" },
+  { code: "tr", label: "🇹🇷 Türkçe (TR)" },
+  { code: "uk", label: "🇺🇦 Українська (UK)" },
+  { code: "sv", label: "🇸🇪 Svenska (SV)" },
+  { code: "no", label: "🇳🇴 Norsk (NO)" },
+  { code: "da", label: "🇩🇰 Dansk (DA)" },
+  { code: "fi", label: "🇫🇮 Suomi (FI)" },
+  { code: "cs", label: "🇨🇿 Čeština (CS)" },
+  { code: "el", label: "🇬🇷 Ελληνικά (EL)" },
+  { code: "he", label: "🇮🇱 עברית (HE)" },
+  { code: "th", label: "🇹🇭 ไทย (TH)" },
+  { code: "vi", label: "🇻🇳 Tiếng Việt (VI)" },
+  { code: "id", label: "🇮🇩 Bahasa Indonesia (ID)" },
+  { code: "ms", label: "🇲🇾 Bahasa Melayu (MS)" },
+  { code: "ro", label: "🇷🇴 Română (RO)" },
+  { code: "hu", label: "🇭🇺 Magyar (HU)" },
+  { code: "bg", label: "🇧🇬 Български (BG)" },
+  { code: "hr", label: "🇭🇷 Hrvatski (HR)" },
+  { code: "sk", label: "🇸🇰 Slovenčina (SK)" },
+  { code: "sl", label: "🇸🇮 Slovenščina (SL)" },
+  { code: "lt", label: "🇱🇹 Lietuvių (LT)" },
+  { code: "lv", label: "🇱🇻 Latviešu (LV)" },
+  { code: "et", label: "🇪🇪 Eesti (ET)" },
+  { code: "ca", label: "Català (CA)" },
+  { code: "gl", label: "Galego (GL)" },
+  { code: "eu", label: "Euskara (EU)" },
+  { code: "af", label: "Afrikaans (AF)" },
+  { code: "sw", label: "Kiswahili (SW)" },
+  { code: "tl", label: "🇵🇭 Tagalog (TL)" },
+  { code: "fa", label: "🇮🇷 فارسی (FA)" },
+  { code: "ur", label: "🇵🇰 اردو (UR)" },
+  { code: "bn", label: "🇧🇩 বাংলা (BN)" },
+  { code: "ta", label: "தமிழ் (TA)" },
+  { code: "te", label: "తెలుగు (TE)" },
+  { code: "mr", label: "मराठी (MR)" },
+  { code: "pa", label: "ਪੰਜਾਬੀ (PA)" },
+];
+
+const RTL_LANGS = new Set(["ar", "he", "fa", "ur"]);
 
 export const UI_TRANSLATIONS = {
   pt: {
@@ -636,12 +696,14 @@ export function t(key, vars = {}) {
 }
 
 export function applyUiTranslations(lang = "pt") {
-  const code = UI_TRANSLATIONS[lang] ? lang : "pt";
+  const isKnown = SUPPORTED_LANGUAGES.some((l) => l.code === lang);
+  const code = isKnown ? lang : "pt";
   currentUiLang = code;
-  const dict = UI_TRANSLATIONS[code];
+  const dict = UI_TRANSLATIONS[code] || UI_TRANSLATIONS.en;
   if (typeof document === "undefined") return code;
 
   document.documentElement.lang = code === "pt" ? "pt-BR" : code;
+  document.documentElement.dir = RTL_LANGS.has(code) ? "rtl" : "ltr";
   if (dict.pageTitle) document.title = dict.pageTitle;
   for (const el of document.querySelectorAll("[data-i18n]")) {
     const key = el.getAttribute("data-i18n");
@@ -654,4 +716,42 @@ export function applyUiTranslations(lang = "pt") {
     if (key && dict[key] !== undefined) el.setAttribute("placeholder", dict[key]);
   }
   return code;
+}
+
+/**
+ * Carrega ou gera automaticamente o pacote de tradução para qualquer um dos 50+ idiomas suportados.
+ */
+export async function applyUiTranslationsAsync(lang = "pt") {
+  const code = applyUiTranslations(lang);
+  if (UI_TRANSLATIONS[code]) return code;
+
+  // Verifica cache persistido no IndexedDB
+  const cacheKey = `ui_pack_${code}`;
+  const cached = await idbGet(cacheKey, null);
+  if (cached && typeof cached === "object") {
+    UI_TRANSLATIONS[code] = cached;
+    return applyUiTranslations(code);
+  }
+
+  // Traduz automaticamente a partir do dicionário base EN em lotes paralelos
+  const entries = Object.entries(UI_TRANSLATIONS.en);
+  const translatedDict = { ...UI_TRANSLATIONS.en };
+  let idx = 0;
+
+  async function worker() {
+    while (idx < entries.length) {
+      const [key, enVal] = entries[idx++];
+      if (key === "heroTitle") {
+        const plain = await translateTextRemote("Turn your resume into high-impact career opportunities.", code, "en");
+        translatedDict[key] = plain;
+      } else {
+        translatedDict[key] = await translateTextRemote(enVal, code, "en");
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: 6 }, () => worker()));
+  UI_TRANSLATIONS[code] = translatedDict;
+  idbSet(cacheKey, translatedDict);
+  return applyUiTranslations(code);
 }

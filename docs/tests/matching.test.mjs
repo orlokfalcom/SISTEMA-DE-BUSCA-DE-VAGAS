@@ -21,6 +21,7 @@ import {
 import { AutonomousSecurityAIGuard } from '../js/security_ai.js';
 import { buildExternalLinks } from '../js/fetcher.js';
 import { getTranslatedJobView, translateStructuredField } from '../js/translator.js';
+import { SUPPORTED_LANGUAGES } from '../js/i18n.js';
 import { evaluateJobAuthenticity } from '../js/fraud.js';
 
 function assert(condition, message) {
@@ -410,6 +411,10 @@ export async function runAllTests() {
     assert(translateStructuredField('seniority', 'Sênior', 'ja') === 'シニア', 'Senioridade JA');
     const viewJa = getTranslatedJobView({ ...jpJob, modality: 'Remoto', seniority: 'Sênior', salary: 'A combinar' }, 'ja');
     assert(viewJa.modality === 'リモート' && viewJa.salary === '応相談', 'getTranslatedJobView deve traduzir campos da vaga');
+    assert(SUPPORTED_LANGUAGES.length >= 45, `Esperado >= 45 idiomas suportados, obtido ${SUPPORTED_LANGUAGES.length}`);
+    assert(detectLanguageCode('Wir suchen einen Entwickler mit Erfahrung im Team und Remote') === 'de', 'Deveria detectar Alemão');
+    assert(detectLanguageCode('Cerchiamo uno sviluppatore con esperienza in azienda') === 'it', 'Deveria detectar Italiano');
+    assert(detectLanguageCode('서울 리모트 백엔드 엔지니어 채용') === 'ko', 'Deveria detectar Coreano');
   });
 
   // 11. Detector & filtro anti-vagas falsas / golpes

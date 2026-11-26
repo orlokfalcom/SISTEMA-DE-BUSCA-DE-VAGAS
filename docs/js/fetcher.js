@@ -487,8 +487,155 @@ async function fetchLeverBoard(slug, label) {
   }
 }
 
+async function fetchAshbyBoard(slug, label) {
+  const key = `ashby:${slug}`;
+  const cached = getCachedSource(key);
+  if (cached) return { source: "Ashby ATS", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry(`https://api.ashbyhq.com/posting-api/job-board/${slug}`, { timeoutMs: 3200, retries: 0 });
+    const jobs = (payload.jobs || []).slice(0, 12).map((item) => {
+      const loc = item.location || "Global";
+      const normLoc = normalizeText(`${loc} ${item.isRemote ? "remote" : ""}`);
+      const desc = stripHtml(item.descriptionPlain || item.descriptionHtml || "");
+      return extractCanonicalJob({
+        id: `ashby-${slug}-${item.id}`,
+        title: item.title || "Carreira Direta",
+        company: label,
+        location: loc,
+        modality: item.isRemote || normLoc.includes("remote") ? "Remoto" : normLoc.includes("hybrid") ? "Híbrido" : "Presencial",
+        salary: "A combinar",
+        skills: [],
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: item.jobUrl || `https://jobs.ashbyhq.com/${slug}`,
+        source: `Ashby (${label})`,
+        posted_at: String(item.publishedAt || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "Ashby ATS", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Ashby ATS", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchSmartRecruitersBoard(slug, label) {
+  const key = `sr:${slug}`;
+  const cached = getCachedSource(key);
+  if (cached) return { source: "SmartRecruiters ATS", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry(`https://api.smartrecruiters.com/v1/companies/${slug}/postings?limit=12`, { timeoutMs: 3200, retries: 0 });
+    const jobs = (payload.content || []).slice(0, 12).map((item) => {
+      const locParts = [item.location?.city, item.location?.country].filter(Boolean);
+      const loc = locParts.join(", ") || "Global";
+      const remoteFlag = Boolean(item.location?.remote);
+      return extractCanonicalJob({
+        id: `sr-${slug}-${item.id}`,
+        title: item.name || "Global Career",
+        company: label,
+        location: loc,
+        modality: remoteFlag ? "Remoto" : "Híbrido",
+        salary: "A combinar",
+        skills: [],
+        description: `${item.name || ""} at ${label} (${loc}). ${item.department?.label || ""}`,
+        url: item.ref ? `https://jobs.smartrecruiters.com/${slug}/${item.id}` : `https://jobs.smartrecruiters.com/${slug}`,
+        source: `SmartRecruiters (${label})`,
+        posted_at: String(item.releasedDate || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "SmartRecruiters ATS", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "SmartRecruiters ATS", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchDevItJobsUk() {
+  const key = "devitjobs_uk";
+  const cached = getCachedSource(key);
+  if (cached) return { source: "DevITjobs UK", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry("https://devitjobs.uk/api/jobsLight", { timeoutMs: 3200, retries: 0 });
+    const jobs = (Array.isArray(payload) ? payload : []).slice(0, 15).map((item) => {
+      const loc = item.actualCity || item.cityCategory || "United Kingdom";
+      const remote = /remote|hybrid/i.test(String(item.workplace || ""));
+      return extractCanonicalJob({
+        id: `devituk-${item._id || item.jobUrl}`,
+        title: item.name || "Tech Role UK",
+        company: item.company || "UK Tech",
+        location: loc,
+        modality: remote ? "Remoto" : "Híbrido",
+        salary: item.annualSalaryFrom && item.annualSalaryTo ? `GBP ${item.annualSalaryFrom} - ${item.annualSalaryTo}` : "A combinar",
+        skills: item.technologies || [],
+        description: `${item.name || ""} at ${item.company || ""} (${loc}). Technologies: ${(item.technologies || []).join(", ")}`,
+        url: item.jobUrl ? `https://devitjobs.uk/jobs/${item.jobUrl}` : "https://devitjobs.uk",
+        source: "DevITjobs UK (Europa)",
+        posted_at: String(item.activeFrom || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "DevITjobs UK", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "DevITjobs UK", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchGetOnBrd() {
+  const key = "getonbrd";
+  const cached = getCachedSource(key);
+  if (cached) return { source: "GetOnBrd LATAM", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry("https://www.getonbrd.com/api/v0/categories/programming/jobs?per_page=15", { timeoutMs: 3200, retries: 0 });
+    const jobs = (payload.data || []).slice(0, 15).map((item) => {
+      const attr = item.attributes || {};
+      const desc = stripHtml(attr.description || attr.functions || "");
+      return extractCanonicalJob({
+        id: `getonbrd-${item.id}`,
+        title: attr.title || "Tech Job LATAM",
+        company: (attr.company && attr.company.data && attr.company.data.attributes && attr.company.data.attributes.name) || "Empresa LATAM",
+        location: attr.remote ? "Remoto LATAM" : (attr.countries || []).join(", ") || "LATAM",
+        modality: attr.remote ? "Remoto" : "Híbrido",
+        salary: attr.min_salary && attr.max_salary ? `USD ${attr.min_salary} - ${attr.max_salary}` : "A combinar",
+        skills: [],
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: (item.links && item.links.public_url) || "https://www.getonbrd.com",
+        source: "GetOnBrd (LATAM)",
+        posted_at: attr.published_at ? new Date(attr.published_at * 1000).toISOString().slice(0, 10) : "",
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "GetOnBrd LATAM", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "GetOnBrd LATAM", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+const GLOBAL_COMPANY_BOARDS = {
+  greenhouse: [
+    ["nubank", "Nubank"], ["brex", "Brex"], ["quintoandar", "QuintoAndar"], ["vtex", "VTEX"],
+    ["gitlab", "GitLab"], ["cloudflare", "Cloudflare"], ["datadog", "Datadog"], ["elastic", "Elastic"],
+    ["mongodb", "MongoDB"], ["canonical", "Canonical"], ["stripe", "Stripe"], ["figma", "Figma"], ["discord", "Discord"],
+  ],
+  lever: [
+    ["spotify", "Spotify"], ["netflix", "Netflix"], ["palantir", "Palantir"], ["atlassian", "Atlassian"], ["plaid", "Plaid"],
+  ],
+  ashby: [
+    ["openai", "OpenAI"], ["notion", "Notion"], ["supabase", "Supabase"], ["vanta", "Vanta"], ["vercel", "Vercel"], ["linear", "Linear"],
+  ],
+  smartrecruiters: [
+    ["BoschGroup", "Bosch"], ["Visa", "Visa"], ["IKEA", "IKEA"], ["Adidas", "Adidas"],
+  ],
+};
+
 /**
- * Coleta vagas de todas as fontes em pool de concorrência (limite = 5), deduplica (fuzzy Jaccard >= 0.85) e mede latências.
+ * Coleta vagas de todas as fontes em pool de concorrência (limite = 6), deduplica (fuzzy Jaccard >= 0.85) e mede latências.
  */
 export async function collectJobsWithTelemetry({
   sourceFilter = "all",
@@ -528,19 +675,30 @@ export async function collectJobsWithTelemetry({
       tasks.push(() => fetchGitHubBr("frontendbr/vagas"));
       tasks.push(() => fetchGitHubBr("qa-brasil/vagas"));
       tasks.push(() => fetchGitHubBr("react-brasil/vagas"));
+      tasks.push(() => fetchGitHubBr("androiddevbr/vagas"));
+      tasks.push(() => fetchGitHubBr("soujava/vagas"));
       tasks.push(() => fetchRemoteOk());
       tasks.push(() => fetchTheMuse());
-      // ATS públicos globais e Brasil (Carreira Direta)
-      tasks.push(() => fetchGreenhouseBoard("nubank", "Nubank"));
-      tasks.push(() => fetchGreenhouseBoard("gitlab", "GitLab"));
-      tasks.push(() => fetchGreenhouseBoard("cloudflare", "Cloudflare"));
-      tasks.push(() => fetchGreenhouseBoard("datadog", "Datadog"));
-      tasks.push(() => fetchLeverBoard("spotify", "Spotify"));
+      tasks.push(() => fetchDevItJobsUk());
+      tasks.push(() => fetchGetOnBrd());
+      // Sites diretos de empresas em todo o mundo (Greenhouse, Lever, Ashby, SmartRecruiters)
+      for (const [slug, label] of GLOBAL_COMPANY_BOARDS.greenhouse) {
+        tasks.push(() => fetchGreenhouseBoard(slug, label));
+      }
+      for (const [slug, label] of GLOBAL_COMPANY_BOARDS.lever) {
+        tasks.push(() => fetchLeverBoard(slug, label));
+      }
+      for (const [slug, label] of GLOBAL_COMPANY_BOARDS.ashby) {
+        tasks.push(() => fetchAshbyBoard(slug, label));
+      }
+      for (const [slug, label] of GLOBAL_COMPANY_BOARDS.smartrecruiters) {
+        tasks.push(() => fetchSmartRecruitersBoard(slug, label));
+      }
     }
   }
 
-  // Concorrência controlada de no máximo 5 requisições simultâneas
-  const batches = await runWithConcurrencyPool(tasks, 5);
+  // Concorrência controlada de no máximo 6 requisições simultâneas
+  const batches = await runWithConcurrencyPool(tasks, 6);
 
   const rawJobs = [];
   const apiLatencies = {};
@@ -569,7 +727,8 @@ export async function collectJobsWithTelemetry({
     else if (b.source === "Himalayas") counts.himalayas += b.jobs.length;
     else if (b.source === "Working Nomads") counts.workingnomads += b.jobs.length;
     else if (b.source === "The Muse") counts.themuse += b.jobs.length;
-    else if (b.source === "Greenhouse ATS" || b.source === "Lever ATS") counts.ats_direct += b.jobs.length;
+    else if (b.source === "DevITjobs UK" || b.source === "GetOnBrd LATAM") counts.themuse += b.jobs.length;
+    else if (b.source.endsWith("ATS")) counts.ats_direct += b.jobs.length;
     else if (b.source.startsWith("GitHub")) counts.github_br += b.jobs.length;
 
     if (!apiLatencies[b.source]) {
