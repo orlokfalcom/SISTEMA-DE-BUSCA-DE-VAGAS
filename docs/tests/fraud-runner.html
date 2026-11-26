@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>VagaPulse AI 2.0 — Benchmark Antifraude (108 Cenários)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+    .ok { color: #34d399; }
+    .fail { color: #f87171; }
+    pre { background: #1e293b; padding: 14px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <h1>VagaPulse AI 2.0 — Benchmark Antifraude</h1>
+  <div id="status" data-status="running">Executando 108 cenários...</div>
+  <pre id="metricsJson"></pre>
+
+  <script type="module">
+    import { runFraudBenchmark } from './fraud_benchmark.test.mjs';
+    const statusEl = document.getElementById('status');
+    const metricsEl = document.getElementById('metricsJson');
+    try {
+      const report = await runFraudBenchmark();
+      statusEl.textContent = `PASS — ${report.totalScenarios} cenários | Precision=${report.precision} Recall=${report.recall} F1=${report.f1}`;
+      statusEl.dataset.status = 'passed';
+      statusEl.className = 'ok';
+      metricsEl.textContent = JSON.stringify(report, null, 2);
+    } catch (err) {
+      statusEl.textContent = `FAIL — ${err?.message || err}`;
+      statusEl.dataset.status = 'failed';
+      statusEl.className = 'fail';
+    }
+  </script>
+</body>
+</html>

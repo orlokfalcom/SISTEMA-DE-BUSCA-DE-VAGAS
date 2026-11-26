@@ -13,7 +13,7 @@ import {
   tokenize,
 } from "./nlp.js";
 import { InvertedIndex } from "./index.js";
-import { evaluateJobAuthenticity } from "./fraud.js";
+import { buildCorpusStats, evaluateJobAuthenticity } from "./fraud.js";
 
 export const DEFAULT_WEIGHTS = {
   exactSkills: 0.42,
@@ -313,6 +313,7 @@ export function matchJobsHybrid({
   const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
   const canonicalJobs = jobs.map((j) => (j.canonical ? j : extractCanonicalJob(j)));
   const activeIndex = index || new InvertedIndex().build(canonicalJobs);
+  const corpusStats = buildCorpusStats(canonicalJobs);
   const w = normalizeWeights(weights);
 
   const normalizedCandSkills = [...new Set(candidateSkills.map(resolveSkillAlias).filter(Boolean))];
@@ -340,7 +341,7 @@ export function matchJobsHybrid({
   const results = [];
 
   for (const job of canonicalJobs) {
-    const authenticity = evaluateJobAuthenticity(job);
+    const authenticity = evaluateJobAuthenticity(job, { corpusStats });
     if (fraudMode === "hide_scam" && authenticity.isFake) {
       filteredFakeCount++;
       continue;

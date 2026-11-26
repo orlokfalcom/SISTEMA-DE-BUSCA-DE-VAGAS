@@ -714,7 +714,8 @@ function buildJobCardHtml(rawJob) {
       </div>
       <div class="job-meta-tags">
         ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
-        ${job.authenticity && job.authenticity.isSuspicious ? `<span title="${escapeHtml((job.authenticity.signals || []).join(" · "))}" style="color:#fbbf24;">⚠️ ${escapeHtml(job.authenticity.status)} (${job.authenticity.riskScore}%)</span>` : ""}
+        ${job.authenticity && job.authenticity.isSuspicious ? `<span title="${escapeHtml((job.authenticity.signals || []).map((s) => s.description || s).join(" · "))}" style="color:#fbbf24;">⚠️ ${escapeHtml(job.authenticity.status)} (Risco ${job.authenticity.riskScore}% · Conf. ${job.authenticity.confidence}%)</span>` : ""}
+        ${job.authenticity?.ghostJob?.isGhost ? `<span title="${escapeHtml((job.authenticity.ghostJob.signals || []).join(" · "))}" style="color:#c084fc;">🕰️ ${escapeHtml(job.authenticity.ghostJob.status)}</span>` : ""}
         <span>📍 ${escapeHtml(job.location)}</span>
         <span>💼 ${escapeHtml(job.modality)}</span>
         <span>🎯 ${escapeHtml(job.seniority)}</span>
@@ -930,7 +931,16 @@ async function openJobModal(jobId) {
       <span>💰 ${escapeHtml(job.salary || "A combinar")}</span>
     `;
     modalReason.textContent = job.match_reason;
-    modalBreakdown.innerHTML = renderBreakdownHtml(job.score_breakdown);
+    const auth = job.authenticity;
+    const authBoxHtml = auth
+      ? `<div style="grid-column:1/-1;margin-top:6px;padding:10px 12px;border-radius:10px;background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.2);font-size:0.8rem;">
+          <strong>🛡️ Auditoria Antifraude 2.0:</strong> ${escapeHtml(auth.status)} · Risco <strong>${auth.riskScore}/100</strong> · Confiança das evidências: <strong>${auth.confidence}%</strong><br/>
+          <span>🏢 Empresa: ${escapeHtml(auth.companyAnalysis?.status || "—")} · 🕰️ Atividade: ${escapeHtml(auth.ghostJob?.status || "—")}</span>
+          ${(auth.signals || []).length ? `<ul style="margin:6px 0 0 16px;color:#fcd34d;">${auth.signals.map((s) => `<li><strong>[${escapeHtml(s.severity)}]</strong> ${escapeHtml(s.description)} <em>(${escapeHtml(s.evidence)})</em></li>`).join("")}</ul>` : ""}
+          ${(auth.recommendations || []).length ? `<div style="margin-top:6px;color:#93c5fd;"><strong>Recomendações:</strong> ${escapeHtml(auth.recommendations.join(" "))}</div>` : ""}
+        </div>`
+      : "";
+    modalBreakdown.innerHTML = renderBreakdownHtml(job.score_breakdown) + authBoxHtml;
     modalDescription.innerHTML = highlightMatchedTerms(
       job.description || "Descrição não informada.",
       job.highlight_terms || []
