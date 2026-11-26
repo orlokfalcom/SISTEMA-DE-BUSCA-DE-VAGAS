@@ -20,6 +20,7 @@ import {
 } from '../js/matcher.js';
 import { AutonomousSecurityAIGuard } from '../js/security_ai.js';
 import { buildExternalLinks } from '../js/fetcher.js';
+import { getTranslatedJobView, translateStructuredField } from '../js/translator.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -220,14 +221,22 @@ export async function runAllTests() {
     }
 
     const index = new InvertedIndex().build(manyJobs);
-    // Warmup JIT antes de medir latência em regime
+    // Warmup JIT antes de medir latência mediana em regime
     index.search('Java SQL', { returnScores: true });
-    const t0 = performance.now();
-    const hits = index.search('React TypeScript Node.js', { returnScores: true });
-    const elapsed = performance.now() - t0;
+    index.search('React TypeScript Node.js', { returnScores: true });
+
+    const timings = [];
+    let hits = [];
+    for (let run = 0; run < 5; run++) {
+      const t0 = performance.now();
+      hits = index.search('React TypeScript Node.js', { returnScores: true });
+      timings.push(performance.now() - t0);
+    }
+    timings.sort((a, b) => a - b);
+    const elapsed = timings[2]; // mediana
 
     assert(Array.isArray(hits) && hits.length > 0, 'Busca deveria retornar documentos correspondentes');
-    assert(elapsed < 10, `Busca demorou ${elapsed.toFixed(2)}ms (esperado < 10ms)`);
+    assert(elapsed < 10, `Mediana da busca demorou ${elapsed.toFixed(2)}ms (esperado < 10ms)`);
   });
 
   // 6. Deduplicação fuzzy (URL + Jaccard >= 0.85)
@@ -393,6 +402,13 @@ export async function runAllTests() {
     assert(/bonjour/i.test(pitchFr), 'Pitch FR deve estar em Francês');
     assert(/hola/i.test(pitchEs), 'Pitch ES deve estar em Espanhol');
     assert(/はじめまして/.test(pitchJa), 'Pitch JA deve estar em Japonês');
+
+    // Tradução de campos estruturados de vagas importadas para os 5 idiomas
+    assert(translateStructuredField('modality', 'Remoto', 'en') === 'Remote', 'Modalidade EN');
+    assert(translateStructuredField('modality', 'Remoto', 'fr') === 'Télétravail', 'Modalidade FR');
+    assert(translateStructuredField('seniority', 'Sênior', 'ja') === 'シニア', 'Senioridade JA');
+    const viewJa = getTranslatedJobView({ ...jpJob, modality: 'Remoto', seniority: 'Sênior', salary: 'A combinar' }, 'ja');
+    assert(viewJa.modality === 'リモート' && viewJa.salary === '応相談', 'getTranslatedJobView deve traduzir campos da vaga');
   });
 
   const passedCount = results.filter((r) => r.passed).length;

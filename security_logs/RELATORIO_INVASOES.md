@@ -1,22 +1,25 @@
 # Relatório Autônomo de Segurança — VagaPulse AI
 
-- **Última atualização (UTC):** `2026-11-26T12:38:16.151658+00:00`
-- **Total de tentativas registradas:** `37`
-- **Bloqueios autônomos (403):** `30`
-- **Severidade:** Crítica `30` | Alta `0` | Média `7` | Baixa `0`
+- **Última atualização (UTC):** `2026-11-26T12:52:37.682740+00:00`
+- **Total de tentativas registradas:** `40`
+- **Bloqueios autônomos (403):** `32`
+- **Severidade:** Crítica `32` | Alta `0` | Média `8` | Baixa `0`
 
 ## Origens Mais Frequentes
 
 | IP / Origem | Tentativas |
 | :--- | :---: |
 | `127.0.0.1` | 18 |
-| `203.0.113.42` | 12 |
-| `198.51.100.99` | 7 |
+| `203.0.113.42` | 14 |
+| `198.51.100.99` | 8 |
 
 ## Registro Detalhado (Últimos 50 Incidentes)
 
 | Timestamp (UTC) | IP | Método / Rota | Risco | Severidade | Categorias | Ação |
 | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
+| `2026-11-26T12:52:37.681103+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
+| `2026-11-26T12:52:37.662569+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
+| `2026-11-26T12:52:37.396949+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
 | `2026-11-26T12:38:16.148815+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-26T12:38:16.127863+00:00` | `203.0.113.42` | `GET /api/search` | **100/100** | CRÍTICA | IP em Quarentena Autônoma, SQL Injection, XSS / Script Injection, Acesso Não Autorizado | BLOQUEADO (403) |
 | `2026-11-26T12:38:16.121096+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |

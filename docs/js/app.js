@@ -19,7 +19,8 @@ import {
   normalizeWeights,
 } from "./matcher.js";
 import { CANONICAL_SKILLS, resolveSkillAlias, suggestRoles } from "./nlp.js";
-import { applyUiTranslations, t } from "./i18n.js";
+import { applyUiTranslations, getUiLang, t } from "./i18n.js";
+import { getTranslatedJobView, translateJobsBatch } from "./translator.js";
 import { AutonomousSecurityAIGuard } from "./security_ai.js";
 import { idbGet, idbSet } from "./storage.js";
 
@@ -470,16 +471,18 @@ async function loadHomeLiveJobs(forceRefresh = false) {
   if (homeLiveStatus) homeLiveStatus.textContent = "🔄 Carregando vagas ao vivo...";
 
   const renderHomeCards = (jobs) => {
+    const lang = getUiLang();
     homeLiveGrid.innerHTML = jobs
       .slice(0, 6)
-      .map(
-        (j) => `
+      .map((raw) => {
+        const j = getTranslatedJobView(raw, lang);
+        return `
         <a class="mini-job-card" href="${escapeHtml(j.url)}" target="_blank" rel="noopener noreferrer">
           <span class="source-tag">${escapeHtml(j.source)}</span>
           <strong>${escapeHtml(j.title)}</strong>
           <span class="mini-job-meta">${escapeHtml(j.company)} · ${escapeHtml(j.location)} · ${escapeHtml(j.modality)}</span>
-        </a>`
-      )
+        </a>`;
+      })
       .join("");
   };
 
@@ -501,8 +504,11 @@ async function loadHomeLiveJobs(forceRefresh = false) {
       forceRefresh,
     });
     const ts = new Date().toLocaleTimeString("pt-BR");
-    if (homeLiveStatus) homeLiveStatus.textContent = `🟢 ${jobs.length} vagas · Atualizado às ${ts}`;
+    if (homeLiveStatus) homeLiveStatus.textContent = `🟢 ${jobs.length} vagas · ${ts}`;
     renderHomeCards(jobs);
+    translateJobsBatch(jobs.slice(0, 6), getUiLang(), { includeDescription: false, limit: 6 }).then((changed) => {
+      if (changed > 0) renderHomeCards(jobs);
+    });
     if (forceRefresh) showToast("🟢 Vagas recentes atualizadas!");
   } catch {
     if (homeLiveStatus && !homeLiveGrid.childElementCount) {
@@ -672,7 +678,8 @@ function getFilteredJobs() {
   return state.jobs.filter((j) => state.tracker[j.id] === tFilter);
 }
 
-function buildJobCardHtml(job) {
+function buildJobCardHtml(rawJob) {
+  const job = getTranslatedJobView(rawJob, getUiLang());
   const currentStatus = state.tracker[job.id] || "";
   const fb = state.feedbackMap[job.id] || {};
   const band = job.score_band || { label: "Média", css: "score-mid" };
@@ -818,6 +825,18 @@ function renderJobs({ resetScroll = true } = {}) {
   }
   if (state.renderedCount === 0) appendNextChunk();
 
+  // Traduz automaticamente em segundo plano as vagas importadas em outro idioma
+  translateJobsBatch(visibleJobs.slice(0, Math.max(state.renderedCount, 12)), getUiLang(), {
+    includeDescription: false,
+    limit: 12,
+  }).then((changed) => {
+    if (changed > 0 && state.jobs.length) {
+      const targetCount = Math.max(state.renderedCount, RENDER_CHUNK_SIZE);
+      const latestVisible = getFilteredJobs();
+      jobsGrid.innerHTML = latestVisible.slice(0, targetCount).map(buildJobCardHtml).join("");
+    }
+  });
+
   if (listSentinel && !listObserver && typeof IntersectionObserver !== "undefined") {
     listObserver = new IntersectionObserver(
       (entries) => {
@@ -886,48 +905,58 @@ function declareMasteredSkill(skillName) {
   }
 }
 
-function openJobModal(jobId) {
-  const job = state.jobs.find((j) => j.id === jobId);
-  if (!job) return;
-  state.activeJob = job;
+async function openJobModal(jobId) {
+  const rawJob = state.jobs.find((j) => j.id === jobId);
+  if (!rawJob) return;
+  state.activeJob = rawJob;
   recordClick(jobId);
 
-  const band = job.score_band || { label: "Média" };
-  modalSource.textContent = `${job.source} · ${job.match_score}% (${band.label})`;
-  modalTitle.textContent = job.title;
-  modalCompany.textContent = job.company;
-  modalMeta.innerHTML = `
-    ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
-    <span>📍 ${escapeHtml(job.location)}</span>
-    <span>💼 ${escapeHtml(job.modality)}</span>
-    <span>🎯 ${escapeHtml(job.seniority)}</span>
-    <span>🏷️ ${escapeHtml(job.sector || "Geral")}</span>
-    <span>💰 ${escapeHtml(job.salary || "A combinar")}</span>
-  `;
-  modalReason.textContent = job.match_reason;
-  modalBreakdown.innerHTML = renderBreakdownHtml(job.score_breakdown);
-  modalDescription.innerHTML = highlightMatchedTerms(
-    job.description || "Descrição não informada.",
-    job.highlight_terms || []
-  );
+  const renderModalContent = (sourceJob) => {
+    const job = getTranslatedJobView(sourceJob, getUiLang());
+    const band = job.score_band || { label: t("bandMid") };
+    modalSource.textContent = `${job.source} · ${job.match_score}% (${band.label})`;
+    modalTitle.textContent = job.title;
+    modalCompany.textContent = job.company;
+    modalMeta.innerHTML = `
+      ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
+      <span>📍 ${escapeHtml(job.location)}</span>
+      <span>💼 ${escapeHtml(job.modality)}</span>
+      <span>🎯 ${escapeHtml(job.seniority)}</span>
+      <span>🏷️ ${escapeHtml(job.sector || "Geral")}</span>
+      <span>💰 ${escapeHtml(job.salary || "A combinar")}</span>
+    `;
+    modalReason.textContent = job.match_reason;
+    modalBreakdown.innerHTML = renderBreakdownHtml(job.score_breakdown);
+    modalDescription.innerHTML = highlightMatchedTerms(
+      job.description || "Descrição não informada.",
+      job.highlight_terms || []
+    );
+  };
 
-  const matchedHtml = (job.matched_skills || []).map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`).join("");
-  const relatedHtml = (job.related_matches || [])
+  renderModalContent(rawJob);
+  const matchedHtml = (rawJob.matched_skills || []).map((s) => `<span class="pill matched">✓ ${escapeHtml(s)}</span>`).join("");
+  const relatedHtml = (rawJob.related_matches || [])
     .map((r) => `<span class="pill related">≈ ${escapeHtml(r.skill)} (via ${escapeHtml(r.via)}, hop ${r.hop})</span>`)
     .join("");
   modalMatchedSkills.innerHTML = matchedHtml + relatedHtml || `<span class="pill missing">Nenhuma skill direta em comum</span>`;
 
-  modalMissingSkills.innerHTML = (job.missing_skills || []).length
-    ? job.missing_skills
-        .map((s) => `<button type="button" class="pill missing master-skill-btn" data-master-skill="${escapeHtml(s)}">+ Eu domino ${escapeHtml(s)}</button>`)
+  modalMissingSkills.innerHTML = (rawJob.missing_skills || []).length
+    ? rawJob.missing_skills
+        .map((s) => `<button type="button" class="pill missing master-skill-btn" data-master-skill="${escapeHtml(s)}">+ ${escapeHtml(s)}</button>`)
         .join("")
     : `<span class="pill matched">Você cobre todas as skills listadas!</span>`;
 
-  modalPitch.textContent = job.pitch_suggestion || "";
-  copyPitchBtn.textContent = "Copiar Mensagem";
-  modalStatusSelect.value = state.tracker[job.id] || "";
-  modalApplyBtn.href = job.url || "#";
+  modalPitch.textContent = rawJob.pitch_suggestion || "";
+  copyPitchBtn.textContent = t("copyPitchBtn");
+  modalStatusSelect.value = state.tracker[rawJob.id] || "";
+  modalApplyBtn.href = rawJob.url || "#";
   jobModal.classList.remove("hidden");
+
+  translateJobsBatch([rawJob], getUiLang(), { includeDescription: true, limit: 1 }).then((changed) => {
+    if (changed > 0 && state.activeJob && state.activeJob.id === rawJob.id) {
+      renderModalContent(rawJob);
+    }
+  });
 }
 
 function closeModal() {
@@ -1488,6 +1517,7 @@ if (uiLanguageSelect) {
     const chosen = applyUiTranslations(uiLanguageSelect.value);
     idbSet("ui_lang", chosen);
     updateSecurityGuardBadge(securityGuard.getStats());
+    loadHomeLiveJobs(false);
     if (state.profile) {
       renderTelemetry();
       renderJobs({ resetScroll: false });
