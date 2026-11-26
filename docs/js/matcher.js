@@ -13,6 +13,7 @@ import {
   tokenize,
 } from "./nlp.js";
 import { InvertedIndex } from "./index.js";
+import { evaluateJobAuthenticity } from "./fraud.js";
 
 export const DEFAULT_WEIGHTS = {
   exactSkills: 0.42,
@@ -331,12 +332,24 @@ export function matchJobsHybrid({
   const normSector = filters.sector ? normalizeText(filters.sector) : "";
   const normLocation = filters.location ? normalizeText(filters.location) : "";
   const minScore = Number(filters.minScore || 0);
+  const fraudMode = String(filters.fraudMode || "hide_scam");
   const sortBy = String(filters.sortBy || "match").toLowerCase();
 
   let embeddingsUsedCount = 0;
+  let filteredFakeCount = 0;
   const results = [];
 
   for (const job of canonicalJobs) {
+    const authenticity = evaluateJobAuthenticity(job);
+    if (fraudMode === "hide_scam" && authenticity.isFake) {
+      filteredFakeCount++;
+      continue;
+    }
+    if (fraudMode === "verified_only" && authenticity.isSuspicious) {
+      filteredFakeCount++;
+      continue;
+    }
+
     // 1. Filtros duros configuráveis
     if (indexedQueryMatchIds !== null && !indexedQueryMatchIds.has(String(job.id))) {
       // Fallback substring exato caso token curto tenha sido filtrado
@@ -480,6 +493,7 @@ export function matchJobsHybrid({
       geo_label: geo.label,
       salary_numeric: parseSalaryValue(job.salary || ""),
       pitch_suggestion: buildBilingualPitch(job, matchedSkills, relatedMatches, candidateSeniority),
+      authenticity,
     });
   }
 
@@ -517,6 +531,7 @@ export function matchJobsHybrid({
       searchTimeMs: elapsedMs,
       indexedCount: activeIndex.size,
       matchedCount: results.length,
+      filteredFakeCount,
       embeddingsActive: embeddingsUsedCount > 0,
       embeddingsCoverage: results.length ? Math.round((embeddingsUsedCount / results.length) * 100) : 0,
       weights: w,

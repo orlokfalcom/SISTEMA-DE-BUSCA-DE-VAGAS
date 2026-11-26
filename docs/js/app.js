@@ -147,6 +147,7 @@ const sectorFilter = document.getElementById("sectorFilter");
 const locationFilter = document.getElementById("locationFilter");
 const sourceFilter = document.getElementById("sourceFilter");
 const minScoreFilter = document.getElementById("minScoreFilter");
+const fraudFilter = document.getElementById("fraudFilter");
 const sortFilter = document.getElementById("sortFilter");
 const trackerFilter = document.getElementById("trackerFilter");
 const clearFiltersBtn = document.getElementById("clearFiltersBtn");
@@ -283,6 +284,7 @@ function getCurrentFilters() {
     sector: sectorFilter ? sectorFilter.value : "",
     location: locationFilter ? locationFilter.value.trim() : "",
     minScore: Number((minScoreFilter && minScoreFilter.value) || 0),
+    fraudMode: (fraudFilter && fraudFilter.value) || "hide_scam",
     sortBy: (sortFilter && sortFilter.value) || "match",
   };
 }
@@ -661,6 +663,7 @@ function renderTelemetry() {
       <div class="telemetry-pill"><span>⚡ Busca/Índice</span><strong>${mm.searchTimeMs} ms</strong></div>
       <div class="telemetry-pill"><span>📚 Indexadas</span><strong>${mm.indexedCount}</strong></div>
       <div class="telemetry-pill"><span>🧹 Deduplicação</span><strong>${ft ? `${ft.duplicatesRemoved} (${ft.dedupRate}%)` : "0"}</strong></div>
+      <div class="telemetry-pill"><span>🛡️ Falsas Filtradas</span><strong>${mm.filteredFakeCount ?? 0}</strong></div>
       <div class="telemetry-pill"><span>🎯 Precision@10</span><strong>${q.precisionAtK ?? 0}% ${q.isUserMeasured ? "(real)" : "(est.)"}</strong></div>
       <div class="telemetry-pill"><span>🤖 Semântica</span><strong>${escapeHtml(state.semanticStatus)}</strong></div>
     </div>
@@ -711,6 +714,7 @@ function buildJobCardHtml(rawJob) {
       </div>
       <div class="job-meta-tags">
         ${job.geo_label ? `<span>${escapeHtml(job.geo_label)}</span>` : ""}
+        ${job.authenticity && job.authenticity.isSuspicious ? `<span title="${escapeHtml((job.authenticity.signals || []).join(" · "))}" style="color:#fbbf24;">⚠️ ${escapeHtml(job.authenticity.status)} (${job.authenticity.riskScore}%)</span>` : ""}
         <span>📍 ${escapeHtml(job.location)}</span>
         <span>💼 ${escapeHtml(job.modality)}</span>
         <span>🎯 ${escapeHtml(job.seniority)}</span>
@@ -1278,6 +1282,7 @@ if (languageFilter) languageFilter.addEventListener("change", () => triggerResea
 if (sectorFilter) sectorFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 if (locationFilter) locationFilter.addEventListener("input", () => triggerResearch({ immediate: false, refetch: false }));
 minScoreFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
+if (fraudFilter) fraudFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 sortFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: false }));
 sourceFilter.addEventListener("change", () => triggerResearch({ immediate: true, refetch: true }));
 trackerFilter.addEventListener("change", () => renderJobs({ resetScroll: true }));

@@ -21,6 +21,7 @@ import {
 import { AutonomousSecurityAIGuard } from '../js/security_ai.js';
 import { buildExternalLinks } from '../js/fetcher.js';
 import { getTranslatedJobView, translateStructuredField } from '../js/translator.js';
+import { evaluateJobAuthenticity } from '../js/fraud.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -409,6 +410,32 @@ export async function runAllTests() {
     assert(translateStructuredField('seniority', 'Sênior', 'ja') === 'シニア', 'Senioridade JA');
     const viewJa = getTranslatedJobView({ ...jpJob, modality: 'Remoto', seniority: 'Sênior', salary: 'A combinar' }, 'ja');
     assert(viewJa.modality === 'リモート' && viewJa.salary === '応相談', 'getTranslatedJobView deve traduzir campos da vaga');
+  });
+
+  // 11. Detector & filtro anti-vagas falsas / golpes
+  test('11. Detector de vagas falsas identifica golpe e filtra automaticamente no matching', () => {
+    const scamJob = makeJob({
+      id: 'scam-1',
+      title: 'GANHE R$ 500 POR DIA URGENTE!!!',
+      company: 'Confidencial',
+      description: 'Sem experiencia ganhe R$ 500 por dia para avaliar produtos. Chamar no Telegram t.me/fake e pagar taxa de inscricao via Pix.',
+      url: 'https://bit.ly/fake-job'
+    });
+    const legitJob = makeJob({ id: 'legit-1' });
+
+    const scamEval = evaluateJobAuthenticity(scamJob);
+    assert(scamEval.isFake === true && scamEval.riskScore >= 60, `Esperado isFake=true, obtido ${scamEval.riskScore}`);
+
+    const idx = new InvertedIndex().build([scamJob, legitJob]);
+    const filtered = matchJobsHybrid({
+      jobs: [scamJob, legitJob],
+      index: idx,
+      candidateSkills: ['JavaScript', 'React'],
+      candidateText: 'Senior Full Stack Engineer',
+      filters: { fraudMode: 'hide_scam' }
+    });
+    assert(filtered.jobs.length === 1 && filtered.jobs[0].id === 'legit-1', 'Filtro hide_scam deve remover vaga falsa');
+    assert(filtered.metrics.filteredFakeCount === 1, 'Telemetria deve contabilizar 1 vaga falsa filtrada');
   });
 
   const passedCount = results.filter((r) => r.passed).length;
