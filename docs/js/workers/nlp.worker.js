@@ -78,6 +78,7 @@ self.addEventListener("message", (event) => {
         candidateSkills: payload.candidateSkills || [],
         candidateText: payload.candidateText || "",
         candidateSeniority: payload.candidateSeniority || "Pleno",
+        candidateYears: payload.candidateYears ?? null,
         candidateSector: payload.candidateSector || "",
         suggestedRoles: payload.suggestedRoles || [],
         userCountry: payload.userCountry || "Brasil",

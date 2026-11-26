@@ -94,9 +94,12 @@ export class InvertedIndex {
     }
 
     if (rawScore <= 0) return 0;
-    // Normalização suave para faixa [0, 1] relativa ao tamanho da query ou ao maxRefScore do corpus
-    const denom = maxRefScore && maxRefScore > 0 ? maxRefScore : Math.max(queryTerms.length * 1.45, 6);
-    return Math.min(rawScore / denom, 1);
+    // Saturação suave (0..1) independente de currículos muito longos
+    if (maxRefScore && maxRefScore > 0) {
+      return Math.min(rawScore / maxRefScore, 1);
+    }
+    const kSat = Math.max(Math.min(queryTerms.length, 24) * 0.9, 5);
+    return Math.min(rawScore / (rawScore + kSat), 1);
   }
 
   /**

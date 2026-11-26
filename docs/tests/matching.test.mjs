@@ -19,6 +19,7 @@ import {
   buildBilingualPitch
 } from '../js/matcher.js';
 import { AutonomousSecurityAIGuard } from '../js/security_ai.js';
+import { buildExternalLinks } from '../js/fetcher.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -327,6 +328,36 @@ export async function runAllTests() {
     const doc = guard.generateMarkdownDocument();
     assert(doc.includes('Documento Autônomo de Auditoria de Segurança'), 'Documento Markdown deve ser gerado');
     assert(doc.includes('XSS / Script Injection'), 'Documento deve registrar tentativa XSS');
+  });
+
+  // 9. Precisão por skill crítica de título + anos de experiência + portais globais
+  test('9. Precisão por skill crítica de título, anos de experiência e cobertura global de portais', () => {
+    const pyJob = makeJob({
+      id: 'crit-py',
+      title: 'Senior Python Engineer',
+      skills: ['Python', 'Docker', 'SQL'],
+      description: 'Senior Python Engineer com 5+ anos em Python, Docker e SQL.'
+    });
+    const javaJob = makeJob({
+      id: 'crit-java',
+      title: 'Senior Java Engineer',
+      skills: ['Java', 'Docker', 'SQL'],
+      description: 'Senior Java Engineer com 5+ anos em Java, Docker e SQL.'
+    });
+    const idx = new InvertedIndex().build([pyJob, javaJob]);
+    const res = matchJobsHybrid({
+      jobs: [pyJob, javaJob],
+      index: idx,
+      candidateSkills: ['Python', 'Docker', 'SQL'],
+      candidateText: 'Senior Python Engineer com 6 anos em Python, Docker e SQL',
+      candidateSeniority: 'Sênior',
+      candidateYears: 6
+    });
+    assert(res.jobs[0].id === 'crit-py', `Esperado crit-py no topo, obtido ${res.jobs[0].id}`);
+    assert(res.jobs[0].match_score > res.jobs[1].match_score, 'Skill crítica no título deve diferenciar o score');
+
+    const links = buildExternalLinks(['Python', 'Docker'], ['Backend Engineer'], 'Brasil');
+    assert(links.length >= 25, `Esperado >= 25 sistemas globais, obtido ${links.length}`);
   });
 
   const passedCount = results.filter((r) => r.passed).length;

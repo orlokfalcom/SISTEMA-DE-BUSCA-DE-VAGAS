@@ -336,6 +336,7 @@ async function runMatchInWorker() {
     candidateSkills: state.skills,
     candidateText: state.resumeTextSnippet,
     candidateSeniority: state.seniority,
+    candidateYears: (state.profile && state.profile.estimated_years) ?? null,
     candidateSector: (state.profile && state.profile.sector) || "",
     suggestedRoles: roles,
     userCountry: (state.profile && state.profile.country) || "Brasil",
@@ -737,9 +738,13 @@ function renderJobs({ resetScroll = true } = {}) {
     (state.sources.arbeitnow || 0) +
     (state.sources.jobicy || 0) +
     (state.sources.remoteok || 0) +
+    (state.sources.himalayas || 0) +
+    (state.sources.workingnomads || 0) +
+    (state.sources.themuse || 0) +
+    (state.sources.ats_direct || 0) +
     (state.sources.github_br || 0);
   const trackedCount = Object.keys(state.tracker).length;
-  const modeLabel = state.sources.deep_search ? "Busca Profunda" : "APIs Ao Vivo";
+  const modeLabel = state.sources.deep_search ? "Busca Global" : "APIs Ao Vivo";
 
   resultsSummary.innerHTML = `
     <span>Exibindo <strong>${visibleJobs.length}</strong> vaga(s) · Rastreadas: <strong>${trackedCount}</strong></span>
@@ -753,6 +758,10 @@ function renderJobs({ resetScroll = true } = {}) {
       ["Jobicy", state.sources.jobicy],
       ["Arbeitnow", state.sources.arbeitnow],
       ["RemoteOK", state.sources.remoteok],
+      ["Himalayas", state.sources.himalayas],
+      ["Working Nomads", state.sources.workingnomads],
+      ["The Muse", state.sources.themuse],
+      ["ATS Direto", state.sources.ats_direct],
       ["GitHub BR", state.sources.github_br],
     ].filter(([, count]) => Number(count || 0) > 0);
     sourcesStrip.innerHTML = sourceLabels
@@ -949,6 +958,7 @@ function runCustomComparison() {
     candidateSkills: state.skills,
     candidateText: state.resumeTextSnippet,
     candidateSeniority: state.seniority,
+    candidateYears: (state.profile && state.profile.estimated_years) ?? null,
     candidateSector: (state.profile && state.profile.sector) || "",
     suggestedRoles: (state.profile && state.profile.suggested_roles) || [],
     userCountry: (state.profile && state.profile.country) || "Brasil",

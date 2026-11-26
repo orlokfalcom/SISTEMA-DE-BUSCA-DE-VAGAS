@@ -34,7 +34,7 @@ export async function runWithConcurrencyPool(tasks, concurrency = 5) {
 /**
  * Fetch com timeout, retry automático e backoff exponencial com jitter.
  */
-export async function fetchJsonWithRetry(url, { timeoutMs = 5500, retries = 2, baseDelayMs = 350 } = {}) {
+export async function fetchJsonWithRetry(url, { timeoutMs = 3800, retries = 1, baseDelayMs = 300 } = {}) {
   let lastError = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     const ctrl = new AbortController();
@@ -320,6 +320,169 @@ async function fetchGitHubBr(repo = "backend-br/vagas") {
   }
 }
 
+async function fetchHimalayas() {
+  const key = "himalayas";
+  const cached = getCachedSource(key);
+  if (cached) return { source: "Himalayas", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry("https://himalayas.app/jobs/api?limit=25");
+    const jobs = (payload.jobs || []).slice(0, 25).map((item, idx) => {
+      const desc = stripHtml(item.description || item.excerpt || "");
+      return extractCanonicalJob({
+        id: `himalayas-${item.guid || item.slug || idx}`,
+        title: item.title || "Remote Job",
+        company: item.companyName || "Empresa Global",
+        location: (item.locationRestrictions || []).join(", ") || "Remoto Global",
+        modality: "Remoto",
+        seniority: `${item.title || ""} ${(item.seniority || []).join(" ")}`,
+        salary: item.minSalary && item.maxSalary ? `USD ${item.minSalary} - ${item.maxSalary}` : "A combinar",
+        skills: item.categories || [],
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: item.applicationLink || `https://himalayas.app/jobs/${item.slug || ""}`,
+        source: "Himalayas (Global)",
+        posted_at: item.pubDate ? new Date(item.pubDate * 1000).toISOString().slice(0, 10) : "",
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "Himalayas", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Himalayas", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchWorkingNomads() {
+  const key = "workingnomads";
+  const cached = getCachedSource(key);
+  if (cached) return { source: "Working Nomads", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry("https://www.workingnomads.com/api/exposed_jobs/");
+    const jobs = (Array.isArray(payload) ? payload : []).slice(0, 25).map((item, idx) => {
+      const desc = stripHtml(item.description || "");
+      return extractCanonicalJob({
+        id: `wn-${idx}-${(item.url || "").slice(-16)}`,
+        title: item.title || "Remote Job",
+        company: item.company_name || "Empresa Global",
+        location: item.location || "Remoto Global",
+        modality: "Remoto",
+        salary: "A combinar",
+        skills: String(item.tags || "").split(",").map((s) => s.trim()).filter(Boolean),
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: item.url || "https://www.workingnomads.com/jobs",
+        source: "Working Nomads (Global)",
+        posted_at: String(item.pub_date || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "Working Nomads", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Working Nomads", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchTheMuse() {
+  const key = "themuse";
+  const cached = getCachedSource(key);
+  if (cached) return { source: "The Muse", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry("https://www.themuse.com/api/public/jobs?page=1");
+    const jobs = (payload.results || []).slice(0, 20).map((item) => {
+      const desc = stripHtml(item.contents || "");
+      const loc = (item.locations || []).map((l) => l.name).join(", ") || "Global";
+      const normLoc = normalizeText(loc);
+      return extractCanonicalJob({
+        id: `themuse-${item.id}`,
+        title: item.name || "Global Role",
+        company: (item.company && item.company.name) || "Global Company",
+        location: loc,
+        modality: normLoc.includes("remote") || normLoc.includes("flexible") ? "Remoto" : "Híbrido",
+        seniority: `${item.name || ""} ${(item.levels || []).map((l) => l.name).join(" ")}`,
+        salary: "A combinar",
+        skills: (item.categories || []).map((c) => c.name),
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: (item.refs && item.refs.landing_page) || "https://www.themuse.com/jobs",
+        source: "The Muse (Global)",
+        posted_at: String(item.publication_date || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "The Muse", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "The Muse", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchGreenhouseBoard(slug, label) {
+  const key = `gh_board:${slug}`;
+  const cached = getCachedSource(key);
+  if (cached) return { source: "Greenhouse ATS", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry(`https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`);
+    const jobs = (payload.jobs || []).slice(0, 15).map((item) => {
+      const loc = (item.location && item.location.name) || "Global";
+      const normLoc = normalizeText(loc);
+      const desc = stripHtml(item.content || "");
+      return extractCanonicalJob({
+        id: `greenhouse-${slug}-${item.id}`,
+        title: item.title || "Carreira Direta",
+        company: label,
+        location: loc,
+        modality: normLoc.includes("remote") || normLoc.includes("remoto") ? "Remoto" : normLoc.includes("hybrid") ? "Híbrido" : "Presencial",
+        salary: "A combinar",
+        skills: [],
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: item.absolute_url || `https://boards.greenhouse.io/${slug}`,
+        source: `Greenhouse (${label})`,
+        posted_at: String(item.updated_at || "").slice(0, 10),
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "Greenhouse ATS", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Greenhouse ATS", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
+async function fetchLeverBoard(slug, label) {
+  const key = `lever:${slug}`;
+  const cached = getCachedSource(key);
+  if (cached) return { source: "Lever ATS", jobs: cached, latencyMs: 0, cached: true, ok: true };
+
+  const t0 = performance.now();
+  try {
+    const payload = await fetchJsonWithRetry(`https://api.lever.co/v0/postings/${slug}?mode=json`);
+    const jobs = (Array.isArray(payload) ? payload : []).slice(0, 15).map((item) => {
+      const loc = (item.categories && item.categories.location) || "Global";
+      const normLoc = normalizeText(`${loc} ${item.workplaceType || ""}`);
+      const desc = stripHtml(item.descriptionPlain || item.description || "");
+      return extractCanonicalJob({
+        id: `lever-${slug}-${item.id}`,
+        title: item.text || "Carreira Direta",
+        company: label,
+        location: loc,
+        modality: normLoc.includes("remote") ? "Remoto" : normLoc.includes("hybrid") ? "Híbrido" : "Presencial",
+        salary: "A combinar",
+        skills: [],
+        description: desc.slice(0, 1200) + (desc.length > 1200 ? "..." : ""),
+        url: item.hostedUrl || `https://jobs.lever.co/${slug}`,
+        source: `Lever (${label})`,
+        posted_at: item.createdAt ? new Date(item.createdAt).toISOString().slice(0, 10) : "",
+      });
+    });
+    setCachedSource(key, jobs);
+    return { source: "Lever ATS", jobs, latencyMs: Math.round(performance.now() - t0), cached: false, ok: true };
+  } catch {
+    return { source: "Lever ATS", jobs: [], latencyMs: Math.round(performance.now() - t0), cached: false, ok: false };
+  }
+}
+
 /**
  * Coleta vagas de todas as fontes em pool de concorrência (limite = 5), deduplica (fuzzy Jaccard >= 0.85) e mede latências.
  */
@@ -354,10 +517,21 @@ export async function collectJobsWithTelemetry({
       tasks.push(() => fetchJobicy(t));
     }
     tasks.push(() => fetchArbeitnow());
+    tasks.push(() => fetchHimalayas());
     tasks.push(() => fetchGitHubBr("backend-br/vagas"));
     if (deepSearch) {
+      tasks.push(() => fetchWorkingNomads());
+      tasks.push(() => fetchGitHubBr("frontendbr/vagas"));
       tasks.push(() => fetchGitHubBr("qa-brasil/vagas"));
+      tasks.push(() => fetchGitHubBr("react-brasil/vagas"));
       tasks.push(() => fetchRemoteOk());
+      tasks.push(() => fetchTheMuse());
+      // ATS públicos globais e Brasil (Carreira Direta)
+      tasks.push(() => fetchGreenhouseBoard("nubank", "Nubank"));
+      tasks.push(() => fetchGreenhouseBoard("gitlab", "GitLab"));
+      tasks.push(() => fetchGreenhouseBoard("cloudflare", "Cloudflare"));
+      tasks.push(() => fetchGreenhouseBoard("datadog", "Datadog"));
+      tasks.push(() => fetchLeverBoard("spotify", "Spotify"));
     }
   }
 
@@ -372,6 +546,10 @@ export async function collectJobsWithTelemetry({
     arbeitnow: 0,
     jobicy: 0,
     remoteok: 0,
+    himalayas: 0,
+    workingnomads: 0,
+    themuse: 0,
+    ats_direct: 0,
     github_br: 0,
     deep_search: deepSearch,
   };
@@ -384,6 +562,10 @@ export async function collectJobsWithTelemetry({
     else if (b.source === "Arbeitnow") counts.arbeitnow += b.jobs.length;
     else if (b.source === "Jobicy") counts.jobicy += b.jobs.length;
     else if (b.source === "RemoteOK") counts.remoteok += b.jobs.length;
+    else if (b.source === "Himalayas") counts.himalayas += b.jobs.length;
+    else if (b.source === "Working Nomads") counts.workingnomads += b.jobs.length;
+    else if (b.source === "The Muse") counts.themuse += b.jobs.length;
+    else if (b.source === "Greenhouse ATS" || b.source === "Lever ATS") counts.ats_direct += b.jobs.length;
     else if (b.source.startsWith("GitHub")) counts.github_br += b.jobs.length;
 
     if (!apiLatencies[b.source]) {
@@ -417,27 +599,52 @@ export function buildExternalLinks(skills, roles, userCountry = "Brasil") {
   const rawRole = roles[1] || roles[0] || query;
   const roleParts = rawRole.split("/").map((p) => p.trim()).filter(Boolean);
   const roleQuery = roleParts.sort((a, b) => b.length - a.length)[0] || query;
-  const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto") ${userCountry}`;
-  const compBrDork = `(site:gupy.io OR site:boards.greenhouse.io OR site:jobs.lever.co) ("${roleQuery}" OR "${query}") (${userCountry} OR "Remoto")`;
-  const compGlobalDork = `(site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com) ("${roleQuery}" OR "${query}") ("Remote" OR "LATAM" OR "Brazil")`;
+  const deepDork = `("${roleQuery}" OR "${query}") ("vaga" OR "remote" OR "remoto" OR "job")`;
+  const atsGlobalDork = `(site:boards.greenhouse.io OR site:jobs.lever.co OR site:jobs.ashbyhq.com OR site:myworkdayjobs.com OR site:jobs.smartrecruiters.com OR site:apply.workable.com OR site:bamboohr.com) ("${roleQuery}" OR "${query}")`;
+  const compBrDork = `(site:gupy.io OR site:vagas.com.br OR site:inhire.app OR site:kenoby.com OR site:solides.jobs) ("${roleQuery}" OR "${query}") (${userCountry} OR "Remoto")`;
   const enc = encodeURIComponent(query);
   const encRole = encodeURIComponent(roleQuery);
   const encDork = encodeURIComponent(deepDork);
   const encCountry = encodeURIComponent(userCountry);
+  const slugRole = encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"));
   return [
-    { portal: `Sites de Empresas (${userCountry})`, url: `https://www.google.com/search?q=${encodeURIComponent(compBrDork)}` },
-    { portal: "Carreiras Diretas (Global)", url: `https://www.google.com/search?q=${encodeURIComponent(compGlobalDork)}` },
-    { portal: "Google Jobs (Busca Profunda)", url: `https://www.google.com/search?q=${encDork}&ibp=htl;jobs` },
-    { portal: "LinkedIn (Skills)", url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=${encCountry}` },
-    { portal: "LinkedIn (Cargo)", url: `https://www.linkedin.com/jobs/search/?keywords=${encRole}&location=${encCountry}` },
-    { portal: "Gupy", url: `https://portal.gupy.io/job-search/term=${encRole}` },
+    // ATS Globais & Carreira Direta
+    { portal: `ATS Brasil (Gupy/Kenoby/InHire)`, url: `https://www.google.com/search?q=${encodeURIComponent(compBrDork)}` },
+    { portal: "ATS Globais (Greenhouse/Lever/Ashby/Workday)", url: `https://www.google.com/search?q=${encodeURIComponent(atsGlobalDork)}` },
+    { portal: "Google Jobs (Mundial)", url: `https://www.google.com/search?q=${encDork}&ibp=htl;jobs` },
+    // Redes & Portais Globais
+    { portal: "LinkedIn Global", url: `https://www.linkedin.com/jobs/search/?keywords=${encRole}` },
+    { portal: `LinkedIn (${userCountry})`, url: `https://www.linkedin.com/jobs/search/?keywords=${enc}&location=${encCountry}` },
+    { portal: "Indeed Global", url: `https://www.indeed.com/jobs?q=${encRole}` },
     { portal: "Indeed Brasil", url: `https://br.indeed.com/jobs?q=${enc}&l=${encCountry}` },
-    { portal: "Glassdoor Brasil", url: `https://www.glassdoor.com.br/Vaga/brasil-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}-vagas-SRCH_IL.0,6_IN36.htm` },
+    { portal: "Glassdoor Global", url: `https://www.glassdoor.com/Job/jobs.htm?sc.keyword=${encRole}` },
+    { portal: "Wellfound (Startups)", url: `https://wellfound.com/jobs?q=${enc}` },
+    { portal: "Himalayas (Remote)", url: `https://himalayas.app/jobs?q=${enc}` },
+    { portal: "We Work Remotely", url: `https://weworkremotely.com/remote-jobs/search?term=${enc}` },
+    { portal: "RemoteOK", url: `https://remoteok.com/remote-${slugRole}-jobs` },
+    { portal: "Remotive", url: `https://remotive.com/remote-jobs?search=${enc}` },
+    { portal: "Working Nomads", url: `https://www.workingnomads.com/jobs?q=${enc}` },
+    { portal: "The Muse", url: `https://www.themuse.com/search/keyword/${enc}` },
+    { portal: "BuiltIn (US/Global)", url: `https://builtin.com/jobs?search=${enc}` },
+    { portal: "Dice (Tech US)", url: `https://www.dice.com/jobs?q=${encRole}` },
+    { portal: "ZipRecruiter", url: `https://www.ziprecruiter.com/jobs-search?search=${encRole}` },
+    // Europa & Ásia-Pacífico
+    { portal: "Arbeitnow (Europa)", url: `https://www.arbeitnow.com/jobs?search=${enc}` },
+    { portal: "Landing.jobs (Europa)", url: `https://landing.jobs/jobs?q=${enc}` },
+    { portal: "Welcome to the Jungle", url: `https://www.welcometothejungle.com/en/jobs?query=${enc}` },
+    { portal: "Relocate.me (Visto/Global)", url: `https://relocate.me/search?query=${enc}` },
+    { portal: "Reed (Reino Unido)", url: `https://www.reed.co.uk/jobs/${slugRole}-jobs` },
+    { portal: "StepStone (Alemanha/EU)", url: `https://www.stepstone.de/jobs/${slugRole}.html` },
+    { portal: "TokyoDev (Japão/APAC)", url: `https://www.tokyodev.com/jobs?q=${enc}` },
+    { portal: "Seek (Austrália/NZ)", url: `https://www.seek.com.au/${slugRole}-jobs` },
+    // Brasil & América Latina
+    { portal: "Gupy", url: `https://portal.gupy.io/job-search/term=${encRole}` },
+    { portal: "GetOnBrd (LATAM)", url: `https://www.getonbrd.com/jobs-${slugRole}` },
     { portal: "Programathor", url: `https://programathor.com.br/jobs?search=${enc}` },
-    { portal: "Catho", url: `https://www.catho.com.br/vagas/${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}/` },
-    { portal: "Vagas.com.br", url: `https://www.vagas.com.br/vagas-de-${encodeURIComponent(roleQuery.toLowerCase().replace(/\s+/g, "-"))}` },
     { portal: "GeekHunter", url: `https://www.geekhunter.com.br/vagas?q=${enc}` },
+    { portal: "Catho", url: `https://www.catho.com.br/vagas/${slugRole}/` },
+    { portal: "Vagas.com.br", url: `https://www.vagas.com.br/vagas-de-${slugRole}` },
     { portal: "InfoJobs", url: `https://www.infojobs.com.br/empregos.aspx?palabra=${encRole}` },
-    { portal: "Wellfound (Global)", url: `https://wellfound.com/jobs?q=${enc}` },
+    { portal: "Trampos.co", url: `https://trampos.co/oportunidades?tr=${enc}` },
   ];
 }

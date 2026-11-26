@@ -5,6 +5,7 @@
 import {
   SENIORITY_LEVELS,
   extractCanonicalJob,
+  extractSkillsCanonical,
   findRelatedSkillsViaGraph,
   normalizeSeniority,
   normalizeText,
@@ -279,6 +280,7 @@ export function matchJobsHybrid({
   candidateSkills = [],
   candidateText = "",
   candidateSeniority = "Pleno",
+  candidateYears = null,
   candidateSector = "",
   suggestedRoles = [],
   userCountry = "Brasil",
@@ -295,7 +297,9 @@ export function matchJobsHybrid({
 
   const normalizedCandSkills = [...new Set(candidateSkills.map(resolveSkillAlias).filter(Boolean))];
   const candSkillMap = new Map(normalizedCandSkills.map((s) => [s.toLowerCase(), s]));
-  const candQueryTerms = tokenize(`${candidateText} ${normalizedCandSkills.join(" ")} ${suggestedRoles.join(" ")}`);
+  const candQueryTerms = [
+    ...new Set(tokenize(`${normalizedCandSkills.join(" ")} ${suggestedRoles.join(" ")} ${candidateText.slice(0, 1200)}`)),
+  ].slice(0, 36);
   const roleTokens = new Set(tokenize(suggestedRoles.join(" ")));
 
   // Filtro rápido via Índice Invertido para searchQuery
@@ -342,9 +346,18 @@ export function matchJobsHybrid({
     let exactScore = 0.28;
     let relatedScore = 0;
     if (jobSkills.length) {
-      const exactRatio = Math.min(matchedSkills.length / jobSkills.length, 1);
+      // Skills mencionadas diretamente no título da vaga têm peso 2.0 (críticas)
+      const titleSkills = new Set(extractSkillsCanonical(job.title || "").map((s) => s.toLowerCase()));
+      let matchedWeight = 0;
+      let totalWeight = 0;
+      for (const js of jobSkills) {
+        const sw = titleSkills.has(js.toLowerCase()) ? 2.0 : 1.0;
+        totalWeight += sw;
+        if (candSkillMap.has(js.toLowerCase())) matchedWeight += sw;
+      }
+      const exactRatio = totalWeight > 0 ? Math.min(matchedWeight / totalWeight, 1) : 0;
       const exactBreadth = Math.min(matchedSkills.length / 4, 1);
-      exactScore = 0.72 * exactRatio + 0.28 * exactBreadth;
+      exactScore = 0.78 * exactRatio + 0.22 * exactBreadth;
 
       if (rawMissing.length === 0) {
         // Cobertura exata de 100% não deve perder os pontos do grafo por ausência de gaps
@@ -369,8 +382,13 @@ export function matchJobsHybrid({
       embeddingsUsedCount++;
     }
 
-    // 4. Senioridade com penalidade gradativa
-    const senScore = computeSeniorityScore(candidateSeniority, job.seniority || "Pleno");
+    // 4. Senioridade + alinhamento de anos de experiência (penalidade gradativa)
+    let senScore = computeSeniorityScore(candidateSeniority, job.seniority || "Pleno");
+    if (candidateYears !== null && candidateYears !== undefined && job.experienceYears) {
+      const diffYrs = candidateYears - job.experienceYears;
+      const yrsScore = diffYrs >= 0 ? 1.0 : Math.max(0.25, 1.0 + diffYrs * 0.15);
+      senScore = 0.75 * senScore + 0.25 * yrsScore;
+    }
 
     // 5. Afinidade de cargo + setor
     const titleTokens = tokenize(job.title || "");
