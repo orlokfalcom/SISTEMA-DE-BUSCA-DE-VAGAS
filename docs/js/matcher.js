@@ -4,6 +4,7 @@
 
 import {
   SENIORITY_LEVELS,
+  expandCrossLingualConcepts,
   extractCanonicalJob,
   extractSkillsCanonical,
   findRelatedSkillsViaGraph,
@@ -14,6 +15,42 @@ import {
 } from "./nlp.js";
 import { InvertedIndex } from "./index.js";
 import { buildCorpusStats, evaluateJobAuthenticity } from "./fraud.js";
+import {
+  MATCH_WEIGHTS,
+  ROLE_FAMILY_WEIGHT_PROFILES,
+  WEIGHT_VERSION,
+  getCompatibilityBand,
+  normalizeMatchWeights,
+  validateWeights,
+} from "./matching_v2/weights.js";
+import { evaluateCompetencies, extractSkillEvidences } from "./matching_v2/competencies.js";
+import {
+  computeConfidenceAndCoverage,
+  computeSeniorityScoreV2,
+  evaluateEducation,
+  evaluateExperienceContext,
+  evaluateLanguages,
+  evaluateLocationModality,
+  evaluateResponsibilities,
+  extractAndEvaluateRequirements,
+  precomputeCandidateContext,
+} from "./matching_v2/contextAnalyzers.js";
+import {
+  adaptWeightsFromFeedbackV2,
+  auditFairnessCompliance,
+  computeRankingQualityMetricsV2,
+  rollbackWeightsVersion,
+} from "./matching_v2/evaluation.js";
+
+export {
+  MATCH_WEIGHTS,
+  ROLE_FAMILY_WEIGHT_PROFILES,
+  WEIGHT_VERSION,
+  auditFairnessCompliance,
+  getCompatibilityBand,
+  rollbackWeightsVersion,
+  validateWeights,
+};
 
 export const DEFAULT_WEIGHTS = {
   exactSkills: 0.42,
@@ -24,6 +61,38 @@ export const DEFAULT_WEIGHTS = {
 };
 
 const WEIGHT_BOUNDS = { min: 0.05, max: 0.65 };
+
+let _cachedCorpusKey = "";
+let _cachedCorpusStats = null;
+let _authCacheCorpusKey = "";
+let _authCache = new WeakMap();
+const _titleSkillsCache = new Map();
+
+function getCachedTitleSkills(title) {
+  const key = String(title || "");
+  let hit = _titleSkillsCache.get(key);
+  if (!hit) {
+    hit = new Set(extractSkillsCanonical(key).map((s) => s.toLowerCase()));
+    if (_titleSkillsCache.size > 1000) _titleSkillsCache.clear();
+    _titleSkillsCache.set(key, hit);
+  }
+  return hit;
+}
+
+function getCachedCorpusStats(canonicalJobs) {
+  const n = canonicalJobs.length;
+  const firstId = n ? canonicalJobs[0].id : "";
+  const lastId = n ? canonicalJobs[n - 1].id : "";
+  const key = `${n}:${firstId}:${lastId}`;
+  if (_cachedCorpusStats && _cachedCorpusKey === key) return _cachedCorpusStats;
+  _cachedCorpusKey = key;
+  _cachedCorpusStats = buildCorpusStats(canonicalJobs);
+  if (_authCacheCorpusKey !== key) {
+    _authCacheCorpusKey = key;
+    _authCache = new WeakMap();
+  }
+  return _cachedCorpusStats;
+}
 
 const SOURCE_TRUST = {
   "Base Brasil": 3,
@@ -41,8 +110,9 @@ export function cosineSimilarity(vecA, vecB) {
   let normA = 0;
   let normB = 0;
   for (let i = 0; i < vecA.length; i++) {
-    const a = vecA[i];
-    const b = vecB[i];
+    const a = Number(vecA[i]);
+    const b = Number(vecB[i]);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
     dot += a * b;
     normA += a * a;
     normB += b * b;
@@ -52,16 +122,11 @@ export function cosineSimilarity(vecA, vecB) {
 }
 
 /**
- * Penalidade gradativa de senioridade (nunca eliminação binária).
+ * Avaliação contextual e assimétrica de senioridade (V2):
+ * não penaliza automaticamente profissionais experientes aplicando a cargos menores.
  */
-export function computeSeniorityScore(candidateSeniority, jobSeniority) {
-  const cNorm = normalizeSeniority(candidateSeniority);
-  const jNorm = normalizeSeniority(jobSeniority);
-  const cLvl = SENIORITY_LEVELS[cNorm] || 3;
-  const jLvl = SENIORITY_LEVELS[jNorm] || 3;
-  const diff = Math.abs(cLvl - jLvl);
-  const table = { 0: 1.0, 1: 0.78, 2: 0.48, 3: 0.22, 4: 0.08 };
-  return table[diff] ?? 0.08;
+export function computeSeniorityScore(candidateSeniority, jobSeniority, ctx = {}) {
+  return computeSeniorityScoreV2(candidateSeniority, jobSeniority, ctx);
 }
 
 export function classifyGeoPriority(job, userCountry = "Brasil") {
@@ -75,12 +140,13 @@ export function classifyGeoPriority(job, userCountry = "Brasil") {
   const isUserCountry =
     countryNorm === "brasil" ? brSignals.some((s) => hay.includes(s)) : Boolean(countryNorm && hay.includes(countryNorm));
 
+  // Compatibilidade geográfica é dimensão independente: zero bônus artificial no score profissional
   if (isUserCountry) {
-    return { scope: "local_country", label: `${countryNorm === "brasil" ? "🇧🇷" : "📍"} ${userCountry}`, bonus: 5 };
+    return { scope: "local_country", label: `${countryNorm === "brasil" ? "🇧🇷" : "📍"} ${userCountry}`, bonus: 0 };
   }
   const globalSignals = ["anywhere", "worldwide", "remoto global", "latam", "south america", "americas", "global"];
   if (globalSignals.some((s) => hay.includes(s))) {
-    return { scope: "global_remote", label: "🌎 Global / LATAM", bonus: 2 };
+    return { scope: "global_remote", label: "🌎 Global / LATAM", bonus: 0 };
   }
   return { scope: "international", label: "🌐 Internacional", bonus: 0 };
 }
@@ -206,26 +272,22 @@ export function highlightMatchedTerms(text, terms = []) {
 }
 
 /**
- * Normaliza vetor de pesos para somar 1.0 respeitando limites seguros.
+ * Normaliza vetor de pesos para somar exatamente 1.0 respeitando limites seguros e tratando NaN/Infinity.
  */
 export function normalizeWeights(weights) {
-  const out = { ...DEFAULT_WEIGHTS, ...(weights || {}) };
-  let sum = 0;
-  for (const key of Object.keys(DEFAULT_WEIGHTS)) {
-    const clamped = Math.max(WEIGHT_BOUNDS.min, Math.min(WEIGHT_BOUNDS.max, Number(out[key]) || DEFAULT_WEIGHTS[key]));
-    out[key] = clamped;
-    sum += clamped;
-  }
-  for (const key of Object.keys(DEFAULT_WEIGHTS)) {
-    out[key] = Math.round((out[key] / sum) * 1000) / 1000;
-  }
-  return out;
+  const isV2 = weights && Object.prototype.hasOwnProperty.call(weights, "transferableSkills");
+  if (isV2) return normalizeMatchWeights(weights, MATCH_WEIGHTS);
+  return normalizeMatchWeights(weights, DEFAULT_WEIGHTS, WEIGHT_BOUNDS);
 }
 
 /**
  * Atualiza pesos locais (regressão leve / bandit contextual) a partir de feedback 👍 (reward=+1) ou 👎 (reward=-1).
  */
 export function adaptWeightsFromFeedback(currentWeights, breakdown, reward, lr = 0.035) {
+  if (currentWeights && Object.prototype.hasOwnProperty.call(currentWeights, "transferableSkills")) {
+    const res = adaptWeightsFromFeedbackV2(currentWeights, [{ type: reward > 0 ? "interest" : "dislike", breakdown }], lr, 1);
+    return res.weights;
+  }
   if (!breakdown || !reward) return normalizeWeights(currentWeights);
   const features = {
     exactSkills: (breakdown.exactSkills || 0) / 100,
@@ -237,7 +299,6 @@ export function adaptWeightsFromFeedback(currentWeights, breakdown, reward, lr =
   const meanFeature = Object.values(features).reduce((a, b) => a + b, 0) / 5;
   const updated = { ...normalizeWeights(currentWeights) };
 
-  // Atualiza cada peso proporcionalmente à diferença do componente em relação à média da vaga
   for (const key of Object.keys(DEFAULT_WEIGHTS)) {
     const signal = features[key] - meanFeature;
     updated[key] = updated[key] + lr * reward * signal;
@@ -246,49 +307,10 @@ export function adaptWeightsFromFeedback(currentWeights, breakdown, reward, lr =
 }
 
 /**
- * Calcula Precision@K e métricas de qualidade do ranking com base nos feedbacks/cliques do usuário.
+ * Calcula métricas estatísticas reais de qualidade do ranking (Precision@K, Recall@K, NDCG@K, MAP, MRR, FPR, FNR).
  */
 export function computeRankingQualityMetrics(rankedJobs, feedbackMap = {}, k = 10) {
-  const topK = rankedJobs.slice(0, k);
-  let evaluatedTopK = 0;
-  let positivesTopK = 0;
-  let totalLikes = 0;
-  let totalDislikes = 0;
-  let totalClicks = 0;
-
-  for (const fb of Object.values(feedbackMap || {})) {
-    if (!fb) continue;
-    if (fb.vote === 1) totalLikes++;
-    if (fb.vote === -1) totalDislikes++;
-    if (fb.clicked) totalClicks++;
-  }
-
-  for (const job of topK) {
-    const fb = feedbackMap[job.id];
-    if (!fb) continue;
-    if (fb.vote === 1 || fb.vote === -1 || fb.clicked) {
-      evaluatedTopK++;
-      if (fb.vote === 1 || (fb.clicked && fb.vote !== -1)) positivesTopK++;
-    }
-  }
-
-  // Pseudo-métrica Precision@10: quando há avaliações explícitas no top-K usa razão real;
-  // caso contrário estima aderência pela proporção de vagas de faixa Alta/Média no Top-K.
-  const highOrMidCount = topK.filter((j) => j.match_score >= 60).length;
-  const precisionAtK = evaluatedTopK > 0
-    ? Math.round((positivesTopK / evaluatedTopK) * 100)
-    : (topK.length ? Math.round((highOrMidCount / topK.length) * 100) : 0);
-
-  return {
-    k,
-    precisionAtK,
-    isUserMeasured: evaluatedTopK > 0,
-    evaluatedTopK,
-    positivesTopK,
-    totalLikes,
-    totalDislikes,
-    totalClicks,
-  };
+  return computeRankingQualityMetricsV2(rankedJobs, feedbackMap, k);
 }
 
 /**
@@ -311,17 +333,21 @@ export function matchJobsHybrid({
   filters = {},
 }) {
   const t0 = typeof performance !== "undefined" ? performance.now() : Date.now();
-  const canonicalJobs = jobs.map((j) => (j.canonical ? j : extractCanonicalJob(j)));
+  const safeJobs = Array.isArray(jobs) ? jobs : [];
+  const canonicalJobs = safeJobs.map((j) => (j.canonical ? j : extractCanonicalJob(j)));
   const activeIndex = index || new InvertedIndex().build(canonicalJobs);
-  const corpusStats = buildCorpusStats(canonicalJobs);
-  const w = normalizeWeights(weights);
+  const corpusStats = getCachedCorpusStats(canonicalJobs);
+  const useV2Weights = weights && Object.prototype.hasOwnProperty.call(weights, "transferableSkills");
+  const v2Weights = useV2Weights ? normalizeMatchWeights(weights, MATCH_WEIGHTS) : { ...MATCH_WEIGHTS };
+  const w = useV2Weights ? v2Weights : normalizeWeights(weights);
 
-  const normalizedCandSkills = [...new Set(candidateSkills.map(resolveSkillAlias).filter(Boolean))];
+  const normalizedCandSkills = [...new Set((candidateSkills || []).map(resolveSkillAlias).filter(Boolean))];
   const candSkillMap = new Map(normalizedCandSkills.map((s) => [s.toLowerCase(), s]));
-  const candQueryTerms = [
-    ...new Set(tokenize(`${normalizedCandSkills.join(" ")} ${suggestedRoles.join(" ")} ${candidateText.slice(0, 1200)}`)),
-  ].slice(0, 36);
-  const roleTokens = new Set(tokenize(suggestedRoles.join(" ")));
+  const candEvidences = extractSkillEvidences(candidateText, normalizedCandSkills);
+  const candCtx = precomputeCandidateContext(candidateText);
+  const expandedCandText = expandCrossLingualConcepts(`${normalizedCandSkills.join(" ")} ${(suggestedRoles || []).join(" ")} ${String(candidateText || "").slice(0, 1200)}`);
+  const candQueryTerms = [...new Set(tokenize(expandedCandText))].slice(0, 42);
+  const roleTokens = new Set(tokenize(expandCrossLingualConcepts((suggestedRoles || []).join(" "))));
 
   // Filtro rápido via Índice Invertido para searchQuery
   const searchQuery = String(filters.query || "").trim();
@@ -343,7 +369,11 @@ export function matchJobsHybrid({
   const results = [];
 
   for (const job of canonicalJobs) {
-    const authenticity = evaluateJobAuthenticity(job, { corpusStats });
+    let authenticity = _authCache.get(job);
+    if (!authenticity) {
+      authenticity = evaluateJobAuthenticity(job, { corpusStats });
+      _authCache.set(job, authenticity);
+    }
     if (fraudMode === "hide_scam" && authenticity.isFake) {
       filteredFakeCount++;
       continue;
@@ -383,23 +413,26 @@ export function matchJobsHybrid({
     if (recencyFilter === "30d" && (ageDays === null || ageDays > 30)) continue;
 
     const jobSkills = job.skills || [];
-    const matchedSkills = [];
-    const rawMissing = [];
-    for (const js of jobSkills) {
-      if (candSkillMap.has(js.toLowerCase())) matchedSkills.push(js);
-      else rawMissing.push(js);
-    }
+    const jobText = `${job.title || ""}\n${job.description || ""}`;
 
-    // 2. Grafo de competências com decaimento por distância (hop 1 = 0.55, hop 2 = 0.25)
-    const relatedMatches = findRelatedSkillsViaGraph(normalizedCandSkills, rawMissing, 2);
-    const relatedSkillNames = new Set(relatedMatches.map((r) => r.skill));
-    const missingSkills = rawMissing.filter((s) => !relatedSkillNames.has(s));
+    // 1 & 2. Motor Avançado de Competências (Exata, Equivalência Técnica, Complementares, Proficiência e Evidências)
+    const compEval = evaluateCompetencies({
+      candEvidences,
+      candidateSkills: normalizedCandSkills,
+      jobSkills,
+      jobText,
+      relatedGraphFinder: (missingSkill, cMap, maxHop) => {
+        const hits = findRelatedSkillsViaGraph([...cMap.values()], [missingSkill], maxHop);
+        return hits;
+      },
+    });
+    const matchedSkills = compEval.matchedSkills;
+    const relatedMatches = compEval.relatedMatches;
+    const missingSkills = compEval.missingSkills;
 
-    let exactScore = 0.28;
-    let relatedScore = 0;
-    if (jobSkills.length) {
-      // Skills mencionadas diretamente no título da vaga têm peso 2.0 (críticas)
-      const titleSkills = new Set(extractSkillsCanonical(job.title || "").map((s) => s.toLowerCase()));
+    let exactScore = compEval.exactScore !== null ? compEval.exactScore : null;
+    if (jobSkills.length && exactScore !== null) {
+      const titleSkills = getCachedTitleSkills(job.title);
       let matchedWeight = 0;
       let totalWeight = 0;
       for (const js of jobSkills) {
@@ -410,103 +443,178 @@ export function matchJobsHybrid({
       const exactRatio = totalWeight > 0 ? Math.min(matchedWeight / totalWeight, 1) : 0;
       const exactBreadth = Math.min(matchedSkills.length / 4, 1);
       exactScore = 0.78 * exactRatio + 0.22 * exactBreadth;
-
-      if (rawMissing.length === 0) {
-        // Cobertura exata de 100% não deve perder os pontos do grafo por ausência de gaps
-        relatedScore = exactScore;
-      } else {
-        const weightedRelatedHits = relatedMatches.reduce((acc, r) => acc + r.weight, 0);
-        const remainingDenom = Math.max(jobSkills.length - matchedSkills.length, 1);
-        relatedScore = Math.min(weightedRelatedHits / remainingDenom, 1);
-      }
     }
 
-    // 3. Similaridade semântica híbrida: Embeddings locais (MiniLM) + BM25 (fallback elegante para BM25 puro)
+    const relatedScore =
+      compEval.transferableScore !== null
+        ? (missingSkills.length === 0 && relatedMatches.length === 0 && exactScore !== null ? exactScore : compEval.transferableScore)
+        : null;
+
+    // 3. Similaridade semântica híbrida multilíngue: Embeddings + BM25 + Conceitos Cross-Lingual
     const bm25Sim = activeIndex.bm25Score(candQueryTerms, job.id);
+    const expandedJobTokens = new Set(tokenize(expandCrossLingualConcepts(jobText)));
+    const crossHits = candQueryTerms.filter((t) => expandedJobTokens.has(t)).length;
+    const crossSim = candQueryTerms.length ? Math.min(1, crossHits / Math.min(8, candQueryTerms.length)) : 0;
+    const lexicalHybrid = Math.max(bm25Sim, 0.55 * bm25Sim + 0.45 * crossSim);
+
     const jobEmb = jobEmbeddings && jobEmbeddings.get ? jobEmbeddings.get(String(job.id)) : null;
     let embSim = null;
     let semanticMode = "bm25_fallback";
-    let semanticScore = bm25Sim;
+    let semanticScore = lexicalHybrid;
     if (candidateEmbedding && jobEmb) {
       embSim = cosineSimilarity(candidateEmbedding, jobEmb);
-      semanticScore = 0.65 * embSim + 0.35 * bm25Sim;
+      semanticScore = 0.65 * embSim + 0.35 * lexicalHybrid;
       semanticMode = "minilm_bm25_hybrid";
       embeddingsUsedCount++;
     }
 
-    // 4. Senioridade + alinhamento de anos de experiência (penalidade gradativa)
-    let senScore = computeSeniorityScore(candidateSeniority, job.seniority || "Pleno");
+    // 4. Senioridade assimétrica (9 níveis + complexidade)
+    let senScore = computeSeniorityScore(candidateSeniority, job.seniority || "Pleno", {
+      candYears: candidateYears,
+      candidateText,
+    });
     if (candidateYears !== null && candidateYears !== undefined && job.experienceYears) {
       const diffYrs = candidateYears - job.experienceYears;
-      const yrsScore = diffYrs >= 0 ? 1.0 : Math.max(0.25, 1.0 + diffYrs * 0.15);
+      const yrsScore = diffYrs >= 0 ? 1.0 : Math.max(0.30, 1.0 + diffYrs * 0.14);
       senScore = 0.75 * senScore + 0.25 * yrsScore;
     }
 
-    // 5. Afinidade de cargo + setor
-    const titleTokens = tokenize(job.title || "");
+    // 5. Experiência contextual, Responsabilidades, Formação, Idiomas, Setor e Localização
+    const expCtx = evaluateExperienceContext(candidateText, job, candEvidences, candCtx);
+    const respEval = evaluateResponsibilities(candidateText, jobText, candCtx);
+    const eduEval = evaluateEducation(candidateText, jobText, candCtx);
+    const langEval = evaluateLanguages(candidateText, jobText, candCtx);
+    const locEval = evaluateLocationModality(job, userCountry, filters);
+    const hasReqKeywords = /(obrigatori|indispensavel|imprescindivel|required|must have|mandatory|desejavel|preferencial|diferencial|crea|oab|crm)/i.test(jobText);
+    const mandatoryReqs = hasReqKeywords
+      ? extractAndEvaluateRequirements(jobText, candCtx.norm, candEvidences, normalizedCandSkills)
+      : [];
+
+    const titleTokens = tokenize(expandCrossLingualConcepts(job.title || ""));
     const titleHit = titleTokens.some((t) => roleTokens.has(t));
     const sectorHit = candidateSector && normalizeText(job.sector || "") === normalizeText(candidateSector);
-    const roleSectorScore = titleHit && sectorHit ? 1.0 : titleHit ? 0.85 : sectorHit ? 0.62 : 0.30;
+    const roleSectorScore = titleHit && sectorHit ? 1.0 : titleHit ? 0.85 : sectorHit ? 0.62 : Math.max(0.30, lexicalHybrid);
 
-    // Quando a vaga não possui skills estruturadas, redistribui peso para semântica/cargo
-    let baseWeighted;
-    if (jobSkills.length) {
-      baseWeighted =
-        w.exactSkills * exactScore +
-        w.relatedSkills * relatedScore +
-        w.semantic * semanticScore +
-        w.seniority * senScore +
-        w.roleSector * roleSectorScore;
-    } else {
-      baseWeighted = 0.56 * semanticScore + 0.24 * senScore + 0.20 * roleSectorScore;
+    // 6. Combinação 10D com tratamento neutro de dimensões ausentes (não atribui 0 a dados ausentes)
+    const dimMap = {
+      exactSkills: exactScore !== null ? exactScore : lexicalHybrid,
+      transferableSkills: relatedScore !== null ? relatedScore : lexicalHybrid * 0.85,
+      skillProficiency: compEval.proficiencyScore !== null ? compEval.proficiencyScore : null,
+      professionalExperience: expCtx.score !== null ? Math.max(expCtx.score, lexicalHybrid * 0.8) : null,
+      responsibilities: respEval.score,
+      seniority: senScore,
+      education: eduEval.score,
+      languages: langEval.score,
+      sectorContext: roleSectorScore,
+      locationModality: locEval.score,
+    };
+
+    let weightedSum = 0;
+    let activeWeightSum = 0;
+    for (const [dim, val] of Object.entries(dimMap)) {
+      if (val !== null && val !== undefined && Number.isFinite(val)) {
+        const dw = v2Weights[dim] || 0;
+        weightedSum += dw * val;
+        activeWeightSum += dw;
+      }
     }
+    const baseWeighted = activeWeightSum > 0 ? weightedSum / activeWeightSum : lexicalHybrid;
 
-    // Ajuste fino por feedback direto do usuário na vaga ou nas skills da vaga
+    // Ajuste fino apenas por feedback explícito do usuário (voto != 0)
     const fb = feedbackMap[job.id];
-    const feedbackBias = fb && fb.vote ? fb.vote * 6 : 0;
+    const feedbackBias = fb && fb.vote ? fb.vote * 5 : 0;
     const geo = classifyGeoPriority(job, userCountry);
 
-    const scorePct = Math.round(Math.min(Math.max(baseWeighted * 100 + geo.bonus + feedbackBias, 5), 99));
+    const scorePct = Math.round(Math.min(Math.max(baseWeighted * 100 + feedbackBias, 5), 99));
     if (scorePct < minScore) continue;
 
+    const confCov = computeConfidenceAndCoverage({
+      candidateText,
+      jobDescription: job.description || "",
+      candEvidences,
+      dimensionScores: dimMap,
+      embeddingsActive: embSim !== null,
+    });
+
     const band = getScoreBand(scorePct);
+    const compatibilityBand = getCompatibilityBand(scorePct);
     const highlightTerms = [
       ...matchedSkills,
       ...relatedMatches.map((r) => r.skill),
       ...titleTokens.filter((t) => roleTokens.has(t)),
     ];
 
-    let reason = "Aderência por contexto semântico e perfil profissional";
+    let reason = "Aderência por contexto semântico, responsabilidades e perfil profissional";
     if (matchedSkills.length && relatedMatches.length) {
-      reason = `${matchedSkills.length} skill(s) exata(s) (${matchedSkills.slice(0, 3).join(", ")}) + ${relatedMatches.length} por grafo (${relatedMatches.slice(0, 2).map((r) => `${r.skill}↔${r.via}`).join(", ")})`;
+      reason = `${matchedSkills.length} skill(s) exata(s) (${matchedSkills.slice(0, 3).join(", ")}) + ${relatedMatches.length} equivalente(s) (${relatedMatches.slice(0, 2).map((r) => `${r.skill}↔${r.via}`).join(", ")})`;
     } else if (matchedSkills.length) {
       reason = `${matchedSkills.length} de ${jobSkills.length} skills compatíveis (${matchedSkills.slice(0, 4).join(", ")})`;
     } else if (relatedMatches.length) {
-      reason = `Proximidade no grafo de competências (${relatedMatches.slice(0, 3).map((r) => `${r.skill} [hop ${r.hop}]`).join(", ")})`;
+      reason = `Competências transferíveis (${relatedMatches.slice(0, 3).map((r) => `${r.skill}↔${r.via}`).join(", ")})`;
     }
+
+    const strengths = [];
+    if (matchedSkills.length) strengths.push(`Competências exatas: ${matchedSkills.slice(0, 5).join(", ")}.`);
+    if (compEval.complementary.length) strengths.push(`Sinergia complementar: ${compEval.complementary.map((c) => c.label).join("; ")}.`);
+    if (expCtx.transferableExperiences.length) strengths.push(expCtx.transferableExperiences[0].rationale);
+    if (respEval.matchedResponsibilities.length) strengths.push(`Responsabilidades alinhadas: ${respEval.matchedResponsibilities.join(", ")}.`);
+
+    const weaknesses = [];
+    const unverifiedMandatory = mandatoryReqs.filter((r) => r.category === "Obrigatório" || r.category === "Legal").filter((r) => r.state !== "Atendido");
+    if (unverifiedMandatory.length) weaknesses.push(`${unverifiedMandatory.length} requisito(s) obrigatório(s)/legal(is) sem comprovação explícita.`);
+    if (missingSkills.length) weaknesses.push(`Competências não identificadas: ${missingSkills.slice(0, 4).join(", ")}.`);
+    if (langEval.details) weaknesses.push(langEval.details);
+    if (locEval.restrictions.length) weaknesses.push(locEval.restrictions[0]);
+
+    const optimizationTips = [];
+    if (missingSkills.length) optimizationTips.push(`Se possuir vivência com ${missingSkills.slice(0, 3).join(", ")}, inclua exemplos práticos no currículo.`);
+    if (relatedMatches.length) optimizationTips.push(`Destaque transição rápida de ${relatedMatches[0].via} para ${relatedMatches[0].skill}.`);
+    if (confCov.matchConfidence < 50) optimizationTips.push("Adicione mais detalhes de projetos e métricas no currículo para elevar a confiança da avaliação.");
+
+    const toPct = (v) => (v !== null && v !== undefined && Number.isFinite(v) ? Math.round(v * 100) : null);
 
     results.push({
       ...job,
       match_score: scorePct,
+      match_confidence: confCov.matchConfidence,
+      job_authenticity_score: Math.max(0, 100 - (authenticity?.riskScore || 0)),
+      data_coverage: confCov.dataCoverage,
       score_band: band,
+      compatibility_band: compatibilityBand,
       semantic_mode: semanticMode,
       score_breakdown: {
-        exactSkills: Math.round(exactScore * 100),
-        relatedSkills: Math.round(relatedScore * 100),
-        skills: Math.round(Math.min(exactScore * 0.78 + relatedScore * 0.22, 1) * 100),
+        exactSkills: toPct(dimMap.exactSkills) ?? 0,
+        transferableSkills: toPct(dimMap.transferableSkills) ?? 0,
+        skillProficiency: toPct(dimMap.skillProficiency) ?? 0,
+        professionalExperience: toPct(dimMap.professionalExperience) ?? 0,
+        responsibilities: toPct(dimMap.responsibilities) ?? 0,
+        seniority: toPct(dimMap.seniority) ?? 0,
+        education: toPct(dimMap.education) ?? 0,
+        languages: toPct(dimMap.languages) ?? 0,
+        sectorContext: toPct(dimMap.sectorContext) ?? 0,
+        locationModality: toPct(dimMap.locationModality) ?? 0,
+        // Aliases de compatibilidade com a UI/testes v1
+        relatedSkills: toPct(dimMap.transferableSkills) ?? 0,
+        skills: Math.round(Math.min((dimMap.exactSkills || 0) * 0.78 + (dimMap.transferableSkills || 0) * 0.22, 1) * 100),
         semantic: Math.round(semanticScore * 100),
         bm25: Math.round(bm25Sim * 100),
         embedding: embSim !== null ? Math.round(embSim * 100) : null,
-        seniority: Math.round(senScore * 100),
         roleSector: Math.round(roleSectorScore * 100),
         role: Math.round(roleSectorScore * 100),
-        geoBonus: geo.bonus,
+        geoBonus: 0,
         filtersPassed: true,
       },
+      mandatory_requirements: mandatoryReqs,
       matched_skills: matchedSkills,
       related_matches: relatedMatches.slice(0, 5),
       related_skills: relatedMatches.slice(0, 4).map((r) => r.skill),
       missing_skills: missingSkills.slice(0, 6),
+      transferable_experience: expCtx.transferableExperiences,
+      evidence: compEval.evidences,
+      strengths,
+      weaknesses,
+      optimization_tips: optimizationTips,
+      missing_dimensions: confCov.missingDimensions,
       highlight_terms: [...new Set(highlightTerms)],
       match_reason: reason,
       geo_scope: geo.scope,
@@ -603,26 +711,33 @@ export function compareCustomJob({
 
   const { jobs } = matchJobsHybrid({
     jobs: [synthetic],
-    candidateSkills,
-    candidateText,
-    candidateSeniority,
+    candidateSkills: candidateSkills || [],
+    candidateText: candidateText || "",
+    candidateSeniority: candidateSeniority || "Pleno",
     candidateSector,
     suggestedRoles,
     userCountry,
+    filters: { fraudMode: "show_all", minScore: 0 },
   });
   const matched = jobs[0];
+  if (!matched) {
+    return {
+      ...synthetic,
+      match_score: 0,
+      match_confidence: 15,
+      data_coverage: 0,
+      matched_skills: [],
+      related_matches: [],
+      missing_skills: [],
+      optimization_tips: ["Forneça mais detalhes da vaga e do currículo para calcular a compatibilidade."],
+    };
+  }
 
-  const tips = [];
-  if (matched.missing_skills.length) {
-    tips.push(`Se você possui experiência com ${matched.missing_skills.slice(0, 4).join(", ")}, mencione explicitamente no currículo com exemplos práticos.`);
-  }
-  if (matched.related_matches.length) {
-    tips.push(`Você já tem base próxima via grafo em ${matched.related_matches.slice(0, 3).map((r) => `${r.skill} (${r.via})`).join(", ")} — destaque sua facilidade de transição.`);
-  }
+  const tips = [...(matched.optimization_tips || [])];
   if (matched.match_score >= 80) {
     tips.push("Alta aderência (≥80)! Personalize o título do currículo para esta vaga e candidate-se.");
-  } else {
+  } else if (!tips.length) {
     tips.push("Adapte os bullets da sua última experiência usando as palavras-chave destacadas da descrição.");
   }
-  return { ...matched, optimization_tips: tips };
+  return { ...matched, optimization_tips: [...new Set(tips)] };
 }

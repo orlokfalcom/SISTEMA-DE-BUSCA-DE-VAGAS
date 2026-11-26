@@ -931,3 +931,25 @@ export function extractCanonicalJob(job) {
     sector,
   };
 }
+
+const CROSS_LINGUAL_CONCEPTS = [
+  [/\b(engenheiro de dados|ingeniero de datos|data engineer)\b/gi, "data engineer engenheiro de dados"],
+  [/\b(cientista de dados|cientifico de datos|data scientist)\b/gi, "data scientist cientista de dados"],
+  [/\b(analista de dados|analista de datos|data analyst)\b/gi, "data analyst analista de dados"],
+  [/\b(engenheiro de software|ingeniero de software|software engineer)\b/gi, "software engineer engenheiro de software"],
+  [/\b(desenvolvedor full stack|full stack developer|desarrollador full stack)\b/gi, "full stack developer desenvolvedor"],
+  [/\b(analista de seguranca|security analyst|ciberseguranca|cybersecurity)\b/gi, "cybersecurity security analyst seguranca"],
+  [/\b(arquiteto de solucoes|solutions architect)\b/gi, "solutions architect arquiteto"],
+  [/\b(gerente de projetos|project manager)\b/gi, "project manager gerente projetos"],
+  [/\b(aprendizado de maquina|machine learning)\b/gi, "machine learning"],
+  [/\b(inteligencia artificial|artificial intelligence)\b/gi, "artificial intelligence inteligencia artificial"],
+];
+
+export function expandCrossLingualConcepts(text = "") {
+  const norm = normalizeText(text);
+  const extras = [];
+  for (const [re, expansion] of CROSS_LINGUAL_CONCEPTS) {
+    if (re.test(norm)) extras.push(expansion);
+  }
+  return extras.length ? `${norm} ${extras.join(" ")}` : norm;
+}

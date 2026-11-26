@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>VagaPulse AI 2.0 — Aceitação A-O &amp; Benchmark</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; padding: 24px; }
+    .ok { color: #34d399; }
+    .fail { color: #f87171; }
+    pre { background: #1e293b; padding: 12px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>VagaPulse AI 2.0 — Suíte de Aceitação &amp; Benchmark</h1>
+  <div id="status" data-status="running">Executando testes V2...</div>
+  <ul id="results"></ul>
+  <pre id="summaryJson"></pre>
+
+  <script type="module">
+    import { runV2Tests } from './v2.test.mjs';
+
+    const statusEl = document.getElementById('status');
+    const resultsEl = document.getElementById('results');
+    const summaryEl = document.getElementById('summaryJson');
+
+    try {
+      const report = await runV2Tests();
+      statusEl.textContent = `${report.passed}/${report.total} testes V2 aprovados (Benchmark 2k: ${report.benchmark2kMs}ms)`;
+      statusEl.dataset.status = report.failed === 0 ? 'passed' : 'failed';
+      statusEl.className = report.failed === 0 ? 'ok' : 'fail';
+
+      resultsEl.innerHTML = report.results
+        .map((r) => `<li class="${r.passed ? 'ok' : 'fail'}">${r.passed ? 'PASS' : 'FAIL'} — ${r.name}${r.error ? ` (${r.error})` : ''}</li>`)
+        .join('');
+
+      summaryEl.textContent = JSON.stringify(report, null, 2);
+    } catch (err) {
+      statusEl.textContent = `ERRO FATAL: ${err?.message || err}`;
+      statusEl.dataset.status = 'error';
+      statusEl.className = 'fail';
+    }
+  </script>
+</body>
+</html>
