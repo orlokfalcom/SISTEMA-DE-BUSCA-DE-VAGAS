@@ -59,6 +59,8 @@
             <option value="ja">🇯🇵 日本語 (JA)</option>
           </select>
         </div>
+        <button type="button" class="topbar-status" id="linkedinCvBtn"
+          title="Conectar LinkedIn (OAuth 2.0) e Construtor Inteligente de Currículos" style="cursor:pointer;">🔗 LinkedIn &amp; CV Builder</button>
         <button type="button" class="topbar-status" id="securityGuardBtn"
           title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA
           Guard: Ativo (0)</button>
@@ -619,10 +621,83 @@
     </div>
   </div>
 
+  <!-- Modal LinkedIn Connect & Smart CV Builder -->
+  <div class="modal-overlay hidden" id="linkedinCvModal" role="dialog" aria-modal="true">
+    <div class="modal-card modal-editor">
+      <div class="modal-header">
+        <div>
+          <span class="source-tag">OAuth 2.0 + PKCE · LGPD · ATS PDF &amp; DOCX</span>
+          <h3>🔗 LinkedIn Connect &amp; Smart CV Builder</h3>
+        </div>
+        <button type="button" class="modal-close" id="closeLinkedinCvBtn" aria-label="Fechar">✕</button>
+      </div>
+      <div style="padding:14px 18px;max-height:76vh;overflow-y:auto;display:grid;gap:14px;">
+        <div class="pitch-box" style="margin:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <strong id="liStatusBadge">⚪ Desconectado</strong>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-small" id="liConnectBtn">Conectar ao LinkedIn</button>
+              <button type="button" class="btn btn-secondary btn-small" id="liSyncBtn">↻ Sincronizar</button>
+              <button type="button" class="btn btn-secondary btn-small" id="liDisconnectBtn">Desconectar</button>
+              <button type="button" class="btn btn-secondary btn-small" id="liEraseDataBtn">🗑️ Excluir Dados (LGPD)</button>
+            </div>
+          </div>
+          <p class="hint" style="margin-top:8px;">Acesso oficial via OAuth 2.0 + PKCE. Nunca coletamos sua senha. Escopos padrão: <code>openid, profile, email</code>. Dados não disponíveis na API podem ser preenchidos ou importados via PDF abaixo.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px;margin-top:8px;font-size:0.8rem;">
+            <label><input type="checkbox" id="consent_A_connect_account" checked /> A. Conexão da conta LinkedIn</label>
+            <label><input type="checkbox" id="consent_B_import_profile" checked /> B. Importação de dados autorizados</label>
+            <label><input type="checkbox" id="consent_C_job_matching" checked /> C. Análise de compatibilidade</label>
+            <label><input type="checkbox" id="consent_D_cv_generation" checked /> D. Geração/atualização de CV</label>
+            <label><input type="checkbox" id="consent_E_profile_storage" checked /> E. Armazenamento sob seu controle</label>
+            <label><input type="checkbox" id="consent_F_anonymous_stats" /> F. Estatísticas anonimizadas (Opcional)</label>
+          </div>
+          <p id="liPrivacyBox" class="hint" style="margin-top:6px;"></p>
+        </div>
+
+        <form id="liProfileForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">
+          <input type="text" id="liNameInput" class="text-input" placeholder="Nome profissional" />
+          <input type="text" id="liHeadlineInput" class="text-input" placeholder="Título profissional (ex: Engenheiro de Dados)" />
+          <input type="email" id="liEmailInput" class="text-input" placeholder="E-mail profissional" />
+          <input type="text" id="liSkillsInput" class="text-input" placeholder="Competências (ex: Python, SQL, AWS)" />
+          <textarea id="liSummaryInput" class="resume-editor-textarea" style="min-height:64px;grid-column:1/-1;" placeholder="Resumo profissional"></textarea>
+          <textarea id="liExpInput" class="resume-editor-textarea" style="min-height:64px;" placeholder="Experiências (1 por linha)"></textarea>
+          <textarea id="liEduInput" class="resume-editor-textarea" style="min-height:64px;" placeholder="Formação e certificações (1 por linha)"></textarea>
+        </form>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="liTemplateSelect" class="select-input">
+            <option value="complete">Currículo Profissional Completo</option>
+            <option value="executive">Currículo Executivo</option>
+            <option value="technical">Currículo Técnico</option>
+            <option value="academic">Currículo Acadêmico</option>
+            <option value="technology">Currículo para Tecnologia</option>
+            <option value="infosec">Currículo para Segurança da Informação</option>
+            <option value="data_analytics">Currículo para Análise de Dados</option>
+            <option value="software_dev">Currículo para Desenvolvimento de Software</option>
+            <option value="edtech">Currículo para Educação e Tecnologia</option>
+            <option value="job_tailored">Currículo Personalizado para Vaga</option>
+          </select>
+          <button type="button" class="btn btn-primary btn-small" id="liGenerateCvBtn">✨ Gerar Currículo ATS</button>
+          <button type="button" class="btn btn-secondary btn-small" id="liExportPdfBtn">⬇ Exportar PDF</button>
+          <button type="button" class="btn btn-secondary btn-small" id="liExportDocxBtn">⬇ Exportar DOCX</button>
+        </div>
+
+        <p id="liAnalysisBox" class="hint"></p>
+        <textarea id="liCvPreview" class="resume-editor-textarea" style="min-height:160px;" placeholder="Prévia do currículo gerado para revisão..."></textarea>
+
+        <div>
+          <strong style="font-size:0.85rem;">🕘 Histórico de Versões</strong>
+          <div id="liVersionsList" style="margin-top:6px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
   <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/linkedin_cv.js"></script>
 </body>
 
 </html>
