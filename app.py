@@ -24,11 +24,13 @@ from services.resume_parser import (
 )
 from services.security_ai import AutonomousSecurityAI
 from services.linkedin_cv.routes import linkedin_cv_bp
+from services.employability.routes import employability_bp
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.register_blueprint(linkedin_cv_bp)
+app.register_blueprint(employability_bp)
 security_ai = AutonomousSecurityAI(log_dir=os.path.join(os.path.dirname(__file__), "security_logs"))
 
 

@@ -59,6 +59,8 @@
             <option value="ja">🇯🇵 日本語 (JA)</option>
           </select>
         </div>
+        <button type="button" class="topbar-status" id="employabilityBtn"
+          title="Inteligência de Empregabilidade AI (Simulador ATS, Skills Gap, Versões e Tracker)" style="cursor:pointer;">🧠 Empregabilidade AI</button>
         <button type="button" class="topbar-status" id="linkedinCvBtn"
           title="Carregar Perfil em PDF e Construtor Inteligente de Currículos" style="cursor:pointer;"> linkedin &amp;
           CV Builder</button>
@@ -736,11 +738,67 @@
     </div>
   </div>
 
+  <!-- Modal Inteligência de Empregabilidade AI -->
+  <div class="modal-overlay hidden" id="employabilityModal" role="dialog" aria-modal="true">
+    <div class="modal-card modal-editor">
+      <div class="modal-header">
+        <div>
+          <span class="source-tag">Simulador ATS · Skills Gap · Perfil Mestre · Tracker</span>
+          <h3>🧠 Inteligência de Empregabilidade AI</h3>
+        </div>
+        <button type="button" class="modal-close" id="closeEmployabilityBtn" aria-label="Fechar">✕</button>
+      </div>
+      <div style="padding:14px 18px;max-height:78vh;overflow-y:auto;display:grid;gap:12px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary btn-small" data-emp-tab="simulator">1. Simulador ATS</button>
+          <button type="button" class="btn btn-secondary btn-small" data-emp-tab="skills-gap">2. Análise de Competências</button>
+          <button type="button" class="btn btn-secondary btn-small" data-emp-tab="opportunities">3. Currículos por Oportunidade</button>
+          <button type="button" class="btn btn-secondary btn-small" data-emp-tab="tracker">4. Acompanhamento de Candidaturas</button>
+        </div>
+
+        <div data-emp-panel="simulator" style="display:grid;gap:8px;">
+          <input type="file" id="empSimFileInput" accept=".pdf,.docx" class="text-input" />
+          <textarea id="empSimTextInput" class="resume-editor-textarea" style="min-height:80px;" placeholder="Ou cole o texto do currículo para simular a leitura ATS..."></textarea>
+          <textarea id="empSimJobInput" class="resume-editor-textarea" style="min-height:60px;" placeholder="(Opcional) Descrição da vaga para comparar leitura..."></textarea>
+          <label style="font-size:0.82rem;"><input type="checkbox" id="empSimAutoFixChk" checked /> Gerar versão corrigida automaticamente se houver falhas</label>
+          <button type="button" class="btn btn-primary btn-small" id="empSimRunBtn">🔍 Simular Leitura ATS</button>
+          <div id="empSimOutput" class="pitch-box" style="margin:0;font-size:0.82rem;"></div>
+        </div>
+
+        <div data-emp-panel="skills-gap" class="hidden" style="display:grid;gap:8px;">
+          <textarea id="empGapJobInput" class="resume-editor-textarea" style="min-height:80px;" placeholder="Cole a descrição da vaga para analisar lacunas profissionais..."></textarea>
+          <button type="button" class="btn btn-primary btn-small" id="empGapRunBtn">📊 Analisar Lacunas (Skills Gap)</button>
+          <div id="empGapOutput" class="pitch-box" style="margin:0;font-size:0.82rem;"></div>
+        </div>
+
+        <div data-emp-panel="opportunities" class="hidden" style="display:grid;gap:8px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px;">
+            <input type="text" id="empMasterName" class="text-input" placeholder="Seu Nome (Perfil Mestre)" />
+            <input type="email" id="empMasterEmail" class="text-input" placeholder="Seu E-mail" />
+            <input type="text" id="empMasterSkills" class="text-input" placeholder="Competências (ex: Python, SQL, AWS)" />
+            <input type="text" id="empOppCompany" class="text-input" placeholder="Empresa da Oportunidade" />
+            <input type="text" id="empOppTitle" class="text-input" placeholder="Cargo da Oportunidade" />
+          </div>
+          <textarea id="empMasterExp" class="resume-editor-textarea" style="min-height:56px;" placeholder="Experiências do Perfil Mestre (1 por linha)"></textarea>
+          <textarea id="empOppDesc" class="resume-editor-textarea" style="min-height:64px;" placeholder="Descrição da oportunidade..."></textarea>
+          <button type="button" class="btn btn-primary btn-small" id="empOppGenBtn">✨ Cadastrar Oportunidade &amp; Gerar Currículo Versionado</button>
+          <div id="empOppOutput" style="font-size:0.82rem;"></div>
+        </div>
+
+        <div data-emp-panel="tracker" class="hidden" style="display:grid;gap:8px;">
+          <div id="empKpiBox" class="pitch-box" style="margin:0;font-size:0.84rem;">Carregando indicadores...</div>
+          <div id="empOppList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
   <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
   <script type="module" src="./js/linkedin_cv.js?v=5"></script>
+  <script type="module" src="./js/employability.js?v=1"></script>
 </body>
 
 </html>

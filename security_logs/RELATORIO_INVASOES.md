@@ -1,9 +1,9 @@
 # Relatório Autônomo de Segurança — VagaPulse AI
 
-- **Última atualização (UTC):** `2026-11-27T13:56:09.319457+00:00`
-- **Total de tentativas registradas:** `158`
-- **Bloqueios autônomos (403):** `102`
-- **Severidade:** Crítica `102` | Alta `1` | Média `55` | Baixa `0`
+- **Última atualização (UTC):** `2026-11-27T13:42:19.923346+00:00`
+- **Total de tentativas registradas:** `161`
+- **Bloqueios autônomos (403):** `104`
+- **Severidade:** Crítica `104` | Alta `1` | Média `56` | Baixa `0`
 
 ## Origens Mais Frequentes
 
@@ -12,9 +12,9 @@
 | `203.0.113.42` | 48 |
 | `198.51.100.99` | 29 |
 | `127.0.0.1` | 24 |
-| `198.51.100.10` | 13 |
-| `198.51.100.11` | 13 |
-| `198.51.100.12` | 11 |
+| `198.51.100.10` | 14 |
+| `198.51.100.11` | 14 |
+| `198.51.100.12` | 12 |
 | `198.51.100.13` | 10 |
 | `198.51.100.200` | 10 |
 
@@ -22,6 +22,9 @@
 
 | Timestamp (UTC) | IP | Método / Rota | Risco | Severidade | Categorias | Ação |
 | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
+| `2026-11-27T13:42:19.919531+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
+| `2026-11-27T13:42:19.903234+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
+| `2026-11-27T13:42:19.887536+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
 | `2026-11-27T13:56:09.260202+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-27T13:56:09.131476+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
 | `2026-11-27T13:56:03.736868+00:00` | `127.0.0.1` | `POST /api/cv/profile` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
@@ -69,6 +72,3 @@
 | `2026-11-26T12:52:35.038115+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
 | `2026-11-26T12:51:39.475244+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
 | `2026-11-26T12:51:39.467811+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
-| `2026-11-26T12:51:39.458741+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
-| `2026-11-26T12:49:59.295393+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
-| `2026-11-26T12:48:27.955624+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
