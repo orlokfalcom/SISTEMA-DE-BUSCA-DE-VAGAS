@@ -1,27 +1,35 @@
 # Relatório Autônomo de Segurança — VagaPulse AI
 
-- **Última atualização (UTC):** `2026-11-27T14:20:49.307086+00:00`
-- **Total de tentativas registradas:** `150`
-- **Bloqueios autônomos (403):** `98`
-- **Severidade:** Crítica `98` | Alta `1` | Média `51` | Baixa `0`
+- **Última atualização (UTC):** `2026-11-27T13:56:09.319457+00:00`
+- **Total de tentativas registradas:** `158`
+- **Bloqueios autônomos (403):** `102`
+- **Severidade:** Crítica `102` | Alta `1` | Média `55` | Baixa `0`
 
 ## Origens Mais Frequentes
 
 | IP / Origem | Tentativas |
 | :--- | :---: |
-| `203.0.113.42` | 47 |
-| `198.51.100.99` | 28 |
-| `127.0.0.1` | 23 |
-| `198.51.100.10` | 12 |
-| `198.51.100.11` | 12 |
-| `198.51.100.12` | 10 |
-| `198.51.100.13` | 9 |
-| `198.51.100.200` | 9 |
+| `203.0.113.42` | 48 |
+| `198.51.100.99` | 29 |
+| `127.0.0.1` | 24 |
+| `198.51.100.10` | 13 |
+| `198.51.100.11` | 13 |
+| `198.51.100.12` | 11 |
+| `198.51.100.13` | 10 |
+| `198.51.100.200` | 10 |
 
 ## Registro Detalhado (Últimos 50 Incidentes)
 
 | Timestamp (UTC) | IP | Método / Rota | Risco | Severidade | Categorias | Ação |
 | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
+| `2026-11-27T13:56:09.260202+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
+| `2026-11-27T13:56:09.131476+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
+| `2026-11-27T13:56:03.736868+00:00` | `127.0.0.1` | `POST /api/cv/profile` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
+| `2026-11-27T13:56:02.635625+00:00` | `198.51.100.200` | `POST /api/search` | **90/100** | CRÍTICA | Server-Side Template Injection (SSTI), Credential / API Key Leakage | BLOQUEADO (403) |
+| `2026-11-27T13:54:48.727556+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
+| `2026-11-27T13:52:00.340374+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
+| `2026-11-27T13:52:00.145226+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
+| `2026-11-27T13:52:00.104319+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
 | `2026-11-27T14:20:49.105819+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-27T14:20:48.859929+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
 | `2026-11-27T14:20:45.694933+00:00` | `127.0.0.1` | `POST /api/cv/profile` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
@@ -64,11 +72,3 @@
 | `2026-11-26T12:51:39.458741+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
 | `2026-11-26T12:49:59.295393+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
 | `2026-11-26T12:48:27.955624+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
-| `2026-11-26T12:48:27.950153+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
-| `2026-11-26T12:48:27.940670+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |
-| `2026-11-26T12:22:53.818075+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
-| `2026-11-26T12:22:53.806807+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
-| `2026-11-26T12:22:53.590980+00:00` | `198.51.100.200` | `POST /api/search` | **90/100** | CRÍTICA | Server-Side Template Injection (SSTI), Credential / API Key Leakage | BLOQUEADO (403) |
-| `2026-11-26T12:22:29.521928+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
-| `2026-11-26T12:21:45.072191+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
-| `2026-11-26T12:21:45.065098+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |

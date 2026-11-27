@@ -8,6 +8,7 @@ from typing import Any
 
 from flask import Blueprint, Response, g, jsonify, make_response, redirect, request
 
+from services.linkedin_cv.ats_engine import build_multilingual_ats_cv, validate_generated_document
 from services.linkedin_cv.oauth_service import LinkedinApiClient, LinkedinOAuthService
 from services.linkedin_cv.profile_and_cv import (
     CV_TEMPLATES,
@@ -256,16 +257,35 @@ def cv_generate():
     if not prof:
         prof = _normalizer.normalize(manual_data=body.get("manual_data") or {}, resume_text=str(body.get("resume_text") or ""))
     template_key = str(body.get("template") or "complete")
-    job_context = body.get("job_context")
-    built = _cv_builder.build_cv_text(prof, template_key=template_key, job_context=job_context)
+    language = str(body.get("language") or "pt")
+    visual_style = str(body.get("visual_style") or "ats_professional")
+    job_context = body.get("job_context") if isinstance(body.get("job_context"), dict) else None
+    built_legacy = _cv_builder.build_cv_text(prof, template_key=template_key, job_context=job_context)
+    built_v2 = build_multilingual_ats_cv(
+        prof,
+        purpose=template_key,
+        language=language,
+        visual_style=visual_style,
+        job_text=str((job_context or {}).get("description") or ""),
+        job_title=str((job_context or {}).get("title") or ""),
+    )
+    pdf_bytes = _cv_builder.export_pdf_bytes(built_v2["content_text"])
+    docx_bytes = _cv_builder.export_docx_bytes(built_v2["content_text"])
+    doc_validation = validate_generated_document(pdf_bytes=pdf_bytes, docx_bytes=docx_bytes)
+
+    built = {
+        **built_legacy,
+        **built_v2,
+        "document_validation": doc_validation,
+    }
     version = _store.save_cv_version(
         user_id=uid,
         version_type="job_tailored" if job_context else "updated",
-        title=f"{built['template_label']}" + (f" ({job_context.get('title')})" if isinstance(job_context, dict) and job_context.get("title") else ""),
+        title=f"{built['template_label']} ({language.upper()})" + (f" ({job_context.get('title')})" if job_context and job_context.get("title") else ""),
         content_text=built["content_text"],
         structured=built,
         created_by=str(body.get("created_by") or "user_with_ai"),
-        job_id=job_context.get("id") if isinstance(job_context, dict) else None,
+        job_id=job_context.get("id") if job_context else None,
     )
     resp = make_response(jsonify({"generated": built, "version": version}))
     return _attach_session_cookies(resp, uid, is_new)
@@ -280,6 +300,20 @@ def cv_export():
     fmt = str(body.get("format") or "pdf").lower()
     if not text:
         return jsonify({"error": "Texto do currículo vazio para exportação."}), 400
+    if fmt == "txt":
+        return Response(
+            text.encode("utf-8"),
+            mimetype="text/plain; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="curriculo_vagapulse_ats.txt"'},
+        )
+    if fmt == "json":
+        import json as _json
+        payload = _json.dumps(body.get("structured_json") or {"content_text": text}, ensure_ascii=False, indent=2)
+        return Response(
+            payload.encode("utf-8"),
+            mimetype="application/json; charset=utf-8",
+            headers={"Content-Disposition": 'attachment; filename="curriculo_vagapulse_ats.json"'},
+        )
     if fmt == "docx":
         data = _cv_builder.export_docx_bytes(text)
         return Response(

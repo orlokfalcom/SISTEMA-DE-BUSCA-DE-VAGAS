@@ -231,6 +231,8 @@ if (liLoadPdfBtn && liPdfFileInput) {
         expEl.value = expLines.join("\n");
       }
       if (eduEl && profile.education) eduEl.value = profile.education;
+      const origEl = document.getElementById("liOriginalPreview");
+      if (origEl) origEl.value = text.trim();
       if (liCvPreview) liCvPreview.value = text.trim();
 
       if (liStatusBadge) {
@@ -287,17 +289,32 @@ const TEMPLATE_FOCUS = {
   data_analytics: { label: "Currículo para Análise de Dados", order: ["summary", "skills", "experience", "education"] },
   software_dev: { label: "Currículo para Desenvolvimento de Software", order: ["summary", "skills", "experience", "education"] },
   edtech: { label: "Currículo para Educação e Tecnologia", order: ["summary", "education", "skills", "experience"] },
+  first_job: { label: "Currículo para Primeiro Emprego", order: ["summary", "education", "skills", "experience"] },
+  career_transition: { label: "Currículo para Transição de Carreira", order: ["summary", "skills", "experience", "education"] },
+  international: { label: "Currículo Internacional", order: ["summary", "skills", "experience", "education"] },
   job_tailored: { label: "Currículo Personalizado para Vaga", order: ["summary", "skills", "experience", "education"] },
 };
 
+const CLIENT_LOCALIZED_HEADERS = {
+  pt: { summary: "RESUMO PROFISSIONAL", skills: "COMPETÊNCIAS TÉCNICAS", experience: "EXPERIÊNCIA PROFISSIONAL", education: "FORMAÇÃO ACADÊMICA E CERTIFICAÇÕES" },
+  en: { summary: "PROFESSIONAL SUMMARY", skills: "TECHNICAL SKILLS", experience: "PROFESSIONAL EXPERIENCE", education: "EDUCATION AND CERTIFICATIONS" },
+  es: { summary: "RESUMEN PROFESIONAL", skills: "COMPETENCIAS TÉCNICAS", experience: "EXPERIENCIA PROFESIONAL", education: "FORMACIÓN ACADÉMICA Y CERTIFICACIONES" },
+  fr: { summary: "PROFIL PROFESSIONNEL", skills: "COMPÉTENCES TECHNIQUES", experience: "EXPÉRIENCE PROFESSIONNELLE", education: "FORMATION ACADÉMIQUE ET CERTIFICATIONS" },
+};
+
 function formatExperienceBullet(rawRole) {
-  const clean = String(rawRole || "").replace(/^[-•*\s]+/, "").trim();
+  let clean = String(rawRole || "").replace(/^[-•*\s]+/, "").trim();
   if (!clean) return "";
+  clean = clean.replace(
+    /respons[aá]vel\s+pelo\s+suporte\s+(?:de|a)\s+computadores\.?/i,
+    "Atuação no suporte técnico de infraestrutura de TI, diagnóstico e resolução de incidentes, manutenção de equipamentos e suporte aos usuários, contribuindo para a continuidade operacional dos ambientes tecnológicos."
+  );
   return `• ${clean.charAt(0).toUpperCase()}${clean.slice(1)}`;
 }
 
-function buildSmartCvClient(manual, tplKey, targetJobText = "") {
+function buildSmartCvClient(manual, tplKey, targetJobText = "", lang = "pt") {
   const tpl = TEMPLATE_FOCUS[tplKey] || TEMPLATE_FOCUS.complete;
+  const hdr = CLIENT_LOCALIZED_HEADERS[lang] || CLIENT_LOCALIZED_HEADERS.pt;
   const targetSkills = targetJobText ? extractSkillsCanonical(targetJobText) : [];
   const targetLower = new Set(targetSkills.map((s) => s.toLowerCase()));
 
@@ -308,19 +325,23 @@ function buildSmartCvClient(manual, tplKey, targetJobText = "") {
   const nameLine = `${(manual.name || "PROFISSIONAL").toUpperCase()} — ${manual.headline || tpl.label}`;
   const contactLine = manual.email || "Contato não informado";
 
-  const summaryText = manual.summary
-    || (matchedSkills.length
-      ? `Profissional com experiência prática em ${matchedSkills.join(", ")}, atuando com foco em entregas mensuráveis, qualidade técnica e alinhamento aos objetivos da vaga.`
-      : SAMPLE_RESUME_LINES.slice(5, 8).join(" "));
+  let summaryText = manual.summary;
+  if (!summaryText) {
+    const skTxt = (matchedSkills.length ? matchedSkills : orderedSkills.slice(0, 4)).join(", ") || "tecnologia";
+    if (lang === "en") summaryText = `${manual.headline || "Professional"} with hands-on experience in ${skTxt}, focused on measurable delivery and operational reliability.`;
+    else if (lang === "es") summaryText = `${manual.headline || "Profesional"} con experiencia práctica en ${skTxt}, orientado a resultados medibles y calidad técnica.`;
+    else if (lang === "fr") summaryText = `${manual.headline || "Professionnel"} avec une expérience pratique en ${skTxt}, orienté résultats mesurables et qualité technique.`;
+    else summaryText = `Profissional com experiência prática em ${skTxt}, atuando com foco em entregas mensuráveis, qualidade técnica e alinhamento aos objetivos da vaga.`;
+  }
 
   const sections = {
-    summary: ["RESUMO PROFISSIONAL", summaryText, ""],
-    skills: orderedSkills.length ? ["COMPETÊNCIAS PRIORITÁRIAS", orderedSkills.join(" · "), ""] : [],
+    summary: [hdr.summary, summaryText, ""],
+    skills: orderedSkills.length ? [hdr.skills, orderedSkills.join(" · "), ""] : [],
     experience: manual.experiences.length
-      ? ["EXPERIÊNCIA PROFISSIONAL", ...manual.experiences.map((e) => formatExperienceBullet(e.role)).filter(Boolean), ""]
+      ? [hdr.experience, ...manual.experiences.map((e) => formatExperienceBullet(e.role)).filter(Boolean), ""]
       : [],
     education: manual.education.length
-      ? ["FORMAÇÃO ACADÊMICA E CERTIFICAÇÕES", ...manual.education.map((e) => formatExperienceBullet(e)).filter(Boolean), ""]
+      ? [hdr.education, ...manual.education.map((e) => formatExperienceBullet(e)).filter(Boolean), ""]
       : [],
   };
 
@@ -339,7 +360,13 @@ if (liGenerateCvBtn) {
   liGenerateCvBtn.addEventListener("click", async () => {
     const manual = collectManualProfile();
     const tpl = liTemplateSelect?.value || "complete";
+    const lang = document.getElementById("liLanguageSelect")?.value || "pt";
+    const visualStyle = document.getElementById("liStyleSelect")?.value || "ats_professional";
     const targetJobText = document.getElementById("liTargetJobInput")?.value?.trim() || "";
+    const origEl = document.getElementById("liOriginalPreview");
+    if (origEl && !origEl.value) {
+      origEl.value = [manual.name, manual.headline, manual.summary, ...manual.experiences.map((e) => e.role)].filter(Boolean).join("\n");
+    }
     let contentText = "";
     try {
       const r = await apiFetch("/api/cv/generate", {
@@ -347,6 +374,8 @@ if (liGenerateCvBtn) {
         body: JSON.stringify({
           manual_data: manual,
           template: tpl,
+          language: lang,
+          visual_style: visualStyle,
           job_context: targetJobText ? { title: "Vaga Alvo", description: targetJobText } : null,
         }),
       });
@@ -356,7 +385,7 @@ if (liGenerateCvBtn) {
       }
     } catch { /* fallback local */ }
 
-    const smart = buildSmartCvClient(manual, tpl, targetJobText);
+    const smart = buildSmartCvClient(manual, tpl, targetJobText, lang);
     if (!contentText) contentText = smart.contentText;
     if (liCvPreview) liCvPreview.value = contentText;
 
@@ -370,7 +399,7 @@ if (liGenerateCvBtn) {
     const jobNote = targetJobText
       ? ` · Aderência à vaga alvo: ${smart.matchedSkills.length} match(es)${smart.missingJobSkills.length ? ` | Gaps: ${smart.missingJobSkills.slice(0, 4).join(", ")}` : ""}`
       : "";
-    showModalMessage(`✅ Currículo "${TEMPLATE_FOCUS[tpl]?.label || tpl}" gerado! Score ATS: ${ats.score}/100 (${ats.level})${jobNote}`);
+    showModalMessage(`✅ Currículo "${TEMPLATE_FOCUS[tpl]?.label || tpl}" (${lang.toUpperCase()}) gerado! Estimativa interna ATS: ${ats.score}/100 (${ats.level})${jobNote}`);
 
     const versions = await idbGet("cv_versions_local", []);
     versions.unshift({
@@ -421,5 +450,24 @@ if (liExportDocxBtn) {
       if (r.ok) { downloadBlob(await r.blob(), "curriculo_vagapulse_ats.docx"); return; }
     } catch { /* fallback client */ }
     downloadBlob(buildClientDocxBlob(text), "curriculo_vagapulse_ats.docx");
+  });
+}
+
+const liExportTxtBtn = document.getElementById("liExportTxtBtn");
+if (liExportTxtBtn) {
+  liExportTxtBtn.addEventListener("click", () => {
+    const text = liCvPreview?.value || "";
+    if (!text.trim()) return;
+    downloadBlob(new Blob([text], { type: "text/plain;charset=utf-8;" }), "curriculo_vagapulse_ats.txt");
+  });
+}
+
+const liExportJsonBtn = document.getElementById("liExportJsonBtn");
+if (liExportJsonBtn) {
+  liExportJsonBtn.addEventListener("click", () => {
+    const text = liCvPreview?.value || "";
+    if (!text.trim()) return;
+    const payload = JSON.stringify({ profile: collectManualProfile(), content_text: text, exported_at: new Date().toISOString() }, null, 2);
+    downloadBlob(new Blob([payload], { type: "application/json;charset=utf-8;" }), "curriculo_vagapulse_ats.json");
   });
 }
