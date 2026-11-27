@@ -179,9 +179,11 @@ if (closeLinkedinCvBtn && linkedinCvModal) {
 }
 
 if (liLoadPdfBtn && liPdfFileInput) {
-  liLoadPdfBtn.addEventListener("click", () => {
-    liPdfFileInput.value = "";
-    liPdfFileInput.click();
+  liLoadPdfBtn.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      liPdfFileInput.click();
+    }
   });
 
   liPdfFileInput.addEventListener("change", async () => {
@@ -193,11 +195,11 @@ if (liLoadPdfBtn && liPdfFileInput) {
     }
 
     const prevLabel = liLoadPdfBtn.textContent;
-    liLoadPdfBtn.disabled = true;
     liLoadPdfBtn.textContent = "⏳ Lendo PDF...";
 
     try {
-      const { text, pages } = await extractTextFromPdfFile(file);
+      const { rawText, pages } = await extractTextFromPdfFile(file);
+      const text = String(rawText || "");
       const profile = extractCanonicalProfile(text, file.name, pages);
       const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
@@ -249,8 +251,8 @@ if (liLoadPdfBtn && liPdfFileInput) {
     } catch (err) {
       showModalMessage(`⚠️ Não foi possível ler o PDF: ${err?.message || "arquivo inválido"}`, true);
     } finally {
-      liLoadPdfBtn.disabled = false;
       liLoadPdfBtn.textContent = prevLabel;
+      liPdfFileInput.value = "";
     }
   });
 }
