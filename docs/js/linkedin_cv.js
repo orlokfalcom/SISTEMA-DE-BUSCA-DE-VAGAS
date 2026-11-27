@@ -22,6 +22,22 @@ const liCvPreview = document.getElementById("liCvPreview");
 const liAnalysisBox = document.getElementById("liAnalysisBox");
 const liVersionsList = document.getElementById("liVersionsList");
 const liPrivacyBox = document.getElementById("liPrivacyBox");
+const liConnectionMessage = document.getElementById("liConnectionMessage");
+const toastEl = document.getElementById("toast");
+
+function showModalMessage(msg, isWarning = false) {
+  if (liConnectionMessage) {
+    liConnectionMessage.textContent = msg;
+    liConnectionMessage.classList.remove("hidden");
+    liConnectionMessage.style.borderColor = isWarning ? "rgba(251,191,36,0.55)" : "rgba(56,189,248,0.45)";
+  }
+  if (liAnalysisBox) liAnalysisBox.textContent = msg;
+  if (toastEl) {
+    toastEl.textContent = msg;
+    toastEl.classList.remove("hidden");
+    setTimeout(() => toastEl.classList.add("hidden"), 3600);
+  }
+}
 
 function getCsrfToken() {
   const m = document.cookie.match(/(?:^|;\s*)vp_csrf=([^;]+)/);
@@ -180,16 +196,36 @@ if (closeLinkedinCvBtn && linkedinCvModal) {
 if (liConnectBtn) {
   liConnectBtn.addEventListener("click", async () => {
     const consents = collectConsents();
+    if (!consents.A_connect_account) {
+      showModalMessage("⚠️ Marque o consentimento A (Conexão da conta LinkedIn) antes de conectar.", true);
+      return;
+    }
+    const prevLabel = liConnectBtn.textContent;
+    liConnectBtn.disabled = true;
+    liConnectBtn.textContent = "⏳ Conectando...";
     try {
       const r = await apiFetch("/api/linkedin/oauth/start", { method: "POST", body: JSON.stringify({ consents }) });
-      const data = await r.json();
-      if (!r.ok) {
-        if (liAnalysisBox) liAnalysisBox.textContent = `ℹ️ ${data.error || "Configure LINKEDIN_CLIENT_ID/SECRET ou utilize preenchimento manual abaixo."}`;
+      const contentType = r.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        showModalMessage("ℹ️ Servidor Flask OAuth não ativo neste endereço (modo estático). Use o preenchimento manual ou upload de PDF abaixo.", true);
         return;
       }
-      if (data.authorization_url) window.location.href = data.authorization_url;
+      const data = await r.json();
+      if (!r.ok) {
+        showModalMessage(`ℹ️ ${data.error || "Configure LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET e LINKEDIN_REDIRECT_URI no servidor ou use o formulário abaixo."}`, true);
+        return;
+      }
+      if (data.authorization_url) {
+        showModalMessage("🔗 Redirecionando para a página oficial do LinkedIn...");
+        window.location.href = data.authorization_url;
+      } else {
+        showModalMessage("⚠️ URL de autorização não retornada pelo servidor.", true);
+      }
     } catch {
-      if (liAnalysisBox) liAnalysisBox.textContent = "ℹ️ Backend Flask OAuth não detectado neste domínio estático. Use a importação manual ou upload de PDF.";
+      showModalMessage("ℹ️ Backend Flask OAuth não detectado neste domínio estático. Use a importação manual ou upload de PDF abaixo.", true);
+    } finally {
+      liConnectBtn.disabled = false;
+      liConnectBtn.textContent = prevLabel;
     }
   });
 }
