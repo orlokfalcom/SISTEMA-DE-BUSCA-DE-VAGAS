@@ -60,7 +60,8 @@
           </select>
         </div>
         <button type="button" class="topbar-status" id="linkedinCvBtn"
-          title="Carregar Perfil em PDF e Construtor Inteligente de Currículos" style="cursor:pointer;">📄 Perfil PDF &amp; CV Builder</button>
+          title="Carregar Perfil em PDF e Construtor Inteligente de Currículos" style="cursor:pointer;"> linkedin &amp;
+          CV Builder</button>
         <button type="button" class="topbar-status" id="securityGuardBtn"
           title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA
           Guard: Ativo (0)</button>
@@ -636,30 +637,45 @@
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <strong id="liStatusBadge">📄 Pronto para importar perfil em PDF</strong>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <input type="file" id="liPdfFileInput" accept=".pdf,application/pdf" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;" />
-              <label for="liPdfFileInput" class="btn btn-primary btn-small" id="liLoadPdfBtn" role="button" tabindex="0" style="cursor:pointer;">📄 Carregar Perfil em PDF</label>
-              <button type="button" class="btn btn-secondary btn-small" id="liEraseDataBtn">🗑️ Excluir Dados (LGPD)</button>
+              <input type="file" id="liPdfFileInput" accept=".pdf,application/pdf"
+                style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;" />
+              <label for="liPdfFileInput" class="btn btn-primary btn-small" id="liLoadPdfBtn" role="button" tabindex="0"
+                style="cursor:pointer;">📄 Carregar Perfil em PDF</label>
+              <button type="button" class="btn btn-secondary btn-small" id="liEraseDataBtn">🗑️ Excluir Dados
+                (LGPD)</button>
             </div>
           </div>
-          <p class="hint" style="margin-top:8px;">Envie o PDF do seu perfil (ex.: <strong>Salvar como PDF</strong> do LinkedIn ou seu currículo atual). O processamento é feito com segurança para preencher seus dados, otimizar para ATS e exportar em PDF ou DOCX.</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px;margin-top:8px;font-size:0.8rem;">
+          <p class="hint" style="margin-top:8px;">Envie o PDF do seu perfil (ex.: <strong>Salvar como PDF</strong> do
+            LinkedIn ou seu currículo atual). O processamento é feito com segurança para preencher seus dados, otimizar
+            para ATS e exportar em PDF ou DOCX.</p>
+          <div
+            style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px;margin-top:8px;font-size:0.8rem;">
             <label><input type="checkbox" id="consent_B_import_profile" checked /> Importação dos dados do PDF</label>
-            <label><input type="checkbox" id="consent_C_job_matching" checked /> Análise de compatibilidade com vagas</label>
-            <label><input type="checkbox" id="consent_D_cv_generation" checked /> Geração e atualização de currículo</label>
-            <label><input type="checkbox" id="consent_E_profile_storage" checked /> Armazenamento local sob seu controle</label>
+            <label><input type="checkbox" id="consent_C_job_matching" checked /> Análise de compatibilidade com
+              vagas</label>
+            <label><input type="checkbox" id="consent_D_cv_generation" checked /> Geração e atualização de
+              currículo</label>
+            <label><input type="checkbox" id="consent_E_profile_storage" checked /> Armazenamento local sob seu
+              controle</label>
           </div>
           <p id="liPrivacyBox" class="hint" style="margin-top:6px;"></p>
-          <div id="liConnectionMessage" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(15,23,42,0.75);border:1px solid rgba(56,189,248,0.4);font-size:0.82rem;line-height:1.45;"></div>
+          <div id="liConnectionMessage" class="hidden"
+            style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(15,23,42,0.75);border:1px solid rgba(56,189,248,0.4);font-size:0.82rem;line-height:1.45;">
+          </div>
         </div>
 
         <form id="liProfileForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;">
           <input type="text" id="liNameInput" class="text-input" placeholder="Nome profissional" />
-          <input type="text" id="liHeadlineInput" class="text-input" placeholder="Título profissional (ex: Engenheiro de Dados)" />
+          <input type="text" id="liHeadlineInput" class="text-input"
+            placeholder="Título profissional (ex: Engenheiro de Dados)" />
           <input type="email" id="liEmailInput" class="text-input" placeholder="E-mail profissional" />
           <input type="text" id="liSkillsInput" class="text-input" placeholder="Competências (ex: Python, SQL, AWS)" />
-          <textarea id="liSummaryInput" class="resume-editor-textarea" style="min-height:64px;grid-column:1/-1;" placeholder="Resumo profissional"></textarea>
-          <textarea id="liExpInput" class="resume-editor-textarea" style="min-height:64px;" placeholder="Experiências (1 por linha)"></textarea>
-          <textarea id="liEduInput" class="resume-editor-textarea" style="min-height:64px;" placeholder="Formação e certificações (1 por linha)"></textarea>
+          <textarea id="liSummaryInput" class="resume-editor-textarea" style="min-height:64px;grid-column:1/-1;"
+            placeholder="Resumo profissional"></textarea>
+          <textarea id="liExpInput" class="resume-editor-textarea" style="min-height:64px;"
+            placeholder="Experiências (1 por linha)"></textarea>
+          <textarea id="liEduInput" class="resume-editor-textarea" style="min-height:64px;"
+            placeholder="Formação e certificações (1 por linha)"></textarea>
         </form>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -681,7 +697,8 @@
         </div>
 
         <p id="liAnalysisBox" class="hint"></p>
-        <textarea id="liCvPreview" class="resume-editor-textarea" style="min-height:160px;" placeholder="Prévia do currículo gerado para revisão..."></textarea>
+        <textarea id="liCvPreview" class="resume-editor-textarea" style="min-height:160px;"
+          placeholder="Prévia do currículo gerado para revisão..."></textarea>
 
         <div>
           <strong style="font-size:0.85rem;">🕘 Histórico de Versões</strong>
