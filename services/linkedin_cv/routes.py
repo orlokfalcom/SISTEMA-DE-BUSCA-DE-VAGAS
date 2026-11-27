@@ -329,7 +329,7 @@ def cv_export():
     )
 
 
-@linkedin_cv_bp.route("/api/cv/versions", methods=["GET", "POST"])
+@linkedin_cv_bp.route("/api/cv/versions", methods=["GET", "POST", "DELETE"])
 def cv_versions():
     uid, is_new = _get_or_create_uid()
     if request.method == "GET":
@@ -337,6 +337,10 @@ def cv_versions():
         return _attach_session_cookies(resp, uid, is_new)
     if not _csrf_ok():
         return jsonify({"error": "Falha na validação CSRF."}), 403
+    if request.method == "DELETE":
+        _store.clear_cv_versions(uid)
+        resp = make_response(jsonify({"cleared": True}))
+        return _attach_session_cookies(resp, uid, is_new)
     body = request.get_json(silent=True) or {}
     vid = str(body.get("restore_version_id") or "")
     rec = _store.get_cv_version(uid, vid)

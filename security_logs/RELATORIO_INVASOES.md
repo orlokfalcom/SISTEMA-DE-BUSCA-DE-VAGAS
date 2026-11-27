@@ -1,9 +1,9 @@
 # Relatório Autônomo de Segurança — VagaPulse AI
 
-- **Última atualização (UTC):** `2026-11-27T14:02:24.525494+00:00`
-- **Total de tentativas registradas:** `174`
+- **Última atualização (UTC):** `2026-11-27T13:30:41.974146+00:00`
+- **Total de tentativas registradas:** `175`
 - **Bloqueios autônomos (403):** `110`
-- **Severidade:** Crítica `110` | Alta `1` | Média `63` | Baixa `0`
+- **Severidade:** Crítica `110` | Alta `1` | Média `64` | Baixa `0`
 
 ## Origens Mais Frequentes
 
@@ -11,7 +11,7 @@
 | :--- | :---: |
 | `203.0.113.42` | 50 |
 | `198.51.100.99` | 31 |
-| `127.0.0.1` | 26 |
+| `127.0.0.1` | 27 |
 | `198.51.100.10` | 15 |
 | `198.51.100.11` | 15 |
 | `198.51.100.12` | 13 |
@@ -22,6 +22,7 @@
 
 | Timestamp (UTC) | IP | Método / Rota | Risco | Severidade | Categorias | Ação |
 | :--- | :--- | :--- | :---: | :---: | :--- | :--- |
+| `2026-11-27T13:30:41.972635+00:00` | `127.0.0.1` | `POST /api/cv/profile` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-27T14:02:24.521896+00:00` | `198.51.100.99` | `GET /api/security/report` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
 | `2026-11-27T14:02:24.507968+00:00` | `203.0.113.42` | `GET /api/search` | **85/100** | CRÍTICA | SQL Injection, XSS / Script Injection | BLOQUEADO (403) |
 | `2026-11-27T14:02:23.410998+00:00` | `127.0.0.1` | `POST /api/cv/profile` | **40/100** | MÉDIA | Acesso Não Autorizado | NEGADO |
@@ -71,4 +72,3 @@
 | `2026-11-26T12:29:49.822170+00:00` | `198.51.100.13` | `POST /api/search` | **45/100** | MÉDIA | Credential / API Key Leakage | MONITORADO |
 | `2026-11-26T12:29:19.364618+00:00` | `198.51.100.12` | `POST /api/search` | **38/100** | MÉDIA | AI Prompt Injection / Jailbreak | MONITORADO |
 | `2026-11-26T12:29:18.770548+00:00` | `198.51.100.11` | `POST /api/search` | **100/100** | CRÍTICA | XML External Entity (XXE), Path Traversal / LFI / RFI, SSRF / Cloud Metadata Probing | BLOQUEADO (403) |
-| `2026-11-26T12:29:18.376623+00:00` | `198.51.100.10` | `POST /api/search` | **87/100** | CRÍTICA | Server-Side Template Injection (SSTI), Prototype Pollution | BLOQUEADO (403) |

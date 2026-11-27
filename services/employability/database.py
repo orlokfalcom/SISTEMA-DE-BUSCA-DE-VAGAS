@@ -288,3 +288,9 @@ class EmployabilityStore:
             d["changelog"] = json.loads(d.pop("changelog_json"))
             out.append(d)
         return out
+
+    def clear_history(self, user_id: str) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute("DELETE FROM opportunity_cv_versions WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM opportunities WHERE user_id = ?", (user_id,))
+        self.log_audit(user_id, "history_cleared", "Histórico de oportunidades e versões de CV limpo pelo usuário.")

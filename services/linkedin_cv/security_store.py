@@ -447,6 +447,11 @@ class LinkedinPrivacyStore:
             ).fetchone()
         return dict(row) if row else None
 
+    def clear_cv_versions(self, user_id: str) -> None:
+        with self._lock, self._connect() as conn:
+            conn.execute("DELETE FROM cv_versions WHERE user_id = ?", (user_id,))
+        self.log_audit(user_id, "cv_history_cleared", "Histórico de versões de currículo limpo pelo usuário.")
+
     def erase_all_user_data(self, user_id: str) -> None:
         with self._lock, self._connect() as conn:
             conn.execute("DELETE FROM linkedin_tokens WHERE user_id = ?", (user_id,))

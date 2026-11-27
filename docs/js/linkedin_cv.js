@@ -322,8 +322,10 @@ function buildSmartCvClient(manual, tplKey, targetJobText = "", lang = "pt") {
   const otherSkills = manual.technical_skills.filter((s) => !targetLower.has(s.toLowerCase()));
   const orderedSkills = [...matchedSkills, ...otherSkills];
 
-  const nameLine = `${(manual.name || "PROFISSIONAL").toUpperCase()} — ${manual.headline || tpl.label}`;
-  const contactLine = manual.email || "Contato não informado";
+  const nameLine = (manual.name || "PROFISSIONAL").toUpperCase();
+  const roleLine = manual.headline || tpl.label;
+  const contactLines = [nameLine, roleLine];
+  if (manual.email) contactLines.push(`E-mail profissional: ${manual.email}`);
 
   let summaryText = manual.summary;
   if (!summaryText) {
@@ -331,21 +333,30 @@ function buildSmartCvClient(manual, tplKey, targetJobText = "", lang = "pt") {
     if (lang === "en") summaryText = `${manual.headline || "Professional"} with hands-on experience in ${skTxt}, focused on measurable delivery and operational reliability.`;
     else if (lang === "es") summaryText = `${manual.headline || "Profesional"} con experiencia práctica en ${skTxt}, orientado a resultados medibles y calidad técnica.`;
     else if (lang === "fr") summaryText = `${manual.headline || "Professionnel"} avec une expérience pratique en ${skTxt}, orienté résultats mesurables et qualité technique.`;
-    else summaryText = `Profissional com experiência prática em ${skTxt}, atuando com foco em entregas mensuráveis, qualidade técnica e alinhamento aos objetivos da vaga.`;
+    else summaryText = `Profissional com experiência na área de ${roleLine}, especializado em ${skTxt}. Perfil orientado a resultados, resolução de problemas, melhoria contínua e desenvolvimento de soluções alinhadas aos objetivos estratégicos da organização.`;
   }
 
   const sections = {
     summary: [hdr.summary, summaryText, ""],
-    skills: orderedSkills.length ? [hdr.skills, orderedSkills.join(" · "), ""] : [],
+    skills: orderedSkills.length ? [hdr.skills, ...orderedSkills, ""] : [],
     experience: manual.experiences.length
-      ? [hdr.experience, ...manual.experiences.map((e) => formatExperienceBullet(e.role)).filter(Boolean), ""]
+      ? [
+          hdr.experience,
+          ...manual.experiences.flatMap((e) => [
+            String(e.company || "EMPRESA").toUpperCase(),
+            `${e.role || "Cargo"}`,
+            "Principais responsabilidades e resultados:",
+            formatExperienceBullet(e.role).replace(/^•\s*/, ""),
+          ]),
+          "",
+        ]
       : [],
     education: manual.education.length
-      ? [hdr.education, ...manual.education.map((e) => formatExperienceBullet(e)).filter(Boolean), ""]
+      ? [hdr.education, ...manual.education.map((e) => formatExperienceBullet(e).replace(/^•\s*/, "")), ""]
       : [],
   };
 
-  const out = [nameLine, contactLine, ""];
+  const out = [...contactLines, ""];
   for (const key of tpl.order) {
     if (sections[key]?.length) out.push(...sections[key]);
   }
@@ -412,6 +423,16 @@ if (liGenerateCvBtn) {
     });
     await idbSet("cv_versions_local", versions.slice(0, 20));
     renderVersions(versions.slice(0, 20));
+  });
+}
+
+const liClearHistoryBtn = document.getElementById("liClearHistoryBtn");
+if (liClearHistoryBtn) {
+  liClearHistoryBtn.addEventListener("click", async () => {
+    try { await apiFetch("/api/cv/versions", { method: "DELETE" }); } catch { /* ignore */ }
+    await idbSet("cv_versions_local", []);
+    renderVersions([]);
+    showModalMessage("🗑️ Histórico de versões limpo!");
   });
 }
 

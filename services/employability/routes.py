@@ -262,3 +262,13 @@ def employability_dashboard():
     data = build_dashboard_and_learning(_emp_store, uid, filters=filters)
     resp = make_response(jsonify(data))
     return _attach_session_cookies(resp, uid, is_new)
+
+
+@employability_bp.delete("/api/employability/history")
+def clear_employability_history():
+    if not _csrf_ok():
+        return jsonify({"error": "Falha na validação CSRF."}), 403
+    uid, is_new = _get_or_create_uid()
+    _emp_store.clear_history(uid)
+    resp = make_response(jsonify({"cleared": True}))
+    return _attach_session_cookies(resp, uid, is_new)

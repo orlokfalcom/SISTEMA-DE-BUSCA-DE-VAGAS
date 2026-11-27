@@ -46,10 +46,12 @@ LOCALIZED_HEADERS: dict[str, dict[str, str]] = {
         "soft_skills": "COMPETÊNCIAS COMPORTAMENTAIS",
         "experience": "EXPERIÊNCIA PROFISSIONAL",
         "education": "FORMAÇÃO ACADÊMICA",
-        "certifications": "CERTIFICAÇÕES",
+        "certifications": "CERTIFICAÇÕES E QUALIFICAÇÕES",
+        "tech_knowledge": "CONHECIMENTOS EM TECNOLOGIA",
         "projects": "PROJETOS RELEVANTES",
         "languages": "IDIOMAS",
         "courses": "CURSOS COMPLEMENTARES",
+        "additional": "INFORMAÇÕES ADICIONAIS",
     },
     "en": {
         "summary": "PROFESSIONAL SUMMARY",
@@ -364,40 +366,63 @@ def build_multilingual_ats_cv(
         else:
             summary = f"{headline} com experiência prática em {top_sk}, com foco em entregas mensuráveis, qualidade técnica e impacto operacional."
 
-    contact_parts = [p for p in [location, phone, email, *links[:2]] if p]
-    lines = [name.upper(), " | ".join(contact_parts) if contact_parts else "Contato profissional", headline, ""]
+    contact_lines = [name.upper(), headline]
+    if location:
+        contact_lines.append(location)
+    if phone:
+        contact_lines.append(f"Telefone: {phone}")
+    if email:
+        contact_lines.append(f"E-mail profissional: {email}")
+    for lk in links[:2]:
+        if "linkedin" in str(lk).lower():
+            contact_lines.append(f"LinkedIn: {lk}")
+        else:
+            contact_lines.append(f"Portfólio/GitHub: {lk}")
+    lines = [*contact_lines, ""]
+
+    # Categorização automática de CONHECIMENTOS EM TECNOLOGIA (somente tecnologias conhecidas)
+    tech_buckets = {
+        "Sistemas operacionais": [s for s in tech_skills if s.lower() in {"linux", "windows", "macos", "ubuntu"}],
+        "Ferramentas": [s for s in tech_skills if s.lower() in {"excel", "power bi", "docker", "kubernetes", "git", "ci/cd", "siem", "jira"}],
+        "Linguagens": [s for s in tech_skills if s.lower() in {"python", "java", "javascript", "typescript", "sql", "c#", "go", "rust"}],
+        "Banco de dados": [s for s in tech_skills if s.lower() in {"mysql", "postgresql", "mongodb", "redis", "oracle", "sqlite"}],
+        "Plataformas": [s for s in tech_skills if s.lower() in {"aws", "azure", "gcp", "google cloud", "github"}],
+    }
+    tech_k_lines = [f"{k}: {', '.join(v)}" for k, v in tech_buckets.items() if v]
 
     # Ordem adaptativa conforme finalidade
-    order = ["summary", "skills", "soft_skills", "experience", "education", "certifications", "projects", "languages", "courses"]
+    order = ["summary", "skills", "experience", "education", "certifications", "tech_knowledge", "languages", "projects", "additional"]
     if purpose in ("academic", "first_job"):
-        order = ["summary", "education", "courses", "projects", "skills", "experience", "certifications", "languages", "soft_skills"]
+        order = ["summary", "education", "projects", "skills", "tech_knowledge", "experience", "certifications", "languages", "additional"]
     elif purpose == "executive":
-        order = ["summary", "experience", "skills", "education", "certifications", "languages", "soft_skills", "projects", "courses"]
+        order = ["summary", "experience", "skills", "education", "certifications", "languages", "tech_knowledge", "projects", "additional"]
 
     sec_map: dict[str, list[str]] = {
         "summary": [hdr["summary"], summary, ""],
-        "skills": [hdr["skills"], " · ".join(tech_skills), ""] if tech_skills else [],
-        "soft_skills": [hdr["soft_skills"], " · ".join(soft_skills), ""] if soft_skills else [],
+        "skills": [hdr["skills"], *tech_skills, ""] if tech_skills else [],
         "experience": [],
-        "education": [hdr["education"], *[f"- {e.get('degree', e) if isinstance(e, dict) else e}" for e in education], ""] if education else [],
-        "certifications": [hdr["certifications"], *[f"- {c}" for c in certifications], ""] if certifications else [],
-        "projects": [hdr["projects"], *[f"- {p.get('name', p) if isinstance(p, dict) else p}" for p in projects], ""] if projects else [],
-        "languages": [hdr["languages"], " | ".join(str(l) for l in languages), ""] if languages else [],
-        "courses": [hdr["courses"], *[f"- {c}" for c in courses], ""] if courses else [],
+        "education": [hdr["education"], *[f"{e.get('degree', e) if isinstance(e, dict) else e}" for e in education], ""] if education else [],
+        "certifications": [hdr.get("certifications", "CERTIFICAÇÕES E QUALIFICAÇÕES"), *[f"{c}" for c in certifications], ""] if certifications else [],
+        "tech_knowledge": [hdr.get("tech_knowledge", "CONHECIMENTOS EM TECNOLOGIA"), *tech_k_lines, ""] if tech_k_lines else [],
+        "languages": [hdr["languages"], *[f"{l}" for l in languages], ""] if languages else [],
+        "projects": [hdr["projects"], *[f"{p.get('name', p) if isinstance(p, dict) else p}" for p in projects], ""] if projects else [],
+        "additional": [hdr.get("additional", "INFORMAÇÕES ADICIONAIS"), "Disponibilidade: Conforme negociação", "Modalidade: Presencial / Híbrido / Remoto", ""] if lang == "pt" else [],
     }
 
     if experiences:
         exp_lines = [hdr["experience"]]
         for exp in experiences:
             if isinstance(exp, dict):
-                period = f"{exp.get('start_date', '')} - {exp.get('end_date') or 'Atual'}".strip(" -")
-                exp_lines.append(f"{exp.get('role', 'Cargo')} | {exp.get('company', 'Empresa')}" + (f" ({period})" if period else ""))
+                period = f"{exp.get('start_date', '')} – {exp.get('end_date') or 'Atual'}".strip(" –")
+                exp_lines.append(str(exp.get("company") or "EMPRESA").upper())
+                exp_lines.append(f"{exp.get('role', 'Cargo')}" + (f" | {period}" if period else ""))
                 if exp.get("responsibilities"):
-                    exp_lines.append(f"- {rewrite_experience_text(exp['responsibilities'])}")
+                    exp_lines.append("Principais responsabilidades e resultados:" if lang == "pt" else "Key responsibilities and achievements:")
+                    exp_lines.append(rewrite_experience_text(exp["responsibilities"]))
                 if exp.get("results"):
-                    exp_lines.append(f"- Resultados: {exp['results']}")
+                    exp_lines.append(f"Resultados: {exp['results']}")
             else:
-                exp_lines.append(f"- {rewrite_experience_text(str(exp))}")
+                exp_lines.append(rewrite_experience_text(str(exp)))
         exp_lines.append("")
         sec_map["experience"] = exp_lines
 
@@ -417,7 +442,7 @@ def build_multilingual_ats_cv(
         "structured_json": {
             "name": name,
             "headline": headline,
-            "contact": contact_parts,
+            "contact": contact_lines[2:],
             "summary": summary,
             "technical_skills": tech_skills,
             "experiences": experiences,

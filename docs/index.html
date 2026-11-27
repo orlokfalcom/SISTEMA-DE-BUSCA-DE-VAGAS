@@ -731,7 +731,10 @@
         </div>
 
         <div>
-          <strong style="font-size:0.85rem;">🕘 Histórico de Versões</strong>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <strong style="font-size:0.85rem;">🕘 Histórico de Versões</strong>
+            <button type="button" class="btn btn-secondary btn-small" id="liClearHistoryBtn">🗑️ Limpar Histórico</button>
+          </div>
           <div id="liVersionsList" style="margin-top:6px;"></div>
         </div>
       </div>
@@ -786,7 +789,10 @@
         </div>
 
         <div data-emp-panel="tracker" class="hidden" style="display:grid;gap:8px;">
-          <div id="empKpiBox" class="pitch-box" style="margin:0;font-size:0.84rem;">Carregando indicadores...</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+            <div id="empKpiBox" class="pitch-box" style="margin:0;font-size:0.84rem;flex:1;">Carregando indicadores...</div>
+            <button type="button" class="btn btn-secondary btn-small" id="empClearHistoryBtn">🗑️ Limpar Histórico</button>
+          </div>
           <div id="empOppList"></div>
         </div>
       </div>
@@ -797,8 +803,8 @@
 
   <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
-  <script type="module" src="./js/linkedin_cv.js?v=5"></script>
-  <script type="module" src="./js/employability.js?v=1"></script>
+  <script type="module" src="./js/linkedin_cv.js?v=6"></script>
+  <script type="module" src="./js/employability.js?v=2"></script>
 </body>
 
 </html>

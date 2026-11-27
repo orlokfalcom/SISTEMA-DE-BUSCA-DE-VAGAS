@@ -254,5 +254,14 @@ async function refreshDashboard() {
   } catch { /* fallback local */ }
   const localOpps = await idbGet("emp_local_opps", []);
   kpiBox.innerHTML = `Oportunidades (local): <strong>${localOpps.length}</strong>`;
-  listBox.innerHTML = localOpps.map((o) => `<div style="padding:6px;font-size:0.8rem;"><strong>${o.title}</strong> — ${o.company} (${o.status})</div>`).join("") || "<p class='hint'>Nenhuma oportunidade cadastrada ainda.</p>";
+  listBox.innerHTML = localOpps.map((o) => `<div style="padding:6px;font-size:0.8rem;"><strong>${escHtml(o.title)}</strong> — ${escHtml(o.company)} (${escHtml(o.status)})</div>`).join("") || "<p class='hint'>Nenhuma oportunidade cadastrada ainda.</p>";
+}
+
+const empClearHistoryBtn = document.getElementById("empClearHistoryBtn");
+if (empClearHistoryBtn) {
+  empClearHistoryBtn.addEventListener("click", async () => {
+    try { await empFetch("/api/employability/history", { method: "DELETE" }); } catch { /* ignore */ }
+    await idbSet("emp_local_opps", []);
+    refreshDashboard();
+  });
 }
