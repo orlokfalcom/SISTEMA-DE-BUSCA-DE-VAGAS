@@ -2,8 +2,8 @@
  * VagaPulse AI — LinkedIn Connect & Smart CV Builder (UI Controller)
  * Opera com backend Flask OAuth 2.0 + PKCE quando disponível e fallback local seguro no navegador.
  */
-import { buildTextPdfBlob, extractTextFromPdfFile, SAMPLE_RESUME_LINES } from "./ats.js";
-import { extractCanonicalProfile } from "./nlp.js";
+import { buildTextPdfBlob, evaluateAtsReadiness, extractTextFromPdfFile, SAMPLE_RESUME_LINES } from "./ats.js";
+import { extractCanonicalProfile, extractSkillsCanonical } from "./nlp.js";
 import { idbGet, idbSet } from "./storage.js";
 
 const linkedinCvBtn = document.getElementById("linkedinCvBtn");
@@ -64,10 +64,20 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Construtor DOCX mínimo (OOXML ZIP sem compressão / Store) para fallback 100% offline no navegador
+// Construtor DOCX estruturado (OOXML ZIP) com títulos destacados e formatação ATS limpa
 function buildClientDocxBlob(text) {
   const escXml = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const paras = String(text || "").split(/\r?\n/).map((ln) => `<w:p><w:r><w:t xml:space="preserve">${escXml(ln)}</w:t></w:r></w:p>`).join("");
+  const lines = String(text || "").split(/\r?\n/);
+  const paras = lines.map((ln, idx) => {
+    const trimmed = ln.trim();
+    if (idx === 0 && trimmed) {
+      return `<w:p><w:r><w:rPr><w:b/><w:sz w:val="30"/><w:color w:val="1E3A8A"/></w:rPr><w:t xml:space="preserve">${escXml(trimmed)}</w:t></w:r></w:p>`;
+    }
+    if (trimmed.length >= 4 && trimmed.length <= 52 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed) && !trimmed.startsWith("-")) {
+      return `<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="CBD5E1"/></w:pBdr><w:spacing w:before="180" w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="23"/><w:color w:val="1E40AF"/></w:rPr><w:t xml:space="preserve">${escXml(trimmed)}</w:t></w:r></w:p>`;
+    }
+    return `<w:p><w:pPr><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="21"/></w:rPr><w:t xml:space="preserve">${escXml(ln)}</w:t></w:r></w:p>`;
+  }).join("");
   const files = [
     { name: "[Content_Types].xml", content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>' },
     { name: "_rels/.rels", content: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>' },
@@ -267,15 +277,78 @@ if (liEraseDataBtn) {
   });
 }
 
+const TEMPLATE_FOCUS = {
+  complete: { label: "Currículo Profissional Completo", order: ["summary", "skills", "experience", "education"] },
+  executive: { label: "Currículo Executivo", order: ["summary", "experience", "skills", "education"] },
+  technical: { label: "Currículo Técnico", order: ["summary", "skills", "experience", "education"] },
+  academic: { label: "Currículo Acadêmico", order: ["summary", "education", "experience", "skills"] },
+  technology: { label: "Currículo para Tecnologia", order: ["summary", "skills", "experience", "education"] },
+  infosec: { label: "Currículo para Segurança da Informação", order: ["summary", "skills", "experience", "education"] },
+  data_analytics: { label: "Currículo para Análise de Dados", order: ["summary", "skills", "experience", "education"] },
+  software_dev: { label: "Currículo para Desenvolvimento de Software", order: ["summary", "skills", "experience", "education"] },
+  edtech: { label: "Currículo para Educação e Tecnologia", order: ["summary", "education", "skills", "experience"] },
+  job_tailored: { label: "Currículo Personalizado para Vaga", order: ["summary", "skills", "experience", "education"] },
+};
+
+function formatExperienceBullet(rawRole) {
+  const clean = String(rawRole || "").replace(/^[-•*\s]+/, "").trim();
+  if (!clean) return "";
+  return `• ${clean.charAt(0).toUpperCase()}${clean.slice(1)}`;
+}
+
+function buildSmartCvClient(manual, tplKey, targetJobText = "") {
+  const tpl = TEMPLATE_FOCUS[tplKey] || TEMPLATE_FOCUS.complete;
+  const targetSkills = targetJobText ? extractSkillsCanonical(targetJobText) : [];
+  const targetLower = new Set(targetSkills.map((s) => s.toLowerCase()));
+
+  const matchedSkills = manual.technical_skills.filter((s) => targetLower.has(s.toLowerCase()));
+  const otherSkills = manual.technical_skills.filter((s) => !targetLower.has(s.toLowerCase()));
+  const orderedSkills = [...matchedSkills, ...otherSkills];
+
+  const nameLine = `${(manual.name || "PROFISSIONAL").toUpperCase()} — ${manual.headline || tpl.label}`;
+  const contactLine = manual.email || "Contato não informado";
+
+  const summaryText = manual.summary
+    || (matchedSkills.length
+      ? `Profissional com experiência prática em ${matchedSkills.join(", ")}, atuando com foco em entregas mensuráveis, qualidade técnica e alinhamento aos objetivos da vaga.`
+      : SAMPLE_RESUME_LINES.slice(5, 8).join(" "));
+
+  const sections = {
+    summary: ["RESUMO PROFISSIONAL", summaryText, ""],
+    skills: orderedSkills.length ? ["COMPETÊNCIAS PRIORITÁRIAS", orderedSkills.join(" · "), ""] : [],
+    experience: manual.experiences.length
+      ? ["EXPERIÊNCIA PROFISSIONAL", ...manual.experiences.map((e) => formatExperienceBullet(e.role)).filter(Boolean), ""]
+      : [],
+    education: manual.education.length
+      ? ["FORMAÇÃO ACADÊMICA E CERTIFICAÇÕES", ...manual.education.map((e) => formatExperienceBullet(e)).filter(Boolean), ""]
+      : [],
+  };
+
+  const out = [nameLine, contactLine, ""];
+  for (const key of tpl.order) {
+    if (sections[key]?.length) out.push(...sections[key]);
+  }
+  return {
+    contentText: out.join("\n").replace(/\n{3,}/g, "\n\n").trim(),
+    matchedSkills,
+    missingJobSkills: targetSkills.filter((s) => !manual.technical_skills.some((c) => c.toLowerCase() === s.toLowerCase())),
+  };
+}
+
 if (liGenerateCvBtn) {
   liGenerateCvBtn.addEventListener("click", async () => {
     const manual = collectManualProfile();
     const tpl = liTemplateSelect?.value || "complete";
+    const targetJobText = document.getElementById("liTargetJobInput")?.value?.trim() || "";
     let contentText = "";
     try {
       const r = await apiFetch("/api/cv/generate", {
         method: "POST",
-        body: JSON.stringify({ manual_data: manual, template: tpl }),
+        body: JSON.stringify({
+          manual_data: manual,
+          template: tpl,
+          job_context: targetJobText ? { title: "Vaga Alvo", description: targetJobText } : null,
+        }),
       });
       if (r.ok) {
         const data = await r.json();
@@ -283,36 +356,47 @@ if (liGenerateCvBtn) {
       }
     } catch { /* fallback local */ }
 
-    if (!contentText) {
-      contentText = [
-        `${(manual.name || "PROFISSIONAL").toUpperCase()} — ${manual.headline || tpl}`,
-        manual.email || "",
-        "",
-        "RESUMO PROFISSIONAL",
-        manual.summary || SAMPLE_RESUME_LINES.slice(5, 8).join(" "),
-        "",
-        "COMPETÊNCIAS",
-        manual.technical_skills.join(" · "),
-        "",
-        "EXPERIÊNCIA PROFISSIONAL",
-        ...manual.experiences.map((e) => `- ${e.role}`),
-        "",
-        "FORMAÇÃO ACADÊMICA",
-        ...manual.education.map((e) => `- ${e}`),
-      ].join("\n").trim();
-    }
+    const smart = buildSmartCvClient(manual, tpl, targetJobText);
+    if (!contentText) contentText = smart.contentText;
     if (liCvPreview) liCvPreview.value = contentText;
+
+    const ats = evaluateAtsReadiness({
+      rawText: contentText,
+      pages: 1,
+      wordCount: contentText.split(/\s+/).filter(Boolean).length,
+      skills: manual.technical_skills,
+      email: manual.email || null,
+    });
+    const jobNote = targetJobText
+      ? ` · Aderência à vaga alvo: ${smart.matchedSkills.length} match(es)${smart.missingJobSkills.length ? ` | Gaps: ${smart.missingJobSkills.slice(0, 4).join(", ")}` : ""}`
+      : "";
+    showModalMessage(`✅ Currículo "${TEMPLATE_FOCUS[tpl]?.label || tpl}" gerado! Score ATS: ${ats.score}/100 (${ats.level})${jobNote}`);
+
     const versions = await idbGet("cv_versions_local", []);
     versions.unshift({
       id: `cv-${Date.now()}`,
       version_type: tpl,
-      title: `CV (${tpl})`,
+      title: `CV (${TEMPLATE_FOCUS[tpl]?.label || tpl}) · ATS ${ats.score}/100`,
       content_text: contentText,
       created_by: "user_with_ai",
       created_at: new Date().toISOString(),
     });
     await idbSet("cv_versions_local", versions.slice(0, 20));
     renderVersions(versions.slice(0, 20));
+  });
+}
+
+const liApplyToSearchBtn = document.getElementById("liApplyToSearchBtn");
+if (liApplyToSearchBtn) {
+  liApplyToSearchBtn.addEventListener("click", () => {
+    const text = liCvPreview?.value?.trim();
+    if (!text) {
+      showModalMessage("⚠️ Gere ou carregue um currículo antes de aplicar na busca.", true);
+      return;
+    }
+    const atsEditor = document.getElementById("atsResumeEditor");
+    if (atsEditor) atsEditor.value = text;
+    showModalMessage("✅ Currículo enviado para o Editor ATS! Clique em 'Aplicar Currículo Editado' ou reanalise as vagas.");
   });
 }
 

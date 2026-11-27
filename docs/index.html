@@ -676,6 +676,8 @@
             placeholder="Experiências (1 por linha)"></textarea>
           <textarea id="liEduInput" class="resume-editor-textarea" style="min-height:64px;"
             placeholder="Formação e certificações (1 por linha)"></textarea>
+          <textarea id="liTargetJobInput" class="resume-editor-textarea" style="min-height:54px;grid-column:1/-1;"
+            placeholder="(Opcional) Cole aqui o título ou descrição da vaga alvo para direcionar o currículo automaticamente..."></textarea>
         </form>
 
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -694,6 +696,7 @@
           <button type="button" class="btn btn-primary btn-small" id="liGenerateCvBtn">✨ Gerar Currículo ATS</button>
           <button type="button" class="btn btn-secondary btn-small" id="liExportPdfBtn">⬇ Exportar PDF</button>
           <button type="button" class="btn btn-secondary btn-small" id="liExportDocxBtn">⬇ Exportar DOCX</button>
+          <button type="button" class="btn btn-secondary btn-small" id="liApplyToSearchBtn">✅ Usar na Busca</button>
         </div>
 
         <p id="liAnalysisBox" class="hint"></p>
@@ -712,7 +715,7 @@
 
   <!-- App Modular ES (PDF.js é carregado sob demanda ao enviar currículo) -->
   <script type="module" src="./js/app.js"></script>
-  <script type="module" src="./js/linkedin_cv.js?v=3"></script>
+  <script type="module" src="./js/linkedin_cv.js?v=4"></script>
 </body>
 
 </html>

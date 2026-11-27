@@ -430,17 +430,23 @@ function wrapPdfLines(text, maxChars = 88) {
 
 export function buildTextPdfBlob(text) {
   const esc = (s) => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-  const allLines = wrapPdfLines(text, 88);
-  const linesPerPage = 48;
+  const allLines = wrapPdfLines(text, 86);
+  const linesPerPage = 46;
   const pages = [];
   for (let i = 0; i < allLines.length; i += linesPerPage) {
     pages.push(allLines.slice(i, i + linesPerPage));
   }
   if (!pages.length) pages.push([" "]);
 
+  const isSectionHeader = (ln) => {
+    const t = ln.trim();
+    return t.length >= 4 && t.length <= 52 && t === t.toUpperCase() && /[A-Z]/.test(t) && !t.startsWith("-") && !t.includes("@");
+  };
+
   const objects = [];
   const pageObjIds = [];
-  const fontObjId = 3 + pages.length * 2;
+  const fontRegularId = 3 + pages.length * 2;
+  const fontBoldId = fontRegularId + 1;
 
   objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
   objects.push(""); // placeholder for Pages object (2 0 obj)
@@ -450,15 +456,32 @@ export function buildTextPdfBlob(text) {
     const contentId = pageId + 1;
     pageObjIds.push(pageId);
 
-    const cmds = ["BT", "/F1 10 Tf", "45 785 Td", "14 TL"];
+    const cmds = [];
+    let y = 790;
     pageLines.forEach((line, idx) => {
-      cmds.push(idx === 0 ? `(${esc(line)}) Tj` : `T* (${esc(line)}) Tj`);
+      const trimmed = line.trim();
+      const isTitle = pIdx === 0 && idx === 0 && trimmed.length > 0;
+      const isHeader = !isTitle && isSectionHeader(trimmed);
+
+      if (isTitle) {
+        cmds.push(`BT /F2 13.5 Tf 45 ${y} Td (${esc(trimmed)}) Tj ET`);
+        y -= 18;
+      } else if (isHeader) {
+        y -= 4;
+        cmds.push(`BT /F2 10.5 Tf 0.12 0.25 0.48 rg 45 ${y} Td (${esc(trimmed)}) Tj 0 0 0 rg ET`);
+        cmds.push(`0.75 0.80 0.88 RG 0.6 w 45 ${y - 4} m 550 ${y - 4} l S 0 0 0 RG`);
+        y -= 16;
+      } else if (!trimmed) {
+        y -= 8;
+      } else {
+        cmds.push(`BT /F1 9.8 Tf 45 ${y} Td (${esc(line)}) Tj ET`);
+        y -= 13.5;
+      }
     });
-    cmds.push("ET");
     const stream = cmds.join("\n");
 
     objects.push(
-      `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontObjId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`
+      `${pageId} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontRegularId} 0 R /F2 ${fontBoldId} 0 R >> >> /Contents ${contentId} 0 R >>\nendobj\n`
     );
     objects.push(
       `${contentId} 0 obj\n<< /Length ${stream.length} >>\nstream\n${stream}\nendstream\nendobj\n`
@@ -466,7 +489,8 @@ export function buildTextPdfBlob(text) {
   });
 
   objects[1] = `2 0 obj\n<< /Type /Pages /Kids [${pageObjIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageObjIds.length} >>\nendobj\n`;
-  objects.push(`${fontObjId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`);
+  objects.push(`${fontRegularId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n`);
+  objects.push(`${fontBoldId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>\nendobj\n`);
 
   let pdf = "%PDF-1.4\n";
   const offsets = [0];
