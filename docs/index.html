@@ -60,7 +60,7 @@
           </select>
         </div>
         <button type="button" class="topbar-status" id="linkedinCvBtn"
-          title="Conectar LinkedIn (OAuth 2.0) e Construtor Inteligente de Currículos" style="cursor:pointer;">🔗 LinkedIn &amp; CV Builder</button>
+          title="Carregar Perfil em PDF e Construtor Inteligente de Currículos" style="cursor:pointer;">📄 Perfil PDF &amp; CV Builder</button>
         <button type="button" class="topbar-status" id="securityGuardBtn"
           title="IA Autônoma de Segurança — Clique para baixar o relatório de incidentes" style="cursor:pointer;">🛡️ IA
           Guard: Ativo (0)</button>
@@ -621,35 +621,32 @@
     </div>
   </div>
 
-  <!-- Modal LinkedIn Connect & Smart CV Builder -->
+  <!-- Modal Carregar Perfil em PDF & Smart CV Builder -->
   <div class="modal-overlay hidden" id="linkedinCvModal" role="dialog" aria-modal="true">
     <div class="modal-card modal-editor">
       <div class="modal-header">
         <div>
-          <span class="source-tag">OAuth 2.0 + PKCE · LGPD · ATS PDF &amp; DOCX</span>
-          <h3>🔗 LinkedIn Connect &amp; Smart CV Builder</h3>
+          <span class="source-tag">Importação PDF · LGPD · ATS PDF &amp; DOCX</span>
+          <h3>📄 Carregar Perfil em PDF &amp; Smart CV Builder</h3>
         </div>
         <button type="button" class="modal-close" id="closeLinkedinCvBtn" aria-label="Fechar">✕</button>
       </div>
       <div style="padding:14px 18px;max-height:76vh;overflow-y:auto;display:grid;gap:14px;">
         <div class="pitch-box" style="margin:0;">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-            <strong id="liStatusBadge">⚪ Desconectado</strong>
+            <strong id="liStatusBadge">📄 Pronto para importar perfil em PDF</strong>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-primary btn-small" id="liConnectBtn">Conectar ao LinkedIn</button>
-              <button type="button" class="btn btn-secondary btn-small" id="liSyncBtn">↻ Sincronizar</button>
-              <button type="button" class="btn btn-secondary btn-small" id="liDisconnectBtn">Desconectar</button>
+              <input type="file" id="liPdfFileInput" accept=".pdf,application/pdf" class="sr-only" />
+              <button type="button" class="btn btn-primary btn-small" id="liLoadPdfBtn">📄 Carregar Perfil em PDF</button>
               <button type="button" class="btn btn-secondary btn-small" id="liEraseDataBtn">🗑️ Excluir Dados (LGPD)</button>
             </div>
           </div>
-          <p class="hint" style="margin-top:8px;">Acesso oficial via OAuth 2.0 + PKCE. Nunca coletamos sua senha. Escopos padrão: <code>openid, profile, email</code>. Dados não disponíveis na API podem ser preenchidos ou importados via PDF abaixo.</p>
+          <p class="hint" style="margin-top:8px;">Envie o PDF do seu perfil (ex.: <strong>Salvar como PDF</strong> do LinkedIn ou seu currículo atual). O processamento é feito com segurança para preencher seus dados, otimizar para ATS e exportar em PDF ou DOCX.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:6px;margin-top:8px;font-size:0.8rem;">
-            <label><input type="checkbox" id="consent_A_connect_account" checked /> A. Conexão da conta LinkedIn</label>
-            <label><input type="checkbox" id="consent_B_import_profile" checked /> B. Importação de dados autorizados</label>
-            <label><input type="checkbox" id="consent_C_job_matching" checked /> C. Análise de compatibilidade</label>
-            <label><input type="checkbox" id="consent_D_cv_generation" checked /> D. Geração/atualização de CV</label>
-            <label><input type="checkbox" id="consent_E_profile_storage" checked /> E. Armazenamento sob seu controle</label>
-            <label><input type="checkbox" id="consent_F_anonymous_stats" /> F. Estatísticas anonimizadas (Opcional)</label>
+            <label><input type="checkbox" id="consent_B_import_profile" checked /> Importação dos dados do PDF</label>
+            <label><input type="checkbox" id="consent_C_job_matching" checked /> Análise de compatibilidade com vagas</label>
+            <label><input type="checkbox" id="consent_D_cv_generation" checked /> Geração e atualização de currículo</label>
+            <label><input type="checkbox" id="consent_E_profile_storage" checked /> Armazenamento local sob seu controle</label>
           </div>
           <p id="liPrivacyBox" class="hint" style="margin-top:6px;"></p>
           <div id="liConnectionMessage" class="hidden" style="margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(15,23,42,0.75);border:1px solid rgba(56,189,248,0.4);font-size:0.82rem;line-height:1.45;"></div>

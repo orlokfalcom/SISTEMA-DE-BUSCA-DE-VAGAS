@@ -2,16 +2,16 @@
  * VagaPulse AI — LinkedIn Connect & Smart CV Builder (UI Controller)
  * Opera com backend Flask OAuth 2.0 + PKCE quando disponível e fallback local seguro no navegador.
  */
-import { buildTextPdfBlob, SAMPLE_RESUME_LINES } from "./ats.js";
+import { buildTextPdfBlob, extractTextFromPdfFile, SAMPLE_RESUME_LINES } from "./ats.js";
+import { extractCanonicalProfile } from "./nlp.js";
 import { idbGet, idbSet } from "./storage.js";
 
 const linkedinCvBtn = document.getElementById("linkedinCvBtn");
 const linkedinCvModal = document.getElementById("linkedinCvModal");
 const closeLinkedinCvBtn = document.getElementById("closeLinkedinCvBtn");
 const liStatusBadge = document.getElementById("liStatusBadge");
-const liConnectBtn = document.getElementById("liConnectBtn");
-const liSyncBtn = document.getElementById("liSyncBtn");
-const liDisconnectBtn = document.getElementById("liDisconnectBtn");
+const liLoadPdfBtn = document.getElementById("liLoadPdfBtn");
+const liPdfFileInput = document.getElementById("liPdfFileInput");
 const liEraseDataBtn = document.getElementById("liEraseDataBtn");
 const liProfileForm = document.getElementById("liProfileForm");
 const liTemplateSelect = document.getElementById("liTemplateSelect");
@@ -161,23 +161,8 @@ function renderVersions(versions = []) {
 }
 
 async function refreshStatus() {
-  if (!liStatusBadge) return;
-  try {
-    const r = await apiFetch("/api/linkedin/status", { method: "GET" });
-    if (!r.ok) throw new Error("offline");
-    const data = await r.json();
-    const st = data.connection?.status || "disconnected";
-    const labels = {
-      connected: "🟢 Conectado (OAuth 2.0 + PKCE)",
-      disconnected: "⚪ Desconectado (Modo Manual/Upload ativo)",
-      expired: "🟡 Autorização Expirada (Necessita reconexão)",
-    };
-    liStatusBadge.textContent = labels[st] || `🟠 ${st}`;
-    if (liPrivacyBox) {
-      liPrivacyBox.textContent = `Escopos concedidos: ${(data.connection?.scopes_granted || []).join(", ") || "nenhum"} | Indisponíveis: ${(data.connection?.scopes_unavailable || []).join("; ")}`;
-    }
-  } catch {
-    liStatusBadge.textContent = "⚪ Modo Local (Sem servidor OAuth — Upload/Manual ativo)";
+  if (liStatusBadge && !liStatusBadge.dataset.loaded) {
+    liStatusBadge.textContent = "📄 Pronto para carregar perfil em PDF";
   }
   const localVersions = await idbGet("cv_versions_local", []);
   renderVersions(localVersions);
@@ -193,61 +178,80 @@ if (closeLinkedinCvBtn && linkedinCvModal) {
   closeLinkedinCvBtn.addEventListener("click", () => linkedinCvModal.classList.add("hidden"));
 }
 
-if (liConnectBtn) {
-  liConnectBtn.addEventListener("click", async () => {
-    const consents = collectConsents();
-    if (!consents.A_connect_account) {
-      showModalMessage("⚠️ Marque o consentimento A (Conexão da conta LinkedIn) antes de conectar.", true);
+if (liLoadPdfBtn && liPdfFileInput) {
+  liLoadPdfBtn.addEventListener("click", () => {
+    liPdfFileInput.value = "";
+    liPdfFileInput.click();
+  });
+
+  liPdfFileInput.addEventListener("change", async () => {
+    const file = liPdfFileInput.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      showModalMessage("⚠️ Selecione um arquivo .pdf válido.", true);
       return;
     }
-    const prevLabel = liConnectBtn.textContent;
-    liConnectBtn.disabled = true;
-    liConnectBtn.textContent = "⏳ Conectando...";
+
+    const prevLabel = liLoadPdfBtn.textContent;
+    liLoadPdfBtn.disabled = true;
+    liLoadPdfBtn.textContent = "⏳ Lendo PDF...";
+
     try {
-      const r = await apiFetch("/api/linkedin/oauth/start", { method: "POST", body: JSON.stringify({ consents }) });
-      const contentType = r.headers.get("content-type") || "";
-      if (!contentType.includes("application/json")) {
-        showModalMessage("ℹ️ Servidor Flask OAuth não ativo neste endereço (modo estático). Use o preenchimento manual ou upload de PDF abaixo.", true);
-        return;
+      const { text, pages } = await extractTextFromPdfFile(file);
+      const profile = extractCanonicalProfile(text, file.name, pages);
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+      const nameEl = document.getElementById("liNameInput");
+      const headlineEl = document.getElementById("liHeadlineInput");
+      const emailEl = document.getElementById("liEmailInput");
+      const skillsEl = document.getElementById("liSkillsInput");
+      const summaryEl = document.getElementById("liSummaryInput");
+      const expEl = document.getElementById("liExpInput");
+      const eduEl = document.getElementById("liEduInput");
+
+      if (nameEl && !nameEl.value) nameEl.value = lines[0]?.slice(0, 80) || "";
+      if (headlineEl) headlineEl.value = (profile.suggested_roles || [])[0] || profile.seniority || "";
+      if (emailEl && profile.email) emailEl.value = profile.email;
+      if (skillsEl) skillsEl.value = (profile.skills || []).join(", ");
+      if (summaryEl) summaryEl.value = lines.slice(1, 5).join(" ").slice(0, 500);
+      if (expEl) {
+        const expLines = lines.filter((l) => /^[-•*]|\b(20\d{2}|19\d{2})\b/.test(l)).slice(0, 12);
+        expEl.value = expLines.join("\n");
       }
-      const data = await r.json();
-      if (!r.ok) {
-        showModalMessage(`ℹ️ ${data.error || "Configure LINKEDIN_CLIENT_ID, LINKEDIN_CLIENT_SECRET e LINKEDIN_REDIRECT_URI no servidor ou use o formulário abaixo."}`, true);
-        return;
+      if (eduEl && profile.education) eduEl.value = profile.education;
+      if (liCvPreview) liCvPreview.value = text.trim();
+
+      if (liStatusBadge) {
+        liStatusBadge.dataset.loaded = "1";
+        liStatusBadge.textContent = `🟢 Perfil carregado: ${file.name} (${pages} pág.)`;
       }
-      if (data.authorization_url) {
-        showModalMessage("🔗 Redirecionando para a página oficial do LinkedIn...");
-        window.location.href = data.authorization_url;
-      } else {
-        showModalMessage("⚠️ URL de autorização não retornada pelo servidor.", true);
-      }
-    } catch {
-      showModalMessage("ℹ️ Backend Flask OAuth não detectado neste domínio estático. Use a importação manual ou upload de PDF abaixo.", true);
+
+      const versions = await idbGet("cv_versions_local", []);
+      versions.unshift({
+        id: `pdf-${Date.now()}`,
+        version_type: "pdf_imported",
+        title: `Importado de PDF (${file.name})`,
+        content_text: text.trim(),
+        created_by: "pdf_upload",
+        created_at: new Date().toISOString(),
+      });
+      await idbSet("cv_versions_local", versions.slice(0, 20));
+      renderVersions(versions.slice(0, 20));
+
+      try {
+        await apiFetch("/api/cv/profile", {
+          method: "POST",
+          body: JSON.stringify({ manual_data: collectManualProfile(), resume_text: text }),
+        });
+      } catch { /* modo estático local */ }
+
+      showModalMessage(`✅ Perfil carregado de "${file.name}" (${(profile.skills || []).length} competências detectadas).`);
+    } catch (err) {
+      showModalMessage(`⚠️ Não foi possível ler o PDF: ${err?.message || "arquivo inválido"}`, true);
     } finally {
-      liConnectBtn.disabled = false;
-      liConnectBtn.textContent = prevLabel;
+      liLoadPdfBtn.disabled = false;
+      liLoadPdfBtn.textContent = prevLabel;
     }
-  });
-}
-
-if (liSyncBtn) {
-  liSyncBtn.addEventListener("click", async () => {
-    try {
-      const r = await apiFetch("/api/linkedin/sync", { method: "POST" });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Falha na sincronização");
-      if (liAnalysisBox) liAnalysisBox.textContent = "✅ Sincronizado com dados oficiais autorizados pelo LinkedIn.";
-      refreshStatus();
-    } catch (e) {
-      if (liAnalysisBox) liAnalysisBox.textContent = `⚠️ ${e.message}`;
-    }
-  });
-}
-
-if (liDisconnectBtn) {
-  liDisconnectBtn.addEventListener("click", async () => {
-    try { await apiFetch("/api/linkedin/disconnect", { method: "POST" }); } catch { /* ignore */ }
-    refreshStatus();
   });
 }
 
