@@ -1166,7 +1166,7 @@ async function openJobModal(jobId) {
       .replace(/^_+|_+$/g, "")
       .slice(0, 48) || "vaga";
     modalConversionKit.innerHTML = `
-      <div class="pitch-box" style="margin-top:0;">
+    <div class="pitch-box" style="margin-top:0;">
         <h4>✨ Ajuste Automático do Currículo para Esta Vaga</h4>
         <p class="hint" style="margin:2px 0 8px;">O currículo foi editado automaticamente priorizando as competências de <strong>${escapeHtml(rawJob.title)}</strong> (${escapeHtml(rawJob.company)}). Você pode revisar abaixo, aplicar ou baixar em PDF/TXT.</p>
         <textarea id="modalAutoResumePreview" class="resume-editor-textarea" style="min-height:175px;font-size:0.8rem;" spellcheck="true">${escapeHtml(autoTailored.editedResumeText)}</textarea>
@@ -1176,6 +1176,7 @@ async function openJobModal(jobId) {
           <button type="button" class="btn btn-secondary btn-small" id="downloadTailoredTxtBtn">⬇ Baixar (.TXT)</button>
           <button type="button" class="btn btn-secondary btn-small" id="copyTailoredBtn">📋 Copiar</button>
           <button type="button" class="btn btn-secondary btn-small" id="applyTailoredToEditorBtn">📝 Editar no Editor ATS</button>
+          <button type="button" class="btn btn-secondary btn-small" id="openJobInEmployabilityBtn">🧠 Skills Gap &amp; Versão</button>
         </div>
       </div>
       <div class="pitch-box" style="margin-top:0;">
@@ -1259,6 +1260,24 @@ async function openJobModal(jobId) {
           updateEditorStats(atsResumeEditor.value);
           refreshImprovePlan(atsResumeEditor.value, true);
         }
+      });
+    }
+    const openEmpJobBtn = document.getElementById("openJobInEmployabilityBtn");
+    if (openEmpJobBtn) {
+      openEmpJobBtn.addEventListener("click", () => {
+        closeModal();
+        window.dispatchEvent(
+          new CustomEvent("vagapulse:open-employability-for-job", {
+            detail: {
+              company: rawJob.company || "",
+              title: rawJob.title || "",
+              description: rawJob.description || "",
+              skills: state.skills || [],
+              resumeText: state.resumeTextSnippet || "",
+              email: state.profile?.email || "",
+            },
+          })
+        );
       });
     }
     const copyOutreachBtn = document.getElementById("copyOutreachBtn");
@@ -1828,7 +1847,30 @@ document.addEventListener("keydown", (e) => {
     if (!jobModal.classList.contains("hidden")) closeModal();
     if (!compareModal.classList.contains("hidden")) compareModal.classList.add("hidden");
     if (improveModal && !improveModal.classList.contains("hidden")) improveModal.classList.add("hidden");
+    const liMod = document.getElementById("linkedinCvModal");
+    if (liMod && !liMod.classList.contains("hidden")) liMod.classList.add("hidden");
+    const empMod = document.getElementById("employabilityModal");
+    if (empMod && !empMod.classList.contains("hidden")) empMod.classList.add("hidden");
   }
+});
+
+window.addEventListener("vagapulse:apply-resume-text", async (ev) => {
+  const text = String(ev?.detail?.text || "").trim();
+  if (!text) return;
+  state.resumeTextSnippet = text;
+  if (atsResumeEditor) {
+    atsResumeEditor.value = text;
+    updateEditorStats(text);
+  }
+  const detected = extractCanonicalProfile(text, "curriculo_otimizado.pdf", 1);
+  if (Array.isArray(detected.skills) && detected.skills.length) {
+    state.skills = [...new Set(detected.skills)];
+    renderSkills();
+  }
+  if (state.rawJobs && state.rawJobs.length) {
+    await runMatchInWorker();
+  }
+  showToast("✅ Currículo aplicado à busca de vagas!");
 });
 
 if (homeRefreshBtn) homeRefreshBtn.addEventListener("click", () => loadHomeLiveJobs(true));

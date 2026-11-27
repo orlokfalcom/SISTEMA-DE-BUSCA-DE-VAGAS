@@ -423,9 +423,8 @@ if (liApplyToSearchBtn) {
       showModalMessage("⚠️ Gere ou carregue um currículo antes de aplicar na busca.", true);
       return;
     }
-    const atsEditor = document.getElementById("atsResumeEditor");
-    if (atsEditor) atsEditor.value = text;
-    showModalMessage("✅ Currículo enviado para o Editor ATS! Clique em 'Aplicar Currículo Editado' ou reanalise as vagas.");
+    window.dispatchEvent(new CustomEvent("vagapulse:apply-resume-text", { detail: { text } }));
+    showModalMessage("✅ Currículo aplicado na busca de vagas e sincronizado com o Editor ATS!");
   });
 }
 

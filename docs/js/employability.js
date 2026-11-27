@@ -10,6 +10,35 @@ const empBtn = document.getElementById("employabilityBtn");
 const empModal = document.getElementById("employabilityModal");
 const closeEmpBtn = document.getElementById("closeEmployabilityBtn");
 
+function escHtml(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+window.addEventListener("vagapulse:open-employability-for-job", (ev) => {
+  const d = ev?.detail || {};
+  if (empModal) empModal.classList.remove("hidden");
+  const gapJob = document.getElementById("empGapJobInput");
+  if (gapJob && d.description) gapJob.value = d.description;
+  const oppComp = document.getElementById("empOppCompany");
+  if (oppComp && d.company) oppComp.value = d.company;
+  const oppTitle = document.getElementById("empOppTitle");
+  if (oppTitle && d.title) oppTitle.value = d.title;
+  const oppDesc = document.getElementById("empOppDesc");
+  if (oppDesc && d.description) oppDesc.value = d.description;
+  const mSkills = document.getElementById("empMasterSkills");
+  if (mSkills && !mSkills.value && Array.isArray(d.skills)) mSkills.value = d.skills.join(", ");
+  const mEmail = document.getElementById("empMasterEmail");
+  if (mEmail && !mEmail.value && d.email) mEmail.value = d.email;
+  const simTxt = document.getElementById("empSimTextInput");
+  if (simTxt && !simTxt.value && d.resumeText) simTxt.value = d.resumeText;
+  refreshDashboard();
+});
+
 function getCsrf() {
   const m = document.cookie.match(/(?:^|;\s*)vp_csrf=([^;]+)/);
   return m ? decodeURIComponent(m[1]) : "";
@@ -83,11 +112,11 @@ if (simRunBtn) {
       const s = data.simulation;
       outBox.innerHTML = `
         <strong>Extração ATS: ${s.extraction_pct}% · Integridade Textual: ${s.text_integrity}%</strong>
-        <p class="hint">${s.disclaimer}</p>
-        <div><strong>Seções reconhecidas:</strong> ${(s.recognized_sections || []).join(", ") || "Nenhuma"}</div>
-        <div><strong>Palavras-chave:</strong> ${(s.identified_keywords || []).join(", ") || "Nenhuma"}</div>
-        ${(s.structural_issues || []).length ? `<div style="color:#fbbf24;"><strong>Problemas:</strong><ul>${s.structural_issues.map((i) => `<li>${i}</li>`).join("")}</ul></div>` : "<div style='color:#34d399;'>✓ Sem problemas estruturais detectados.</div>"}
-        ${data.auto_fixed_cv ? `<textarea class="resume-editor-textarea" style="min-height:110px;margin-top:6px;">${data.auto_fixed_cv.content_text}</textarea>` : ""}
+        <p class="hint">${escHtml(s.disclaimer)}</p>
+        <div><strong>Seções reconhecidas:</strong> ${escHtml((s.recognized_sections || []).join(", ") || "Nenhuma")}</div>
+        <div><strong>Palavras-chave:</strong> ${escHtml((s.identified_keywords || []).join(", ") || "Nenhuma")}</div>
+        ${(s.structural_issues || []).length ? `<div style="color:#fbbf24;"><strong>Problemas:</strong><ul>${s.structural_issues.map((i) => `<li>${escHtml(i)}</li>`).join("")}</ul></div>` : "<div style='color:#34d399;'>✓ Sem problemas estruturais detectados.</div>"}
+        ${data.auto_fixed_cv ? `<textarea class="resume-editor-textarea" style="min-height:110px;margin-top:6px;">${escHtml(data.auto_fixed_cv.content_text)}</textarea>` : ""}
       `;
     } catch (e) {
       outBox.textContent = `Erro na simulação: ${e.message}`;
@@ -207,8 +236,8 @@ async function refreshDashboard() {
       kpiBox.innerHTML = `Oportunidades: <strong>${k.total_opportunities}</strong> · CVs Gerados: <strong>${k.cvs_generated}</strong> · Candidaturas: <strong>${k.applications_sent}</strong> · Entrevistas: <strong>${k.interviews}</strong> · Média ATS: <strong>${k.avg_ats_score}</strong> · Taxa Entrevista: <strong>${d.learning_insights.interview_rate_pct}%</strong>`;
       listBox.innerHTML = (d.opportunities || []).map((o) => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid rgba(148,163,184,0.2);border-radius:8px;margin-bottom:6px;font-size:0.8rem;">
-          <div><strong>${o.title}</strong> — ${o.company}<br/><span class="hint">Status: ${o.status}</span></div>
-          <button type="button" class="btn btn-secondary btn-small" data-confirm-apply="${o.id}">Confirmar Envio</button>
+          <div><strong>${escHtml(o.title)}</strong> — ${escHtml(o.company)}<br/><span class="hint">Status: ${escHtml(o.status)}</span></div>
+          <button type="button" class="btn btn-secondary btn-small" data-confirm-apply="${escHtml(o.id)}">Confirmar Envio</button>
         </div>
       `).join("") || "<p class='hint'>Nenhuma oportunidade cadastrada ainda.</p>";
       listBox.querySelectorAll("[data-confirm-apply]").forEach((btn) => {
